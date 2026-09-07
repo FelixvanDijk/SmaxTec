@@ -67,3 +67,8 @@ passed 36 tests and all checks, built version 0.2.0, ran the packaged GUI/browse
 smoke test, and uploaded the approximately 276 MiB
 [Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34133099879/artifacts/10022998252).
 The same unsigned-preview and clean-target-machine limitations above still apply.
+
+The [0.2.1 repeat-batch run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34136225129)
+subsequently passed 37 tests, rebuilt the application with the fresh-browser
+reconnection fix, passed the bundled-browser smoke test, and uploaded its
+[Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34136225129/artifacts/10024193848).
