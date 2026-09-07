@@ -5,7 +5,7 @@ verification in `PROJECT_STATE.md`. Packaging quality is continuous work.
 
 | Milestone | Scope | Acceptance gate |
 | --- | --- | --- |
-| M1 — in progress | Repository memory, modular desktop shell, website login, initial packaging | Opens login, presses entry button, fills credentials, clear verified result; UI stays responsive; local browser tests; packaged app starts with bundled dependencies |
+| M1 — complete | Repository memory, modular desktop shell, website login, initial packaging | Live login verified; 21 tests pass; packaged GUI/browser smoke passed on GitHub Windows; local EXE launch denied and tracked |
 | M2 — planned | Farm/cow/time selection and export requests | Confirm actual UI with user; validate identifiers/ranges; track one or multiple requests; prevent duplicate submissions; establish which export results in which email |
 | M3 — planned | Email connection and download collection | Confirm provider; GUI OAuth/account connection; match requests despite out-of-order/duplicate mail; bound waits; handle expired links; download safely and resumably |
 | M4 — planned | Normalization, calculations and master workbook | Agree sample schemas/formulas/layout; preserve raw source and lineage; unit/timezone validation; all requested cows in one workbook; test reviewed expected results |

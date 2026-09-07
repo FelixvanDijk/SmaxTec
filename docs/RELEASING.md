@@ -44,3 +44,18 @@ offline smoke test. Browser updates require rebuilding the application.
 A successful local smoke test is evidence that the bundle works on the development
 computer. It is not evidence that a signed, production-ready installer or clean
 machine acceptance test exists.
+
+## M1 evidence and machine limitation
+
+The [first Windows CI run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34126534604)
+passed all checks, built the executable, ran its offline smoke test with developer
+PATH and external browser cache excluded, and uploaded the archive (about 276 MiB;
+the extracted directory bundle is about 623 MiB). GitHub's artifact download wraps
+the application ZIP in another ZIP; extract the inner application ZIP as well.
+
+The local development computer returned `Access is denied` when starting the
+generated unsigned executable. File permissions appear to allow execution; the
+specific policy/cause is unconfirmed. Source-mode Qt and live browser automation
+work. Do not disable security controls to work around this; resolve the target
+distribution/signing requirements before external rollout. The independent CI
+smoke result is useful evidence, but does not resolve this machine's restriction.

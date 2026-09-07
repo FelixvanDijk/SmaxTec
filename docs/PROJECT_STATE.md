@@ -1,6 +1,7 @@
 # Project state — start here each session
 
-Last updated: 2026-09-07. Current milestone: **M1 — foundation and website login**.
+Last updated: 2026-09-07. **M1 — foundation and website login: complete.**
+Next: M2, awaiting the user's farm/cow navigation instructions.
 
 ## User intent and scope
 
@@ -17,7 +18,7 @@ requests, email access, or farm/cow selection during the first increment.
 ## Repository
 
 - Remote: `https://github.com/FelixvanDijk/SmaxTec.git`
-- Initial branch: `main`; repository was empty at the start of foundation work.
+- Branch: `main`, tracking `origin/main`. Foundation implementation: `9fd2c28`.
 - No existing application or inherited architecture to preserve.
 
 ## Current implementation
@@ -45,11 +46,18 @@ requests, email access, or farm/cow selection during the first increment.
 - The Windows executable and full directory bundle were built. On this computer,
   `Start-Process` returned **Access is denied** for the unsigned generated EXE.
   File permissions allow execution; the precise machine policy/cause is not yet
-  established. No security controls were changed. Packaged runtime verification
-  remains pending; build scripts correctly fail instead of claiming a pass.
-- GitHub CI will independently run tests/build/packaged smoke on a Windows runner.
-  Record its actual conclusion here after the first push. Do not claim a released
-  or clean-machine-verified application based on the build alone.
+  established. No security controls were changed. This local launch limitation
+  remains open; the developer-source GUI does run and was opened for the user.
+- **GitHub Windows CI passed** for `9fd2c28`: locked dependency installation,
+  all 21 tests, lint/format checks, executable build, packaged GUI + bundled Chromium
+  smoke with developer PATH/cache excluded, and preview archive upload.
+  [Verified run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34126534604).
+- [Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34126534604/artifacts/10020421580):
+  approximately 276 MiB download / 623 MiB extracted; retained for 14 days by CI.
+  This is an unsigned preview, not a production installer or permanent release.
+- CI is an independent bundle execution check, not the final clean-machine/user
+  acceptance test. Signing, installer, target-machine restrictions and production
+  release gates remain outstanding in `RELEASING.md`.
 
 ## Confirmed website information
 

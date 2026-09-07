@@ -12,6 +12,8 @@
   checks are isolated in the browser adapter. Login submits once without retries.
 - Added synthetic browser and GUI tests, a hash-pinned dependency lock, Windows CI,
   and a Chromium-inclusive PyInstaller build with offline executable smoke checks.
-- Built the Windows directory bundle. Local executable launch was denied by this
-  computer; packaged execution verification is tracked separately from source and
-  live-login success. Production installer/signing remain future release gates.
+- Built the Windows directory bundle. GitHub Windows CI passed all 21 tests and
+  the packaged GUI/Chromium smoke check, then uploaded the preview archive.
+- Local execution of the generated EXE was denied by this computer; the source GUI
+  works. This machine-specific launch issue and production installer/signing remain
+  tracked release work.
