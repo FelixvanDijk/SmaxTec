@@ -328,8 +328,9 @@ class MainWindow(QMainWindow):
     def _on_login_progress(self, progress: LoginProgress) -> None:
         if self._stopping:
             return
-        self._connected = progress.stage == LoginStage.CONNECTED
-        title = "Connected" if self._connected else "Connecting to smaXtec"
+        if progress.stage == LoginStage.CONNECTED:
+            self._connected = True
+        title = "Connected" if progress.stage == LoginStage.CONNECTED else "Connecting to smaXtec"
         if progress.stage == LoginStage.ACTION_REQUIRED:
             title = "Finish signing in in the browser"
         self._status(title, progress.message, "success" if self._connected else "neutral")
@@ -340,10 +341,18 @@ class MainWindow(QMainWindow):
 
     def _on_farms(self, farms: tuple[Farm, ...]) -> None:
         self._farms_ready = True
+        selected = self.farm.currentData()
+        selected_name = selected.name if isinstance(selected, Farm) else None
         self.farm.clear()
         for item in farms:
             self.farm.addItem(item.name, item)
-        self.farm.setEnabled(True)
+        if selected_name:
+            selected_index = self.farm.findText(selected_name, Qt.MatchFlag.MatchExactly)
+            if selected_index >= 0:
+                self.farm.setCurrentIndex(selected_index)
+        self.farm.setEnabled(not self._export_busy)
+        if self._export_busy:
+            return
         self.progress_bar.hide()
         self._status(
             "Ready to request data",
@@ -362,6 +371,8 @@ class MainWindow(QMainWindow):
             self.progress_bar.setRange(0, 0)
         self.progress_bar.show()
         title = "Preparing your farms"
+        if progress.stage == ExportStage.RECONNECTING:
+            title = "Reconnecting securely"
         if progress.stage in {
             ExportStage.OPENING_FARM,
             ExportStage.FINDING_COW,
@@ -421,6 +432,7 @@ class MainWindow(QMainWindow):
         message = f"Requested {requested} measured-data export{'s' if requested != 1 else ''}."
         if skipped:
             message += f" Skipped {skipped} already attempted in this session."
+        message += " A fresh browser will open automatically for your next request."
         self._status("Export requests sent", message, "success")
         self._update_request_enabled()
 
@@ -430,7 +442,11 @@ class MainWindow(QMainWindow):
         self.request_button.setText("Review and request exports  →")
         self.progress_bar.hide()
         prefix = f"{len(error.completed)} request(s) completed. " if error.completed else ""
-        self._status("Export request needs attention", prefix + str(error), "error")
+        self._status(
+            "Export request needs attention",
+            prefix + str(error) + " A fresh browser will be used for your next request.",
+            "error",
+        )
         self._update_request_enabled()
 
     def _on_connection_error(self, error: LoginError | ExportError) -> None:

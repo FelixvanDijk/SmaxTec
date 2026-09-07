@@ -106,6 +106,7 @@ def test_partial_failure_reports_completed_and_does_not_retry_attempts(session, 
         session.request_exports(request("57", "257"), lambda _event: None, Event())
     assert caught.value.code == ExportFailureCode.EXPORT_REJECTED
     assert caught.value.completed == ("57",)
+    assert caught.value.attempted == ("57", "257")
     assert [item["cow"] for item in website.exports] == ["57"]
 
     result = session.request_exports(request("57", "257"), lambda _event: None, Event())

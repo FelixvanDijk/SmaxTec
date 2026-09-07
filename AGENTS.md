@@ -93,8 +93,10 @@ export requests. M2 is awaiting the user's live submission confirmation. Each
 login scans the account's current farm list. Cow lookup must use the Animal number
 column and exact equality; a search for `57` must never select `657` or `257`.
 Each cow is submitted separately after an explicit GUI review. Never retry an
-ambiguous final export click. Email access, downloads, workbook processing and
-analysis remain later work.
+ambiguous final export click. After a batch, close its browser; reconnect lazily
+for the next reviewed batch using credentials held only in worker memory until
+disconnect/close. Preserve attempted-export guards across those fresh browsers.
+Email access, downloads, workbook processing and analysis remain later work.
 
 No additional agents are required by this file. Delegate only if the user or
 applicable higher-priority instructions explicitly authorize parallel agents.

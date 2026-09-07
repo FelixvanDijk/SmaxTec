@@ -23,6 +23,11 @@ data export per exact cow number. Complete any extra verification in the browser
 if prompted. Choose **Disconnect** to close the session. The app does not collect
 the resulting emails yet.
 
+After each completed or failed batch, Workbench closes the isolated browser. If
+you review another batch with different cows, farm or dates, it opens a fresh
+browser and signs in automatically. Your credentials remain only in application
+memory until you disconnect or close Workbench.
+
 The launcher is for this prepared working folder. It does not replace the bundled
 distribution for other computers; a fresh source checkout needs developer setup.
 

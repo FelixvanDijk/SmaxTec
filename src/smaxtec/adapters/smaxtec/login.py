@@ -203,6 +203,7 @@ class SmaxtecLoginSession:
         stop: Event,
     ) -> ExportBatchResult:
         completed: list[str] = []
+        attempted: list[str] = []
         skipped: list[str] = []
         try:
             self._require_active_session()
@@ -239,6 +240,7 @@ class SmaxtecLoginSession:
                 # From this point a retry could create a duplicate email. Record the
                 # attempt before the single click, even if confirmation later times out.
                 self._attempted_exports.add(fingerprint)
+                attempted.append(cow_number)
                 self._submit_export_dates(request, completed, stop)
                 completed.append(cow_number)
                 progress(
@@ -251,18 +253,27 @@ class SmaxtecLoginSession:
                 )
             return ExportBatchResult(tuple(completed), tuple(skipped))
         except ExportError as error:
-            if error.completed:
-                raise
-            raise ExportError(error.code, str(error), tuple(completed)) from None
+            raise ExportError(
+                error.code,
+                str(error),
+                error.completed or tuple(completed),
+                error.attempted or tuple(attempted),
+            ) from None
         except BrowserTimeout:
             raise ExportError(
                 ExportFailureCode.SITE_UNAVAILABLE,
                 "The website took too long to respond. Completed requests were not repeated.",
                 tuple(completed),
+                tuple(attempted),
             ) from None
         except BrowserError:
             error = self._workflow_browser_error()
-            raise ExportError(error.code, str(error), tuple(completed)) from None
+            raise ExportError(
+                error.code,
+                str(error),
+                tuple(completed),
+                tuple(attempted),
+            ) from None
 
     def _require_active_session(self) -> None:
         if not self._authenticated():

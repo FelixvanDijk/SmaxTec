@@ -6,7 +6,7 @@ verification in `PROJECT_STATE.md`. Packaging quality is continuous work.
 | Milestone | Scope | Acceptance gate |
 | --- | --- | --- |
 | M1 — complete | Repository memory, modular desktop shell, website login, initial packaging | Live login verified; 21 tests pass; packaged GUI/browser smoke passed on GitHub Windows; local EXE launch denied and tracked |
-| M2 — implemented, user verification pending | Dynamic farm discovery; farm/cow/date GUI; exact animal lookup; one measured-data export per cow | Live structure verified; synthetic submissions pass; user confirms a real request/email and inclusive date behavior |
+| M2 — repeat-batch fix implemented, user verification pending | Dynamic farm discovery; farm/cow/date GUI; exact animal lookup; fresh-browser reconnection; one measured-data export per cow | First live batch succeeded; synthetic consecutive batches pass; user confirms repeat request without credential entry, emails and inclusive date behavior |
 | M3 — planned | Email connection and download collection | Confirm provider; GUI OAuth/account connection; match requests despite out-of-order/duplicate mail; bound waits; handle expired links; download safely and resumably |
 | M4 — planned | Normalization, calculations and master workbook | Agree sample schemas/formulas/layout; preserve raw source and lineage; unit/timezone validation; all requested cows in one workbook; test reviewed expected results |
 | M5 — planned | Graphs and analysis | Agree graph specifications; same dataset/config as workbook; readable exportable figures; realistic performance; clear missing/partial data behavior |

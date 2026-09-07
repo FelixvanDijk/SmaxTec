@@ -19,9 +19,11 @@ class FakeSession:
         self.closed = False
         self.thread_ids = []
         self.requests = []
+        self.credentials_seen = []
 
     def connect(self, credentials, progress, stop):
         self.thread_ids.append(get_ident())
+        self.credentials_seen.append((credentials.username, credentials.password))
         if self.error:
             raise self.error
         progress(LoginProgress(LoginStage.CONNECTED, "Connected to the synthetic test account."))
@@ -50,6 +52,16 @@ class FakeSession:
     def close(self):
         self.thread_ids.append(get_ident())
         self.closed = True
+
+
+class FakeSessionFactory:
+    def __init__(self):
+        self.sessions = []
+
+    def __call__(self):
+        session = FakeSession()
+        self.sessions.append(session)
+        return session
 
 
 def fill(window):
@@ -150,5 +162,46 @@ def test_user_can_submit_multiple_cows_and_dates_after_farms_load(qtbot, monkeyp
     qtbot.waitUntil(lambda: not window._export_busy)
     assert session.requests[0].cow_numbers == ("057", "57", "257")
     assert window.status_title.text() == "Export requests sent"
+    window._stop()
+    qtbot.waitUntil(lambda: window._worker is None)
+
+
+def test_second_batch_reconnects_without_reentering_credentials(qtbot, monkeypatch):
+    factory = FakeSessionFactory()
+    window = MainWindow(factory)
+    qtbot.addWidget(window)
+    fill(window)
+    window.cows.setPlainText("57")
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
+    )
+
+    window._start()
+    qtbot.waitUntil(lambda: window._farms_ready)
+    window._request_exports()
+    qtbot.waitUntil(lambda: not window._export_busy)
+    assert len(factory.sessions) == 1
+    assert factory.sessions[0].closed
+    assert window.password.text() == ""
+
+    window.farm.setCurrentText("TYB Farms LTD")
+    window.cows.setPlainText("12")
+    window._request_exports()
+    qtbot.waitUntil(lambda: not window._export_busy)
+    assert len(factory.sessions) == 2
+    assert factory.sessions[1].closed
+    assert factory.sessions[1].requests[0].farm == Farm("TYB Farms LTD")
+    assert factory.sessions[1].requests[0].cow_numbers == ("12",)
+    assert factory.sessions[0].credentials_seen == factory.sessions[1].credentials_seen
+    assert factory.sessions[1].credentials_seen == [("analyst@example.test", "synthetic-password")]
+
+    # An identical farm/cow/date target remains protected across fresh browsers.
+    window._request_exports()
+    qtbot.waitUntil(lambda: not window._export_busy)
+    assert len(factory.sessions) == 2
+    assert "Skipped 1" in window.status_message.text()
+
     window._stop()
     qtbot.waitUntil(lambda: window._worker is None)

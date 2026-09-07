@@ -55,6 +55,7 @@ class ExportRequest:
 class ExportStage(StrEnum):
     DISCOVERING_FARMS = "discovering_farms"
     FARMS_READY = "farms_ready"
+    RECONNECTING = "reconnecting"
     OPENING_FARM = "opening_farm"
     FINDING_COW = "finding_cow"
     REQUESTING_EXPORT = "requesting_export"
@@ -87,17 +88,19 @@ class ExportFailureCode(StrEnum):
 
 
 class ExportError(Exception):
-    """Curated external-workflow failure with partial completion information."""
+    """Curated failure with completion and no-retry attempt information."""
 
     def __init__(
         self,
         code: ExportFailureCode,
         message: str,
         completed: tuple[str, ...] = (),
+        attempted: tuple[str, ...] = (),
     ) -> None:
         super().__init__(message)
         self.code = code
         self.completed = completed
+        self.attempted = attempted
 
 
 ExportProgressCallback = Callable[[ExportProgress], None]

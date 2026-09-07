@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.2.0
+SmaxTec Workbench — desktop preview 0.2.1
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
@@ -7,7 +7,8 @@ SmaxTec Workbench — desktop preview 0.2.0
 5. Choose a discovered farm and enter one or more exact cow numbers.
 6. Choose From/To dates, then review and confirm the request summary.
 7. The app requests one measured-data export for each confirmed cow.
-8. Choose Disconnect or close the app to close its browser session.
+8. After a batch, its browser closes. A later confirmed batch reconnects automatically.
+9. Choose Disconnect or close the app to end the in-memory account session.
 
 No Python, editor, browser driver, or package installation is required.
 Your website password is used for the current session and is not saved by the app.

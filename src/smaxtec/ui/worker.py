@@ -7,7 +7,14 @@ from threading import Event
 
 from PySide6.QtCore import QThread, Signal
 
-from smaxtec.application.exports import ExportError, ExportRequest
+from smaxtec.application.exports import (
+    ExportBatchResult,
+    ExportError,
+    ExportFailureCode,
+    ExportProgress,
+    ExportRequest,
+    ExportStage,
+)
 from smaxtec.application.login import (
     Credentials,
     FailureCode,
@@ -31,6 +38,7 @@ class SessionWorker(QThread):
         self._credentials: Credentials | None = credentials
         self._stop = Event()
         self._commands: Queue[ExportRequest | None] = Queue()
+        self._attempted_exports: set[tuple[str, str, str, str]] = set()
 
     def submit_exports(self, request: ExportRequest) -> None:
         self._commands.put(request)
@@ -45,28 +53,55 @@ class SessionWorker(QThread):
         try:
             if self._stop.is_set():
                 return
-            session = self._factory()
-            assert self._credentials is not None
-            session.connect(self._credentials, self.login_progress.emit, self._stop)
-            self._credentials = None
-            farms = session.discover_farms(self.export_progress.emit, self._stop)
-            self.farms_discovered.emit(farms)
-            while not self._stop.is_set() and session.is_open():
+            session = self._connect_session(reconnecting=False)
+            while not self._stop.is_set():
                 try:
                     request = self._commands.get(timeout=0.2)
                 except Empty:
                     continue
                 if request is None:
                     break
+                pending_request, previously_attempted = self._without_attempted_exports(request)
+                if pending_request is None:
+                    self.export_completed.emit(ExportBatchResult((), previously_attempted))
+                    continue
+                request = pending_request
+                if session is None or not session.is_open():
+                    self._close_session(session)
+                    session = None
+                    try:
+                        session = self._connect_session(reconnecting=True)
+                    except LoginCancelled:
+                        break
+                    except (LoginError, ExportError) as error:
+                        if not self._stop.is_set():
+                            self.export_failed.emit(
+                                ExportError(
+                                    ExportFailureCode.SITE_UNAVAILABLE,
+                                    "The automatic reconnection could not finish. "
+                                    f"No export was requested. {error}",
+                                )
+                            )
+                        continue
                 try:
                     result = session.request_exports(request, self.export_progress.emit, self._stop)
                 except LoginCancelled:
                     break
                 except ExportError as error:
+                    self._remember_attempts(request, error.attempted)
                     if not self._stop.is_set():
                         self.export_failed.emit(error)
                 else:
-                    self.export_completed.emit(result)
+                    self._remember_attempts(request, result.requested)
+                    skipped = tuple(
+                        dict.fromkeys((*previously_attempted, *result.skipped_as_already_attempted))
+                    )
+                    self.export_completed.emit(ExportBatchResult(result.requested, skipped))
+                finally:
+                    # A fresh authenticated browser for each later batch avoids stale
+                    # smaXtec SPA state. It is recreated only after another reviewed request.
+                    self._close_session(session)
+                    session = None
         except LoginCancelled:
             pass
         except (LoginError, ExportError) as error:
@@ -83,10 +118,63 @@ class SessionWorker(QThread):
                 )
         finally:
             self._credentials = None
-            if session is not None:
-                # Raw browser errors may contain private URLs or page data.
-                with suppress(Exception):
-                    session.close()
+            self._attempted_exports.clear()
+            self._close_session(session)
+
+    def _connect_session(self, *, reconnecting: bool) -> LoginSession:
+        assert self._credentials is not None
+        if reconnecting:
+            self.export_progress.emit(
+                ExportProgress(
+                    ExportStage.RECONNECTING,
+                    "Opening a fresh secure smaXtec session for this request…",
+                )
+            )
+        session = self._factory()
+        try:
+            session.connect(self._credentials, self.login_progress.emit, self._stop)
+            farms = session.discover_farms(self.export_progress.emit, self._stop)
+        except Exception:
+            self._close_session(session)
+            raise
+        self.farms_discovered.emit(farms)
+        return session
+
+    def _without_attempted_exports(
+        self, request: ExportRequest
+    ) -> tuple[ExportRequest | None, tuple[str, ...]]:
+        pending: list[str] = []
+        skipped: list[str] = []
+        for cow_number in request.cow_numbers:
+            target = self._fingerprint(request, cow_number)
+            (skipped if target in self._attempted_exports else pending).append(cow_number)
+        filtered = (
+            ExportRequest(request.farm, tuple(pending), request.start_date, request.end_date)
+            if pending
+            else None
+        )
+        return filtered, tuple(skipped)
+
+    def _remember_attempts(self, request: ExportRequest, cow_numbers: tuple[str, ...]) -> None:
+        self._attempted_exports.update(
+            self._fingerprint(request, cow_number) for cow_number in cow_numbers
+        )
+
+    @staticmethod
+    def _fingerprint(request: ExportRequest, cow_number: str) -> tuple[str, str, str, str]:
+        return (
+            request.farm.name,
+            cow_number,
+            request.site_start_date,
+            request.site_end_date,
+        )
+
+    @staticmethod
+    def _close_session(session: LoginSession | None) -> None:
+        if session is not None:
+            # Raw browser errors may contain private URLs or page data.
+            with suppress(Exception):
+                session.close()
 
 
 # Compatibility for the first milestone's public import.

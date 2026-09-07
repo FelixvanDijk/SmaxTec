@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 — 2026-09-07 (development preview)
+
+- Fixed subsequent export batches failing against stale website/browser state.
+- Close the isolated browser after every export batch and automatically create a
+  fresh authenticated session when the user confirms another batch.
+- Retain credentials only in worker memory for the connected application session;
+  clear them on disconnect/close and never persist or log them.
+- Preserve farm selection when the refreshed farm list arrives after reconnection.
+- Keep no-retry fingerprints across replacement browsers so identical farm/cow/date
+  targets and uncertain export clicks cannot be duplicated during the app session.
+
 ## 0.2.0 — 2026-09-07 (development preview)
 
 - Added dynamic farm discovery after every login; currently observed farms appear

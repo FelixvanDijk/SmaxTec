@@ -46,10 +46,12 @@ worker. Progress crosses the boundary as small typed events, never browser
 objects. Browser operations have bounded timeouts and cooperative cancellation;
 closing the app requests cleanup and waits for the worker to finish.
 
-The browser session remains available after sign-in until the user disconnects,
-closes the browser, or closes the application. Credentials live only in memory;
-browser storage is ephemeral. Farm/export steps run on that same owning worker.
-Application workflows remain testable without Qt or a live account.
+The logical account connection remains available until the user disconnects or
+closes the application. Its initial browser remains open through farm discovery
+and the first export batch. Every completed or failed batch closes that browser;
+the next explicitly reviewed batch lazily creates and authenticates a fresh one.
+Browser storage is therefore ephemeral. All farm/export steps still run on the
+same owning worker. Application workflows remain testable without Qt or a live account.
 
 Implemented contracts are in `application/login.py`; `ui/worker.py` owns the worker
 lifecycle and sanitizes unexpected failures. The concrete adapter is
@@ -59,9 +61,11 @@ login URLs. Authentication uses both the expected origin/route and two live-obse
 navigation markers. The browser's continued existence is not ongoing authentication
 monitoring; revalidate the session before future export actions.
 
-Credentials are cleared from the GUI on connect, and the worker releases its
-credential reference after connection. Python does not guarantee zeroing immutable
-strings in memory. No credentials or browser storage are persisted by the app.
+Credentials are cleared from the GUI on connect and retained by the worker only
+for the logical connected session so it can perform those user-triggered fresh
+sign-ins. Disconnect, application close or terminal worker failure releases the
+reference. Python does not guarantee zeroing immutable strings in memory. No
+credentials or browser storage are persisted by the app.
 
 ## Decision 004: Serialized browser commands and dynamic farm discovery
 
@@ -100,6 +104,28 @@ produces one source workbook per cow. Successful or ambiguous-click attempts are
 remembered in memory and skipped for the rest of that session. Completed cows are
 reported if a later cow fails. This duplicate guard does not survive application
 restart; persistent job state belongs in M3 before unattended/resumable operation.
+
+## Decision 006: Fresh browser per export batch with memory-only reconnection
+
+Status: implemented in 0.2.1 after the first live repeat-batch test.
+
+The live site accepted the first batch but its browser connection became unusable
+when a second set of filters was submitted. A successful batch now closes the
+isolated browser deterministically. Another explicitly reviewed GUI request causes
+one fresh sign-in with the original credentials held in worker memory, refreshes
+the available farms, and submits only that new batch. The selected farm is preserved
+when the refreshed list still contains it.
+
+This is not an unattended retry: each batch still requires GUI review and confirmation,
+and a failed automatic sign-in is not looped. The worker owns farm/cow/date attempt
+fingerprints across replacement browser adapters. The adapter reports cows that
+reached the no-retry boundary, including an unconfirmed final click, so a fresh
+browser cannot silently replay them during the same application session.
+
+Alternatives considered were keeping the post-export SPA page alive or replaying
+failed batches automatically. The former reproduced the reported stale connection;
+the latter could duplicate emails after an ambiguous final click. A future persistent
+job store supersedes the in-memory guard before resumable or unattended collection.
 
 ## Data and workflow design to preserve
 
