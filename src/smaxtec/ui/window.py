@@ -1,14 +1,13 @@
 """Desktop connection and export-request workspace."""
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, timedelta
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QDateEdit,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -33,6 +32,8 @@ from smaxtec.application.exports import (
     ExportStage,
     Farm,
     parse_cow_numbers,
+    parse_user_date,
+    validate_date_range,
 )
 from smaxtec.application.login import (
     Credentials,
@@ -230,8 +231,8 @@ class MainWindow(QMainWindow):
         dates.setHorizontalSpacing(18)
         start_label = label("From", "fieldLabel")
         end_label = label("To", "fieldLabel")
-        self.start_date = self._date_edit(QDate.currentDate().addDays(-7), "Start date")
-        self.end_date = self._date_edit(QDate.currentDate(), "End date")
+        self.start_date = self._date_entry(date.today() - timedelta(days=7), "Start date")
+        self.end_date = self._date_entry(date.today(), "End date")
         start_label.setBuddy(self.start_date)
         end_label.setBuddy(self.end_date)
         dates.addWidget(start_label, 0, 0)
@@ -240,6 +241,8 @@ class MainWindow(QMainWindow):
         dates.addWidget(self.end_date, 1, 1)
         form.addLayout(dates)
 
+        self.date_summary = label("", "privacy")
+        form.addWidget(self.date_summary)
         self.selection_summary = label("Enter one or more cow numbers.", "privacy")
         form.addWidget(self.selection_summary)
         self.request_button = QPushButton("Review and request exports  →")
@@ -248,16 +251,18 @@ class MainWindow(QMainWindow):
         self.request_button.setEnabled(False)
         self.request_button.clicked.connect(self._request_exports)
         form.addWidget(self.request_button)
+        self.start_date.textChanged.connect(self._update_date_summary)
+        self.end_date.textChanged.connect(self._update_date_summary)
+        self._update_date_summary()
         return card
 
     @staticmethod
-    def _date_edit(value: QDate, accessible_name: str) -> QDateEdit:
-        field = QDateEdit(value)
-        field.setDisplayFormat("dd/MM/yyyy")
-        field.setCalendarPopup(True)
+    def _date_entry(value: date, accessible_name: str) -> QLineEdit:
+        field = QLineEdit()
+        field.setInputMask("00/00/0000;_")
+        field.setText(value.strftime("%d/%m/%Y"))
+        field.setPlaceholderText("DD/MM/YYYY")
         field.setAccessibleName(accessible_name)
-        field.setMinimumDate(QDate(2000, 1, 1))
-        field.setMaximumDate(QDate.currentDate())
         return field
 
     def _status_card(self) -> QWidget:
@@ -387,9 +392,8 @@ class MainWindow(QMainWindow):
         if not isinstance(farm, Farm):
             raise ValueError("Connect your account and select a farm.")
         cow_numbers = parse_cow_numbers(self.cows.toPlainText())
-        start = self.start_date.date().toPython()
-        end = self.end_date.date().toPython()
-        assert isinstance(start, date) and isinstance(end, date)
+        start = parse_user_date(self.start_date.text(), "start date")
+        end = parse_user_date(self.end_date.text(), "end date")
         return ExportRequest(farm, cow_numbers, start, end)
 
     def _request_exports(self) -> None:
@@ -468,6 +472,19 @@ class MainWindow(QMainWindow):
             )
         except ValueError:
             self.selection_summary.setText("Enter one or more cow numbers.")
+        self._update_request_enabled()
+
+    def _update_date_summary(self) -> None:
+        try:
+            start = parse_user_date(self.start_date.text(), "start date")
+            end = parse_user_date(self.end_date.text(), "end date")
+            validate_date_range(start, end)
+        except ValueError as error:
+            self.date_summary.setText(str(error))
+        else:
+            self.date_summary.setText(
+                f"Confirmed range: {start.strftime('%d/%m/%Y')} through {end.strftime('%d/%m/%Y')}."
+            )
         self._update_request_enabled()
 
     def _update_request_enabled(self) -> None:

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2 — 2026-09-07 (development preview)
+
+- Replaced segmented date widgets with strict masked `DD/MM/YYYY` entry after a
+  reported request visibly retained an unintended 2024 start year.
+- Added exact parsing, real-calendar validation, range ordering, pre-2000 and
+  future-date safeguards, plus an always-visible confirmed-range summary.
+- Kept the reviewed date range as immutable date values and serialize it once for
+  smaXtec; abort before Export if either website date field changes that value.
+- Added GUI-to-request-to-browser-endpoint tests for `01/09/2026`, invalid dates,
+  and a simulated website mutation from 2026 to 2024.
+
 ## 0.2.1 — 2026-09-07 (development preview)
 
 - Fixed subsequent export batches failing against stale website/browser state.

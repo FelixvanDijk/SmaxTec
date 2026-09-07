@@ -3,7 +3,7 @@
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 
 
@@ -28,6 +28,26 @@ def parse_cow_numbers(raw: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(values))
 
 
+def parse_user_date(raw: str, field_name: str) -> date:
+    """Parse exactly the date format displayed to the user and sent to smaXtec."""
+    value = raw.strip()
+    if not re.fullmatch(r"\d{2}/\d{2}/\d{4}", value):
+        raise ValueError(f"Enter the {field_name} as DD/MM/YYYY.")
+    try:
+        return datetime.strptime(value, "%d/%m/%Y").date()
+    except ValueError:
+        raise ValueError(f"Enter a real calendar date for the {field_name}.") from None
+
+
+def validate_date_range(start_date: date, end_date: date) -> None:
+    if start_date < date(2000, 1, 1):
+        raise ValueError("The start date cannot be before 01/01/2000.")
+    if start_date > end_date:
+        raise ValueError("The start date must be on or before the end date.")
+    if end_date > date.today():
+        raise ValueError("The end date cannot be in the future.")
+
+
 @dataclass(frozen=True)
 class ExportRequest:
     farm: Farm
@@ -39,8 +59,7 @@ class ExportRequest:
         cleaned = tuple(dict.fromkeys(value.strip() for value in self.cow_numbers if value.strip()))
         if not cleaned:
             raise ValueError("Enter at least one cow number.")
-        if self.start_date > self.end_date:
-            raise ValueError("The start date must be on or before the end date.")
+        validate_date_range(self.start_date, self.end_date)
         object.__setattr__(self, "cow_numbers", cleaned)
 
     @property

@@ -127,6 +127,28 @@ failed batches automatically. The former reproduced the reported stale connectio
 the latter could duplicate emails after an ambiguous final click. A future persistent
 job store supersedes the in-memory guard before resumable or unattended collection.
 
+## Decision 007: One strict, auditable calendar-date path
+
+Status: implemented in 0.2.2 after the first live date-range report.
+
+The segmented Qt date editor was easy to partially overwrite: an automated full
+`01/09/2026` entry could leave its prior value unchanged, and the user's screenshot
+showed `02/09/2024` in the GUI. The two controls are now masked text fields requiring
+exact `DD/MM/YYYY`. Pure application logic parses real calendar dates, rejects a
+reversed range, dates before 2000 and future end dates, and creates immutable values.
+
+The GUI shows the parsed range below the inputs and repeats it in the side-effect
+confirmation. The adapter serializes each date exactly once with `%d/%m/%Y`, fills
+the ordered From/To website fields, moves focus so website validation runs, then
+reads both fields back. Any mismatch stops before the final Export click. Tests
+trace `01/09/2026` through GUI typing, request construction and the synthetic
+endpoint, and prove a simulated website change to 2024 is rejected.
+
+This proves Workbench sends the reviewed strings without mutation. Whether smaXtec's
+backend treats its endpoints as inclusive is a separate data-semantic question to
+confirm from the resulting workbook; email/workbook ingestion will automate that
+provenance check in later milestones.
+
 ## Data and workflow design to preserve
 
 - A future export job records a stable job ID, website farm ID + display name,

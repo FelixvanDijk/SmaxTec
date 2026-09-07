@@ -23,6 +23,10 @@ data export per exact cow number. Complete any extra verification in the browser
 if prompted. Choose **Disconnect** to close the session. The app does not collect
 the resulting emails yet.
 
+Enter both dates as complete `DD/MM/YYYY` values. Workbench shows the parsed range
+directly below the fields and repeats it in the final confirmation. It verifies
+that smaXtec still displays those exact dates before clicking Export.
+
 After each completed or failed batch, Workbench closes the isolated browser. If
 you review another batch with different cows, farm or dates, it opens a fresh
 browser and signs in automatically. Your credentials remain only in application

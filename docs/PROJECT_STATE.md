@@ -1,7 +1,7 @@
 # Project state — start here each session
 
-Last updated: 2026-09-07. **M1 complete. M2.1 repeat-batch fix implemented; verification pending.**
-Next: user verifies two consecutive batches, then M3 email collection.
+Last updated: 2026-09-07. **M1 complete. M2.2 strict date-entry fix implemented; verification pending.**
+Next: user verifies exact dates and two consecutive batches, then M3 email collection.
 
 ## User intent and scope
 
@@ -49,10 +49,14 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
   The next reviewed request automatically signs into a fresh isolated browser using
   credentials retained only in worker memory. Farm choices refresh, selected farms
   are preserved, and no-retry fingerprints span the replacement browser sessions.
+- Version 0.2.2 replaces the error-prone segmented date editors with strict masked
+  `DD/MM/YYYY` fields. Parsed dates are visibly summarized, confirmed before side
+  effects, serialized once, and verified exactly in smaXtec before Export is clicked.
 
 ## Verification and packaging evidence
 
-- 37 local tests passed; lint/format, dependency and source smoke checks passed.
+- 44 local tests pass, including strict date entry and website-mutation coverage;
+  lint/format, dependency and source smoke checks also pass.
 - Live verification succeeded twice: initial structure inspection confirmed the
   fields were filled; the implemented adapter then emitted every expected stage
   through `connected`. Both sessions stopped after sign-in, with no export requests.
@@ -69,6 +73,11 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 - The user's first live export batch succeeded in 0.2.0. A subsequent batch with
   new filters failed with “The website connection ended unexpectedly,” motivating
   the fresh-browser lifecycle in 0.2.1. Consecutive live batches remain to be retested.
+- A user reported expecting a 2026 start but receiving 2024 data; their screenshot
+  visibly showed `02/09/2024` in the GUI. Automated keyboard entry reproduced that
+  Qt's segmented control could retain an old value instead of accepting a complete
+  typed replacement. The strict 0.2.2 path is synthetically verified; live output
+  date semantics remain to be checked by the user.
 - M2 synthetic tests submit full export requests and cover multiple cows, explicit
   measured-data selection, exact/partial/not-found behavior, missing farms, date
   validation, cancellation, partial failure, duplicate exact rows and same-session
@@ -131,8 +140,8 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 ## Open questions for later milestones
 
 1. Confirm deployment OS coverage, distribution audience, branding, and signing.
-2. Confirm two consecutive M2.1 requests without credential re-entry, including
-   whether one email arrives per cow and whether From/To are inclusive dates.
+2. Confirm two consecutive M2.2 requests without credential re-entry, checking
+   the visible date summary, email count and whether From/To are inclusive dates.
 3. Inbox provider and delegated/shared mailbox behavior; sender/correlation fields
    from sanitized example export emails; approved download hosts/link lifetime.
 4. Representative sanitized Excel files: schema, units, timezones, missing values.
@@ -142,9 +151,9 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 ## Next-session handover
 
 1. Check current Git/CI state and the packaged launch limitation above.
-2. Record the user's repeat-batch result: successful automatic reconnection,
-   number/timing of emails, and date semantics without committing credentials,
-   message links, personal data or source workbooks.
+2. Record the user's repeat-batch and strict-date result: successful automatic
+   reconnection, exact workbook boundaries and email timing without committing
+   credentials, message links, personal data or source workbooks.
 3. Begin M3 from the existing `SessionWorker`/`SmaxtecLoginSession` boundary. Add
    persistent job/correlation state before automated retries or inbox polling.
 4. Request sanitized email/Excel examples when reaching the relevant milestone;

@@ -96,7 +96,10 @@ Each cow is submitted separately after an explicit GUI review. Never retry an
 ambiguous final export click. After a batch, close its browser; reconnect lazily
 for the next reviewed batch using credentials held only in worker memory until
 disconnect/close. Preserve attempted-export guards across those fresh browsers.
-Email access, downloads, workbook processing and analysis remain later work.
+Dates must follow one auditable path: strict `DD/MM/YYYY` GUI input, real calendar
+validation, immutable date values, explicit confirmation, one serialization, and
+exact website-field verification before Export. Email access, downloads, workbook
+processing and analysis remain later work.
 
 No additional agents are required by this file. Delegate only if the user or
 applicable higher-priority instructions explicitly authorize parallel agents.

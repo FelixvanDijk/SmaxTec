@@ -102,6 +102,12 @@ def website():
                   const rows = document.getElementById('rows');
                   const footer = document.querySelector('[data-testid="animalFooter"]');
                   const dialog = document.getElementById('export-dialog');
+                  const dateInputs = [...dialog.querySelectorAll('[data-testid="datePicker"] input')];
+                  if ({str(site.mode == "mutate-start-date").lower()}) {{
+                    dateInputs[0].addEventListener('blur', () => {{
+                      dateInputs[0].value = dateInputs[0].value.replace(/2026$/, '2024');
+                    }});
+                  }}
                   let selectedCow = '';
                   function render(query = '') {{
                     const found = animals.filter(value => value.includes(query));
@@ -118,10 +124,9 @@ def website():
                   }}
                   document.getElementById('animal-search').addEventListener('input', e => render(e.target.value));
                   document.getElementById('final-export').onclick = async () => {{
-                    const dates = [...dialog.querySelectorAll('[data-testid="datePicker"] input')];
                     const response = await fetch('/export', {{method:'POST', headers:{{'Content-Type':'application/json'}},
-                      body:JSON.stringify({{farm:'{org_id}', cow:selectedCow, from:dates[0].value,
-                        to:dates[1].value, kind:dialog.querySelector('[name=kind]:checked').value}})}});
+                      body:JSON.stringify({{farm:'{org_id}', cow:selectedCow, from:dateInputs[0].value,
+                        to:dateInputs[1].value, kind:dialog.querySelector('[name=kind]:checked').value}})}});
                     if (response.ok) dialog.hidden = true;
                     else document.getElementById('export-error').hidden = false;
                   }};

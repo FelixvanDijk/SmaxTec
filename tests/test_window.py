@@ -1,3 +1,4 @@
+from datetime import date
 from threading import get_ident
 
 from PySide6.QtCore import QTimer
@@ -145,6 +146,10 @@ def test_user_can_submit_multiple_cows_and_dates_after_farms_load(qtbot, monkeyp
     qtbot.addWidget(window)
     fill(window)
     window.cows.setPlainText("057, 57\n257")
+    window.start_date.selectAll()
+    qtbot.keyClicks(window.start_date, "01/09/2026")
+    window.end_date.selectAll()
+    qtbot.keyClicks(window.end_date, "03/09/2026")
     window._start()
     qtbot.waitUntil(lambda: window._farms_ready)
     assert [window.farm.itemText(index) for index in range(window.farm.count())] == [
@@ -161,6 +166,9 @@ def test_user_can_submit_multiple_cows_and_dates_after_farms_load(qtbot, monkeyp
     qtbot.waitUntil(lambda: len(session.requests) == 1)
     qtbot.waitUntil(lambda: not window._export_busy)
     assert session.requests[0].cow_numbers == ("057", "57", "257")
+    assert session.requests[0].start_date == date(2026, 9, 1)
+    assert session.requests[0].end_date == date(2026, 9, 3)
+    assert window.date_summary.text() == "Confirmed range: 01/09/2026 through 03/09/2026."
     assert window.status_title.text() == "Export requests sent"
     window._stop()
     qtbot.waitUntil(lambda: window._worker is None)

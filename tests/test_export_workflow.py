@@ -54,6 +54,16 @@ def test_multiple_exact_cows_each_submit_one_measured_data_export(session, websi
     assert [event.stage for event in progress].count(ExportStage.COW_COMPLETE) == 2
 
 
+def test_site_date_mutation_is_detected_before_export_submission(session, website):
+    connect_and_discover(session)
+    website.mode = "mutate-start-date"
+    with pytest.raises(ExportError) as caught:
+        session.request_exports(request("57"), lambda _event: None, Event())
+    assert caught.value.code == ExportFailureCode.EXPORT_REJECTED
+    assert "did not accept" in str(caught.value)
+    assert website.exports == []
+
+
 def test_partial_search_never_selects_a_different_cow(session, website):
     connect_and_discover(session)
     result = session.request_exports(request("57"), lambda _event: None, Event())
