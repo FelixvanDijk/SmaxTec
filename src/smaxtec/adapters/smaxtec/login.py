@@ -1,5 +1,6 @@
 """Verified smaXtec login flow; all browser-specific details stay in this adapter."""
 
+import re
 from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
@@ -11,6 +12,16 @@ from playwright.sync_api import Browser, BrowserContext, Locator, Page, Playwrig
 from playwright.sync_api import Error as BrowserError
 from playwright.sync_api import TimeoutError as BrowserTimeout
 
+from smaxtec.application.exports import (
+    ExportBatchResult,
+    ExportError,
+    ExportFailureCode,
+    ExportProgress,
+    ExportProgressCallback,
+    ExportRequest,
+    ExportStage,
+    Farm,
+)
 from smaxtec.application.login import (
     Credentials,
     FailureCode,
@@ -33,6 +44,7 @@ class LoginSettings:
     action_timeout_ms: int = 5000
     verification_timeout_ms: int = 60000
     challenge_timeout_ms: int = 120000
+    export_confirmation_timeout_ms: int = 15000
 
 
 def origin(url: str) -> str:
@@ -47,6 +59,7 @@ class SmaxtecLoginSession:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._page: Page | None = None
+        self._attempted_exports: set[tuple[str, str, str, str]] = set()
 
     def connect(self, credentials: Credentials, progress: ProgressCallback, stop: Event) -> None:
         try:
@@ -130,9 +143,320 @@ class SmaxtecLoginSession:
         progress(
             LoginProgress(
                 LoginStage.CONNECTED,
-                "Your smaXtec account is connected. This version stops here; "
-                "the browser stays open until you disconnect.",
+                "Your smaXtec account is connected. Loading the farms available to this account…",
             )
+        )
+
+    def discover_farms(self, progress: ExportProgressCallback, stop: Event) -> tuple[Farm, ...]:
+        try:
+            self._require_active_session()
+            assert self._page is not None
+            page = self._page
+            progress(
+                ExportProgress(
+                    ExportStage.DISCOVERING_FARMS,
+                    "Checking which farms are available to this account…",
+                )
+            )
+            switch = page.locator(
+                '[data-testid="tooltip"][aria-label="Change herd"] button:visible'
+            )
+            self._wait_workflow_visible(switch, stop)
+            switch.click()
+            search = page.locator('[data-testid="search-modal-input"]:visible')
+            self._wait_workflow_visible(search, stop)
+            items = page.locator('[data-testid="search-modal-list-item"]:visible')
+            self._wait_workflow_visible(items.first, stop)
+            farms = tuple(
+                dict.fromkeys(Farm(self._farm_name(item.inner_text())) for item in items.all())
+            )
+            page.keyboard.press("Escape")
+            self._wait_hidden(search, stop)
+            if not farms:
+                raise ExportError(
+                    ExportFailureCode.FARM_NOT_FOUND,
+                    "No farms were available for this smaXtec account.",
+                )
+            progress(
+                ExportProgress(
+                    ExportStage.FARMS_READY,
+                    f"Found {len(farms)} available farm{'s' if len(farms) != 1 else ''}.",
+                )
+            )
+            return farms
+        except BrowserTimeout:
+            raise ExportError(
+                ExportFailureCode.SITE_UNAVAILABLE,
+                "The farm list took too long to load. Disconnect and try again.",
+            ) from None
+        except BrowserError:
+            raise self._workflow_browser_error() from None
+
+    @staticmethod
+    def _farm_name(raw: str) -> str:
+        return " ".join(part.strip() for part in raw.splitlines() if part.strip() != "↵")
+
+    def request_exports(
+        self,
+        request: ExportRequest,
+        progress: ExportProgressCallback,
+        stop: Event,
+    ) -> ExportBatchResult:
+        completed: list[str] = []
+        skipped: list[str] = []
+        try:
+            self._require_active_session()
+            self._open_farm_animals(request.farm, progress, stop)
+            for position, cow_number in enumerate(request.cow_numbers, start=1):
+                self._checkpoint(stop)
+                fingerprint = (
+                    request.farm.name,
+                    cow_number,
+                    request.site_start_date,
+                    request.site_end_date,
+                )
+                if fingerprint in self._attempted_exports:
+                    skipped.append(cow_number)
+                    continue
+                progress(
+                    ExportProgress(
+                        ExportStage.FINDING_COW,
+                        f"Finding cow {cow_number}…",
+                        position,
+                        len(request.cow_numbers),
+                    )
+                )
+                row = self._find_exact_cow(cow_number, stop)
+                self._open_export_dialog(row, stop)
+                progress(
+                    ExportProgress(
+                        ExportStage.REQUESTING_EXPORT,
+                        f"Requesting measured data for cow {cow_number}…",
+                        position,
+                        len(request.cow_numbers),
+                    )
+                )
+                # From this point a retry could create a duplicate email. Record the
+                # attempt before the single click, even if confirmation later times out.
+                self._attempted_exports.add(fingerprint)
+                self._submit_export_dates(request, completed, stop)
+                completed.append(cow_number)
+                progress(
+                    ExportProgress(
+                        ExportStage.COW_COMPLETE,
+                        f"Export requested for cow {cow_number}.",
+                        position,
+                        len(request.cow_numbers),
+                    )
+                )
+            return ExportBatchResult(tuple(completed), tuple(skipped))
+        except ExportError as error:
+            if error.completed:
+                raise
+            raise ExportError(error.code, str(error), tuple(completed)) from None
+        except BrowserTimeout:
+            raise ExportError(
+                ExportFailureCode.SITE_UNAVAILABLE,
+                "The website took too long to respond. Completed requests were not repeated.",
+                tuple(completed),
+            ) from None
+        except BrowserError:
+            error = self._workflow_browser_error()
+            raise ExportError(error.code, str(error), tuple(completed)) from None
+
+    def _require_active_session(self) -> None:
+        if not self._authenticated():
+            raise ExportError(
+                ExportFailureCode.SESSION_EXPIRED,
+                "The smaXtec session is no longer signed in. Disconnect and sign in again.",
+            )
+
+    def _open_farm_animals(self, farm: Farm, progress: ExportProgressCallback, stop: Event) -> None:
+        assert self._page is not None
+        page = self._page
+        progress(ExportProgress(ExportStage.OPENING_FARM, f"Opening {farm.name} and its animals…"))
+        switch = page.locator('[data-testid="tooltip"][aria-label="Change herd"] button:visible')
+        self._wait_workflow_visible(switch, stop)
+        switch.click()
+        search = page.locator('[data-testid="search-modal-input"]:visible')
+        self._wait_workflow_visible(search, stop)
+        items = page.locator('[data-testid="search-modal-list-item"]:visible')
+        self._wait_workflow_visible(items.first, stop)
+        matches: list[Locator] = []
+        for item in items.all():
+            if self._farm_name(item.inner_text()) == farm.name:
+                matches.append(item)
+        if len(matches) != 1:
+            page.keyboard.press("Escape")
+            raise ExportError(
+                ExportFailureCode.FARM_NOT_FOUND,
+                f"The farm “{farm.name}” is no longer available. Disconnect and refresh the list.",
+            )
+        matches[0].get_by_text(farm.name, exact=True).click()
+        self._wait_hidden(search, stop)
+        animals = page.locator('a[href^="/animals?orgId="]:visible')
+        self._wait_workflow_visible(animals, stop)
+        animals.click()
+        try:
+            page.wait_for_url(re.compile(r".*/animals\?orgId="), wait_until="domcontentloaded")
+        except BrowserTimeout:
+            # Navigation is read-only; one fresh click handles a menu rerender after
+            # changing farm without ever duplicating an export request.
+            animals = page.locator('a[href^="/animals?orgId="]:visible')
+            self._wait_workflow_visible(animals, stop)
+            animals.click()
+            page.wait_for_url(re.compile(r".*/animals\?orgId="), wait_until="domcontentloaded")
+        self._wait_workflow_visible(page.get_by_test_id("animalHeader"), stop)
+
+    def _find_exact_cow(self, cow_number: str, stop: Event) -> Locator:
+        assert self._page is not None
+        page = self._page
+        headers = page.locator("th").filter(has=page.get_by_test_id("orderByMark"))
+        if headers.count() != 1:
+            raise self._workflow_page_changed("animal number search")
+        search = headers.locator('input[data-testid="textInput"][placeholder="Search"]')
+        if search.count() != 1:
+            raise self._workflow_page_changed("animal number search")
+        search.fill("")
+        search.fill(cow_number)
+        deadline = monotonic() + self.settings.element_timeout_ms / 1000
+        settled = 0
+        previous: tuple[str, ...] | None = None
+        marks = page.locator(
+            '[data-testid="animalTable-row"] td[data-testid="mark-link"] '
+            '[data-testid="sxText"]:visible'
+        )
+        while monotonic() < deadline:
+            self._checkpoint(stop)
+            values = tuple(value.strip() for value in marks.all_inner_texts())
+            filtered = bool(values) and all(
+                cow_number.casefold() in value.casefold() for value in values
+            )
+            footer = page.get_by_test_id("animalFooter")
+            empty = (
+                not values
+                and footer.count() == 1
+                and re.search(r"\b0\s*[–-]\s*0\s+of\s+0\b", footer.inner_text())
+            )
+            if (filtered or empty) and values == previous:
+                settled += 1
+            else:
+                settled = 0
+            previous = values
+            if settled >= 1:
+                exact_indices = [index for index, value in enumerate(values) if value == cow_number]
+                if not exact_indices:
+                    location = "the results" if values else "this farm"
+                    raise ExportError(
+                        ExportFailureCode.COW_NOT_FOUND,
+                        f"No exact animal number “{cow_number}” was found in {location}.",
+                    )
+                if len(exact_indices) > 1:
+                    raise ExportError(
+                        ExportFailureCode.COW_AMBIGUOUS,
+                        f"More than one exact row was found for animal number “{cow_number}”. "
+                        "No export was requested.",
+                    )
+                return page.get_by_test_id("animalTable-row").nth(exact_indices[0])
+            page.wait_for_timeout(150)
+        raise ExportError(
+            ExportFailureCode.SITE_UNAVAILABLE,
+            f"The search for animal number “{cow_number}” did not finish in time.",
+        )
+
+    def _open_export_dialog(self, row: Locator, stop: Event) -> None:
+        assert self._page is not None
+        button = row.locator('[data-testid="tooltip"][aria-label="Export data"] button:visible')
+        if button.count() != 1:
+            raise self._workflow_page_changed("cow export button")
+        self._checkpoint(stop)
+        button.click()
+        self._wait_workflow_visible(self._page.get_by_role("dialog"), stop)
+
+    def _submit_export_dates(
+        self, request: ExportRequest, completed: list[str], stop: Event
+    ) -> None:
+        assert self._page is not None
+        dialog = self._page.get_by_role("dialog")
+        dates = dialog.locator('[data-testid="datePicker"] input[placeholder="DD/MM/YYYY"]')
+        if dates.count() != 2:
+            raise self._workflow_page_changed("export date fields")
+        measured = dialog.get_by_role("radio", name="Measured data", exact=True)
+        if measured.count() != 1:
+            raise self._workflow_page_changed("measured data option")
+        measured.check()
+        dates.nth(0).fill(request.site_start_date)
+        dates.nth(0).press("Tab")
+        dates.nth(1).fill(request.site_end_date)
+        dates.nth(1).press("Tab")
+        if (
+            dates.nth(0).input_value() != request.site_start_date
+            or dates.nth(1).input_value() != request.site_end_date
+        ):
+            raise ExportError(
+                ExportFailureCode.EXPORT_REJECTED,
+                "smaXtec did not accept the selected date range. No export was requested.",
+                tuple(completed),
+            )
+        submit = dialog.get_by_role("button", name="EXPORT", exact=True)
+        if submit.count() != 1 or not submit.is_enabled():
+            raise self._workflow_page_changed("final export button")
+        self._checkpoint(stop)
+        submit.click(no_wait_after=True)
+        try:
+            dialog.wait_for(state="hidden", timeout=self.settings.export_confirmation_timeout_ms)
+        except BrowserTimeout:
+            alerts = dialog.get_by_role("alert")
+            if self._any_visible(alerts):
+                raise ExportError(
+                    ExportFailureCode.EXPORT_REJECTED,
+                    "smaXtec rejected the export request. It was not submitted again.",
+                    tuple(completed),
+                ) from None
+            raise ExportError(
+                ExportFailureCode.EXPORT_UNCONFIRMED,
+                "The export was clicked, but confirmation did not arrive. Check the email "
+                "inbox before trying this cow again; the app will not repeat it in this session.",
+                tuple(completed),
+            ) from None
+
+    def _wait_workflow_visible(self, locator: Locator, stop: Event) -> None:
+        deadline = monotonic() + self.settings.element_timeout_ms / 1000
+        while monotonic() < deadline:
+            self._checkpoint(stop)
+            try:
+                locator.wait_for(state="visible", timeout=250)
+                return
+            except BrowserTimeout:
+                continue
+        raise self._workflow_page_changed("website controls")
+
+    def _wait_hidden(self, locator: Locator, stop: Event) -> None:
+        deadline = monotonic() + self.settings.element_timeout_ms / 1000
+        while monotonic() < deadline:
+            self._checkpoint(stop)
+            try:
+                locator.wait_for(state="hidden", timeout=250)
+                return
+            except BrowserTimeout:
+                continue
+        raise self._workflow_page_changed("website dialog")
+
+    @staticmethod
+    def _workflow_page_changed(control: str) -> ExportError:
+        return ExportError(
+            ExportFailureCode.PAGE_CHANGED,
+            f"The expected {control} did not appear. No further exports were requested; "
+            "the website may have changed and the app may need an update.",
+        )
+
+    def _workflow_browser_error(self) -> ExportError:
+        closed = self._page is None or self._page.is_closed()
+        return ExportError(
+            ExportFailureCode.SESSION_EXPIRED if closed else ExportFailureCode.SITE_UNAVAILABLE,
+            "The smaXtec browser was closed. Disconnect and sign in again."
+            if closed
+            else "The website connection ended unexpectedly. Disconnect and try again.",
         )
 
     def _require_origin(self, expected: str) -> None:
@@ -223,6 +547,9 @@ class SmaxtecLoginSession:
     @staticmethod
     def _any_visible(locator: Locator) -> bool:
         return any(item.is_visible() for item in locator.all())
+
+    def is_open(self) -> bool:
+        return self._page is not None and not self._page.is_closed()
 
     def keep_open(self, stop: Event) -> None:
         assert self._page is not None

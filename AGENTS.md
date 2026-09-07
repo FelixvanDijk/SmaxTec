@@ -88,10 +88,13 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Milestone 1: establish the repository and desktop foundation; open the supplied
-login URL, press **Go to log in**, and fill the username/password fields. Verify
-authenticated entry if the login flow allows it, then stop before farm/cow
-selection. Export requests, email access, downloads, and analysis are later work.
+Milestones 1 and 2 implement login plus farm/cow/date selection and measured-data
+export requests. M2 is awaiting the user's live submission confirmation. Each
+login scans the account's current farm list. Cow lookup must use the Animal number
+column and exact equality; a search for `57` must never select `657` or `257`.
+Each cow is submitted separately after an explicit GUI review. Never retry an
+ambiguous final export click. Email access, downloads, workbook processing and
+analysis remain later work.
 
 No additional agents are required by this file. Delegate only if the user or
 applicable higher-priority instructions explicitly authorize parallel agents.

@@ -6,6 +6,13 @@ from enum import StrEnum
 from threading import Event
 from typing import Protocol
 
+from smaxtec.application.exports import (
+    ExportBatchResult,
+    ExportProgressCallback,
+    ExportRequest,
+    Farm,
+)
+
 
 @dataclass(frozen=True)
 class Credentials:
@@ -66,6 +73,12 @@ class LoginSession(Protocol):
         self, credentials: Credentials, progress: ProgressCallback, stop: Event
     ) -> None: ...
 
-    def keep_open(self, stop: Event) -> None: ...
+    def discover_farms(self, progress: ExportProgressCallback, stop: Event) -> tuple[Farm, ...]: ...
+
+    def request_exports(
+        self, request: ExportRequest, progress: ExportProgressCallback, stop: Event
+    ) -> ExportBatchResult: ...
+
+    def is_open(self) -> bool: ...
 
     def close(self) -> None: ...

@@ -1,17 +1,19 @@
-SmaxTec Workbench — desktop preview 0.1.0
+SmaxTec Workbench — desktop preview 0.2.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
 3. Enter your smaXtec account details and choose Connect to smaXtec.
 4. A browser opens and signs in. Complete any extra verification in that window.
-5. The app reports Connected when the authenticated workspace appears.
-6. Choose Disconnect or close the app to close its browser session.
+5. Choose a discovered farm and enter one or more exact cow numbers.
+6. Choose From/To dates, then review and confirm the request summary.
+7. The app requests one measured-data export for each confirmed cow.
+8. Choose Disconnect or close the app to close its browser session.
 
 No Python, editor, browser driver, or package installation is required.
 Your website password is used for the current session and is not saved by the app.
 
-This first preview stops after account connection. Farm/cow selection, export
-requests, mailbox connection, Excel consolidation, and graphs are not included yet.
+This preview requests exports but does not collect the resulting emails yet.
+Mailbox connection, Excel consolidation, and graphs are not included.
 
 This is an unsigned development preview. The production release will have an
 installer and will be verified on a computer without developer tools installed.

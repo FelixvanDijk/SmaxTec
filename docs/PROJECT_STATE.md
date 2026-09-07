@@ -1,7 +1,7 @@
 # Project state — start here each session
 
-Last updated: 2026-09-07. **M1 — foundation and website login: complete.**
-Next: M2, awaiting the user's farm/cow navigation instructions.
+Last updated: 2026-09-07. **M1 complete. M2 implemented; live submission confirmation pending.**
+Next: user tests a real export, then M3 email collection.
 
 ## User intent and scope
 
@@ -11,9 +11,9 @@ links → individual Excel downloads → one calculated/formatted master workboo
 graphs/analysis. Later, agreed anomaly heuristics select cows/periods and feed the
 same pipeline automatically. Modularity and documentation across sessions matter.
 
-The user explicitly wants incremental delivery, starting with login only, and
-authorizes GitHub pushes after substantial milestones. Do not advance into export
-requests, email access, or farm/cow selection during the first increment.
+The user explicitly wants incremental delivery and authorizes GitHub pushes after
+substantial milestones. M1 was login; M2 is farm/cow/date selection and export
+requests. Do not begin mailbox access or spreadsheet processing before its milestone.
 
 ## Repository
 
@@ -23,24 +23,32 @@ requests, email access, or farm/cow selection during the first increment.
 
 ## Current implementation
 
-- Implemented a Python/Qt desktop sign-in screen with masked credentials, progress,
-  a responsive worker, cancellation, disconnect, and orderly application close.
+- Implemented a Python/Qt desktop workspace with masked credentials, farm/cow/date
+  request controls, progress, cancellation, disconnect, and orderly application close.
 - The Playwright adapter opens the supplied entry route, presses `Go to log in`,
   verifies the identity origin/form destination, fills credentials, submits once,
-  and verifies authenticated navigation markers. It then keeps the browser open
-  until disconnect/browser close/application close. It performs no farm selection.
-- Credentials are in memory only. No session persistence, mailbox access, exports,
-  downloaded files, workbook calculations, graphs or anomaly detection yet.
+  verifies authenticated navigation markers, and keeps an isolated browser open for
+  serialized farm discovery and export requests until disconnect or application close.
+- Credentials are in memory only. Export requests are implemented; session persistence,
+  mailbox access, downloaded files, workbook calculations, graphs and anomaly detection
+  are not implemented yet.
 - `Start SmaxTec.cmd` in the repository root opens the GUI with the existing local
   `.venv` so the user can test by double-clicking. It installs nothing and applies
   only to a prepared developer working folder, not fresh end-user installations.
 - Windows/Python 3.13 hash-pinned dependency lock, offline browser/Qt regression
   tests, a PyInstaller spec with bundled full Chromium, build/smoke scripts, and a
   GitHub Windows CI/artifact workflow are implemented.
+- M2 GUI adds a dynamically populated farm dropdown, multiple-cow input, native
+  `DD/MM/YYYY` date fields, selection count, request review/confirmation, batch
+  progress, partial-failure reporting and within-session duplicate prevention.
+- The worker now holds a serialized command queue on the browser-owning thread.
+  The adapter scans farms after login, selects one exactly, opens Animals, searches
+  only Animal number, confirms an exact row, selects Measured data, fills dates and
+  submits one export per cow. Email retrieval remains unimplemented.
 
 ## Verification and packaging evidence
 
-- 21 local tests passed; lint/format and dependency checks passed.
+- 36 local tests passed; lint/format and dependency checks passed.
 - Live verification succeeded twice: initial structure inspection confirmed the
   fields were filled; the implemented adapter then emitted every expected stage
   through `connected`. Both sessions stopped after sign-in, with no export requests.
@@ -49,6 +57,14 @@ requests, email access, or farm/cow selection during the first increment.
 - The local double-click launcher was verified from a different working directory:
   it opened a responsive Workbench window. The extra test window was closed while
   preserving the user's already-open preview. No live login was run for this check.
+- M2 live read-only verification passed: discovered `Maes Gwyrdd LTD` and
+  `TYB Farms LTD`, selected Maes Gwyrdd, opened Animals, matched animal number `57`
+  exactly among partial matches, and confirmed the export dialog has two date fields,
+  an accessible Measured data choice, and enabled final EXPORT button. The dialog
+  was closed with the browser; no real export/email was produced by this check.
+- M2 synthetic tests submit full export requests and cover multiple cows, explicit
+  measured-data selection, exact/partial/not-found behavior, missing farms, date
+  validation, cancellation, partial failure and same-session duplicate prevention.
 - The Windows executable and full directory bundle were built. On this computer,
   `Start-Process` returned **Access is denied** for the unsigned generated EXE.
   File permissions allow execution; the precise machine policy/cause is not yet
@@ -84,11 +100,21 @@ requests, email access, or farm/cow selection during the first increment.
 - Navigation/launch calls are bounded to 15 seconds; element waits check cancellation
   every 250 ms; form actions are bounded to 5 seconds. Verification waits 60 seconds,
   or 120 seconds after recognizing a challenge. No automatic login retries.
+- Farm switch: visible `[aria-label="Change herd"]` tooltip button; farms:
+  `search-modal-list-item`; search modal input: `search-modal-input`.
+- Animals navigation uses the current visible `/animals?orgId=…` link rather than
+  a stored organisation ID. Animal number search is scoped by `orderByMark`.
+- Exact result is read from `animalTable-row` → `mark-link` → `sxText`; row export
+  uses its `[aria-label="Export data"]` control. Generated React IDs/classes are ignored.
+- Export dialog: two ordered `datePicker` inputs labelled by visible From/To text,
+  accessible `Measured data` radio, and exact `EXPORT` button. Live structure was
+  confirmed; final click has only been exercised against the synthetic site so far.
 
 ## Open questions for later milestones
 
 1. Confirm deployment OS coverage, distribution audience, branding, and signing.
-2. Actual farm/cow navigation, identifier meanings, date controls, export limits.
+2. Confirm a real M2 request through the GUI, including whether one email arrives
+   per cow and whether smaXtec treats From/To as inclusive calendar dates.
 3. Inbox provider and delegated/shared mailbox behavior; sender/correlation fields
    from sanitized example export emails; approved download hosts/link lifetime.
 4. Representative sanitized Excel files: schema, units, timezones, missing values.
@@ -98,12 +124,11 @@ requests, email access, or farm/cow selection during the first increment.
 ## Next-session handover
 
 1. Check current Git/CI state and the packaged launch limitation above.
-2. Continue with M2 only when the user supplies the next farm/cow selection step:
-   inspect the navigation in the authorized account, agree selection identifiers
-   and date semantics, then extend the owning worker without moving selectors into UI.
-3. Reuse `SmaxtecLoginSession` for the browser boundary. The current worker stays
-   alive to preserve the session but has no command queue yet; introduce a small
-   serialized worker command mechanism when adding actual farm/export actions.
+2. Record the user's first real export result: selected farm/cows/dates, successful
+   GUI completion, number/timing of emails, and date semantics without committing
+   credentials, message links, personal data or source workbooks.
+3. Begin M3 from the existing `SessionWorker`/`SmaxtecLoginSession` boundary. Add
+   persistent job/correlation state before automated retries or inbox polling.
 4. Request sanitized email/Excel examples when reaching the relevant milestone;
    do not select an inbox provider or invent schemas early.
 5. Before distribution beyond development, resolve signing/installation on the

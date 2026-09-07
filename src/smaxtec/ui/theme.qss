@@ -27,12 +27,23 @@ QFrame#card { background: #ffffff; border: 1px solid #dce4dc; border-radius: 14p
 QLabel#cardTitle { color: #244d40; font-size: 20px; font-weight: 600; }
 QLabel#muted { color: #63776e; font-size: 13px; }
 QLabel#fieldLabel { color: #334e42; font-size: 13px; font-weight: 600; padding-top: 4px; }
-QLineEdit {
+QLineEdit, QTextEdit, QComboBox, QDateEdit {
     background: #fbfcfa; border: 1px solid #cbd8ce; border-radius: 7px;
     padding: 11px 13px; color: #274537; selection-background-color: #bde5ac;
 }
-QLineEdit:focus { border: 2px solid #468362; padding: 10px 12px; }
-QLineEdit:disabled { background: #f0f3ee; color: #6f7f73; }
+QTextEdit { padding: 9px 11px; }
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QDateEdit:focus {
+    border: 2px solid #468362; padding: 10px 12px;
+}
+QTextEdit:focus { padding: 8px 10px; }
+QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled, QDateEdit:disabled {
+    background: #f0f3ee; color: #6f7f73;
+}
+QComboBox::drop-down, QDateEdit::drop-down { border: none; width: 30px; }
+QComboBox QAbstractItemView {
+    background: #ffffff; color: #274537; border: 1px solid #cbd8ce;
+    selection-background-color: #dcebd4; selection-color: #193e34;
+}
 QCheckBox { color: #65766a; font-size: 12px; spacing: 7px; padding: 2px 0; }
 QCheckBox::indicator { width: 15px; height: 15px; }
 QPushButton { border-radius: 7px; padding: 10px 20px; font-size: 14px; font-weight: 600; }

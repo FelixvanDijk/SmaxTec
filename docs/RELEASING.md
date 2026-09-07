@@ -8,7 +8,7 @@
 
 The build runs checks, bundles the application with Chromium, starts the executable
 with Python removed from PATH and an unavailable external browser cache, and
-produces `dist/SmaxTec-Workbench-0.1.0-windows-x64.zip`.
+produces `dist/SmaxTec-Workbench-0.2.0-windows-x64.zip`.
 
 Unzip the complete folder and open `SmaxTec Workbench.exe`; `_internal` must stay
 beside it. `START_HERE.txt` explains the preview in user terms. The binary/archive

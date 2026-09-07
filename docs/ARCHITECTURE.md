@@ -46,11 +46,10 @@ worker. Progress crosses the boundary as small typed events, never browser
 objects. Browser operations have bounded timeouts and cooperative cancellation;
 closing the app requests cleanup and waits for the worker to finish.
 
-For milestone 1, the browser session remains available after sign-in until the
-user disconnects, closes the browser, or closes the application. Credentials live
-only in memory; browser storage is ephemeral. Later farm/export steps will run
-on the owning worker using that session. Application workflows must remain
-testable without Qt or a live account.
+The browser session remains available after sign-in until the user disconnects,
+closes the browser, or closes the application. Credentials live only in memory;
+browser storage is ephemeral. Farm/export steps run on that same owning worker.
+Application workflows remain testable without Qt or a live account.
 
 Implemented contracts are in `application/login.py`; `ui/worker.py` owns the worker
 lifecycle and sanitizes unexpected failures. The concrete adapter is
@@ -63,6 +62,44 @@ monitoring; revalidate the session before future export actions.
 Credentials are cleared from the GUI on connect, and the worker releases its
 credential reference after connection. Python does not guarantee zeroing immutable
 strings in memory. No credentials or browser storage are persisted by the app.
+
+## Decision 004: Serialized browser commands and dynamic farm discovery
+
+Status: implemented in M2.
+
+`SessionWorker` owns one session and a thread-safe command queue. It connects,
+discovers farms, then processes export batches serially. This preserves Playwright's
+thread affinity and prevents multiple GUI clicks from operating on one browser at
+the same time. Small immutable requests/results/progress events cross the boundary.
+
+Farms are read from every successful login's organisation modal and sent to the
+GUI as `Farm` values. Names are not hard-coded and no organisation IDs are stored
+in the GUI. At request time, the adapter reopens the modal and matches the selected
+farm name exactly; the site's current `/animals?orgId=…` link supplies the ID.
+This naturally includes farms added before the next login. Duplicate display names
+would be ambiguous; if the account gains them, discovery must add a stable identity
+before allowing selection.
+
+## Decision 005: One reviewed request per exact animal number
+
+Status: implemented in M2.
+
+The GUI accepts comma, semicolon, whitespace or line-separated cow identifiers,
+preserves leading zeroes and order, and removes duplicate entries. It uses native
+date controls in `DD/MM/YYYY`, prevents future dates, and requires start <= end.
+A confirmation dialog shows farm, cow list/count and date range before side effects.
+
+The adapter searches only the header containing `data-testid="orderByMark"`, waits
+for filtered table results, and checks exact text in the `mark-link` column. Partial,
+missing or duplicate exact matches stop the batch before that cow's export. It uses
+the export control inside the confirmed row, two ordered datePicker fields, selects
+Measured data explicitly, and clicks the dialog's exact `EXPORT` button once.
+
+Each cow gets an individual request because the required email/download workflow
+produces one source workbook per cow. Successful or ambiguous-click attempts are
+remembered in memory and skipped for the rest of that session. Completed cows are
+reported if a later cow fails. This duplicate guard does not survive application
+restart; persistent job state belongs in M3 before unattended/resumable operation.
 
 ## Data and workflow design to preserve
 

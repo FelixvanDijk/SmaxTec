@@ -5,9 +5,10 @@ The product goal is simple: install, open, connect accounts, choose cows and a
 period, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-The first milestone is complete: a desktop sign-in screen and live-verified
-website login, with 21 passing tests and a successful packaged Windows smoke test
-in GitHub CI. Exports, inbox integration, workbooks, and analysis follow.
+The first milestone is complete. The second adds dynamic farm selection, one or
+more exact cow numbers, a date range and measured-data export requests. Login and
+the M2 website structure are live-verified; exports and failure paths are covered
+against a synthetic site. Inbox integration, workbooks and analysis follow.
 See [current status](docs/PROJECT_STATE.md) for evidence and limitations.
 
 ## Test on the current development computer
@@ -16,10 +17,11 @@ Double-click **Start SmaxTec.cmd** in the project folder. It opens the GUI using
 the local environment already prepared for this project; no terminal commands or
 additional installation are needed on this computer.
 
-Enter your smaXtec email and password, then choose **Connect to smaXtec**. A browser
-opens, signs in, and the app reports **Connected**. Complete any extra verification
-in that browser if prompted. Choose **Disconnect** to close the session. This
-milestone stops after login and does not request exports or emails.
+Enter your farm/cows/dates, connect with your smaXtec email and password, then
+choose **Review and request exports**. Confirm the summary to submit one measured-
+data export per exact cow number. Complete any extra verification in the browser
+if prompted. Choose **Disconnect** to close the session. The app does not collect
+the resulting emails yet.
 
 The launcher is for this prepared working folder. It does not replace the bundled
 distribution for other computers; a fresh source checkout needs developer setup.
@@ -32,10 +34,11 @@ artifact wrapper and the included application ZIP, and open `SmaxTec Workbench.e
 Keep its `_internal` folder alongside it. The runtime and browser are included.
 CI artifacts expire after 14 days; these are development previews, not releases.
 
-This version signs into smaXtec and stops there. Credentials are entered in the
-GUI and are not saved. The unsigned executable was denied execution on the current
-development computer, although it passed the independent Windows CI smoke test.
-Target-machine approval/signing and the polished installer remain release work.
+This version signs into smaXtec and requests measured-data exports for the reviewed
+farm, exact cow numbers and date range. Credentials are entered in the GUI and are
+not saved. The unsigned executable was denied execution on the current development
+computer, although it passed the independent Windows CI smoke test. Target-machine
+approval/signing and the polished installer remain release work.
 
 ## Project memory
 

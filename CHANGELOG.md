@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 — 2026-09-07 (development preview)
+
+- Added dynamic farm discovery after every login; currently observed farms appear
+  automatically and future additions require no GUI code change.
+- Added farm selection, multiple cow-number entry, native From/To date controls,
+  a review confirmation and per-cow progress to the desktop GUI.
+- Added serialized worker commands so login, farm navigation and export actions
+  stay on the browser-owning thread without blocking the interface.
+- Added exact Animal number matching, row-scoped export controls, explicit Measured
+  data selection and one final export submission per cow.
+- Added partial completion reporting, cancellation boundaries and in-memory guards
+  against repeating an attempted export during the same session.
+- Live-verified farm discovery through the final export dialog without sending an
+  email. Added synthetic end-to-end coverage for export submissions and failures.
+
 ## 0.1.0 — 2026-09-07 (development preview)
 
 - Added a double-click launcher for the prepared local preview and simple GUI

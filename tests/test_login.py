@@ -23,6 +23,7 @@ def session(website):
             app_origin=website.origin,
             identity_origin=website.origin,
             headless=True,
+            navigation_timeout_ms=5000,
             element_timeout_ms=600,
             verification_timeout_ms=1200,
             challenge_timeout_ms=1200,
