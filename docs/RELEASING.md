@@ -59,3 +59,11 @@ specific policy/cause is unconfirmed. Source-mode Qt and live browser automation
 work. Do not disable security controls to work around this; resolve the target
 distribution/signing requirements before external rollout. The independent CI
 smoke result is useful evidence, but does not resolve this machine's restriction.
+
+## M2 evidence
+
+The [M2 Windows CI run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34133099879)
+passed 36 tests and all checks, built version 0.2.0, ran the packaged GUI/browser
+smoke test, and uploaded the approximately 276 MiB
+[Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34133099879/artifacts/10022998252).
+The same unsigned-preview and clean-target-machine limitations above still apply.

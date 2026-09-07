@@ -64,13 +64,19 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
   was closed with the browser; no real export/email was produced by this check.
 - M2 synthetic tests submit full export requests and cover multiple cows, explicit
   measured-data selection, exact/partial/not-found behavior, missing farms, date
-  validation, cancellation, partial failure and same-session duplicate prevention.
+  validation, cancellation, partial failure, duplicate exact rows and same-session
+  duplicate prevention.
+- **GitHub Windows CI passed** for M2 commit `557b010`: all 36 tests and checks,
+  executable build, packaged GUI + bundled Chromium smoke, and archive upload.
+  [Verified M2 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34133099879).
+- [M2 Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34133099879/artifacts/10022998252):
+  approximately 276 MiB; retained for 14 days by CI. It is an unsigned preview.
 - The Windows executable and full directory bundle were built. On this computer,
   `Start-Process` returned **Access is denied** for the unsigned generated EXE.
   File permissions allow execution; the precise machine policy/cause is not yet
   established. No security controls were changed. This local launch limitation
   remains open; the developer-source GUI does run and was opened for the user.
-- **GitHub Windows CI passed** for `9fd2c28`: locked dependency installation,
+- **The initial GitHub Windows CI passed** for `9fd2c28`: locked dependency installation,
   all 21 tests, lint/format checks, executable build, packaged GUI + bundled Chromium
   smoke with developer PATH/cache excluded, and preview archive upload.
   [Verified run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34126534604).
