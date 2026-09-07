@@ -92,6 +92,11 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
   [Verified 0.2.1 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34136225129).
 - [0.2.1 Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34136225129/artifacts/10024193848):
   approximately 276 MiB and retained for 14 days by CI.
+- **GitHub Windows CI passed** for the 0.2.2 strict-date fix at `75c8a00`:
+  all 44 tests, executable build, bundled Chromium smoke and archive upload.
+  [Verified 0.2.2 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34138257607).
+- [0.2.2 Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34138257607/artifacts/10024967792):
+  approximately 276 MiB and retained for 14 days by CI.
 - The Windows executable and full directory bundle were built. On this computer,
   `Start-Process` returned **Access is denied** for the unsigned generated EXE.
   File permissions allow execution; the precise machine policy/cause is not yet

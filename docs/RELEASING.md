@@ -72,3 +72,7 @@ The [0.2.1 repeat-batch run](https://github.com/FelixvanDijk/SmaxTec/actions/run
 subsequently passed 37 tests, rebuilt the application with the fresh-browser
 reconnection fix, passed the bundled-browser smoke test, and uploaded its
 [Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34136225129/artifacts/10024193848).
+
+The [0.2.2 strict-date run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34138257607)
+passed 44 tests, rebuilt and smoke-tested the bundled application, and uploaded
+its [Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34138257607/artifacts/10024967792).
