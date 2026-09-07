@@ -1,0 +1,38 @@
+# Local environments and generated build output
+.venv/
+.tools/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+.coverage
+htmlcov/
+
+# Private runtime/developer artifacts
+.env
+.env.*
+!.env.example
+.local/
+.auth/
+artifacts/
+downloads/
+data/
+logs/
+*.log
+*.xlsx
+*.xls
+*.csv
+*.har
+trace.zip
+playwright-report/
+test-results/
+
+# Editor and OS files
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smaxtec-workbench"
+version = "0.1.0"
+description = "A desktop workspace for smaXtec data collection and analysis."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "PySide6-Essentials>=6.9,<7",
+    "playwright>=1.55,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pip-tools>=7.5,<8",
+    "pyinstaller>=6.16,<7",
+    "pytest>=8.4,<10",
+    "pytest-qt>=4.5,<5",
+    "ruff>=0.13,<1",
+]
+
+[project.gui-scripts]
+smaxtec-workbench = "smaxtec.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"smaxtec.ui" = ["*.qss"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
