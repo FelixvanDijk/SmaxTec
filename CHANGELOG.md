@@ -2,6 +2,8 @@
 
 ## 0.1.0 — 2026-09-07 (development preview)
 
+- Added a double-click launcher for the prepared local preview and simple GUI
+  testing instructions. Other computers still use the bundled distribution.
 - Established the product requirements, agent instructions, architecture decisions,
   phased roadmap, and persistent handover documents.
 - Selected a Windows-first Python/Qt desktop application with a separate Playwright

@@ -31,6 +31,9 @@ requests, email access, or farm/cow selection during the first increment.
   until disconnect/browser close/application close. It performs no farm selection.
 - Credentials are in memory only. No session persistence, mailbox access, exports,
   downloaded files, workbook calculations, graphs or anomaly detection yet.
+- `Start SmaxTec.cmd` in the repository root opens the GUI with the existing local
+  `.venv` so the user can test by double-clicking. It installs nothing and applies
+  only to a prepared developer working folder, not fresh end-user installations.
 - Windows/Python 3.13 hash-pinned dependency lock, offline browser/Qt regression
   tests, a PyInstaller spec with bundled full Chromium, build/smoke scripts, and a
   GitHub Windows CI/artifact workflow are implemented.
@@ -43,6 +46,9 @@ requests, email access, or farm/cow selection during the first increment.
   through `connected`. Both sessions stopped after sign-in, with no export requests.
 - GUI was rendered and visually checked on native Windows. Source smoke test
   passed (Qt + Chromium, offline).
+- The local double-click launcher was verified from a different working directory:
+  it opened a responsive Workbench window. The extra test window was closed while
+  preserving the user's already-open preview. No live login was run for this check.
 - The Windows executable and full directory bundle were built. On this computer,
   `Start-Process` returned **Access is denied** for the unsigned generated EXE.
   File permissions allow execution; the precise machine policy/cause is not yet

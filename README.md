@@ -10,7 +10,21 @@ website login, with 21 passing tests and a successful packaged Windows smoke tes
 in GitHub CI. Exports, inbox integration, workbooks, and analysis follow.
 See [current status](docs/PROJECT_STATE.md) for evidence and limitations.
 
-## Try the desktop preview
+## Test on the current development computer
+
+Double-click **Start SmaxTec.cmd** in the project folder. It opens the GUI using
+the local environment already prepared for this project; no terminal commands or
+additional installation are needed on this computer.
+
+Enter your smaXtec email and password, then choose **Connect to smaXtec**. A browser
+opens, signs in, and the app reports **Connected**. Complete any extra verification
+in that browser if prompted. Choose **Disconnect** to close the session. This
+milestone stops after login and does not request exports or emails.
+
+The launcher is for this prepared working folder. It does not replace the bundled
+distribution for other computers; a fresh source checkout needs developer setup.
+
+## Download the packaged desktop preview
 
 Download the `SmaxTec-Workbench-windows-preview` artifact from the latest successful
 [Windows build](https://github.com/FelixvanDijk/SmaxTec/actions), extract both the
