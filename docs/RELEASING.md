@@ -76,3 +76,10 @@ reconnection fix, passed the bundled-browser smoke test, and uploaded its
 The [0.2.2 strict-date run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34138257607)
 passed 44 tests, rebuilt and smoke-tested the bundled application, and uploaded
 its [Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34138257607/artifacts/10024967792).
+
+The [0.3.0 individual cow/date run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34233762511)
+passed 59 tests and checks, rebuilt and smoke-tested the bundled application, and
+uploaded its approximately 277 MiB
+[Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34233762511/artifacts/10059101566).
+Client acceptance of individual periods and expanded/compact editing remains pending;
+the synthetic tests do not establish live workbook date-boundary semantics.

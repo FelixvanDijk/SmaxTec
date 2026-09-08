@@ -1,6 +1,6 @@
 # Project state — start here each session
 
-Last updated: 2026-09-08. **0.3.0 individual cow/date editor implemented and locally verified; CI pending.**
+Last updated: 2026-09-08. **0.3.0 individual cow/date editor verified locally and packaged on Windows CI.**
 Next: client verifies individual periods and compact/expanded editing, then M3 email collection.
 
 ## User intent and scope
@@ -68,8 +68,13 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
   invalid folded rows, cancelled review, real-browser offline submissions,
   reconnection and partial-failure recovery. Native Windows compact, expanded,
   shared-date and review views were visually checked, including 1020px-wide layout.
-  No live exports or emails were requested for this change. The new Windows CI
-  bundle check is pending; update this section after its run completes.
+  No live exports or emails were requested for this change.
+- **GitHub Windows CI passed** for the 0.3.0 individual-date editor at `1c961fc`:
+  all 59 tests and checks, executable build, bundled Chromium smoke and archive upload.
+  [Verified 0.3.0 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34233762511).
+- [0.3.0 Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34233762511/artifacts/10059101566):
+  approximately 277 MiB and retained for 14 days by CI. Existing unsigned-preview,
+  local EXE restriction and clean-client-machine acceptance limits still apply.
 - Live verification succeeded twice: initial structure inspection confirmed the
   fields were filled; the implemented adapter then emitted every expected stage
   through `connected`. Both sessions stopped after sign-in, with no export requests.
