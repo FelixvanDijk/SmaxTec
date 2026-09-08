@@ -13,6 +13,7 @@ from playwright.sync_api import Error as BrowserError
 from playwright.sync_api import TimeoutError as BrowserTimeout
 
 from smaxtec.application.exports import (
+    CowExport,
     ExportBatchResult,
     ExportError,
     ExportFailureCode,
@@ -59,7 +60,7 @@ class SmaxtecLoginSession:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._page: Page | None = None
-        self._attempted_exports: set[tuple[str, str, str, str]] = set()
+        self._attempted_exports: set[tuple[str, CowExport]] = set()
 
     def connect(self, credentials: Credentials, progress: ProgressCallback, stop: Event) -> None:
         try:
@@ -202,53 +203,48 @@ class SmaxtecLoginSession:
         progress: ExportProgressCallback,
         stop: Event,
     ) -> ExportBatchResult:
-        completed: list[str] = []
-        attempted: list[str] = []
-        skipped: list[str] = []
+        completed: list[CowExport] = []
+        attempted: list[CowExport] = []
+        skipped: list[CowExport] = []
         try:
             self._require_active_session()
             self._open_farm_animals(request.farm, progress, stop)
-            for position, cow_number in enumerate(request.cow_numbers, start=1):
+            for position, entry in enumerate(request.entries, start=1):
                 self._checkpoint(stop)
-                fingerprint = (
-                    request.farm.name,
-                    cow_number,
-                    request.site_start_date,
-                    request.site_end_date,
-                )
+                fingerprint = (request.farm.name, entry)
                 if fingerprint in self._attempted_exports:
-                    skipped.append(cow_number)
+                    skipped.append(entry)
                     continue
                 progress(
                     ExportProgress(
                         ExportStage.FINDING_COW,
-                        f"Finding cow {cow_number}…",
+                        f"Finding {entry.description}…",
                         position,
-                        len(request.cow_numbers),
+                        len(request.entries),
                     )
                 )
-                row = self._find_exact_cow(cow_number, stop)
+                row = self._find_exact_cow(entry.cow_number, stop)
                 self._open_export_dialog(row, stop)
                 progress(
                     ExportProgress(
                         ExportStage.REQUESTING_EXPORT,
-                        f"Requesting measured data for cow {cow_number}…",
+                        f"Requesting measured data: {entry.description}…",
                         position,
-                        len(request.cow_numbers),
+                        len(request.entries),
                     )
                 )
                 # From this point a retry could create a duplicate email. Record the
                 # attempt before the single click, even if confirmation later times out.
                 self._attempted_exports.add(fingerprint)
-                attempted.append(cow_number)
-                self._submit_export_dates(request, completed, stop)
-                completed.append(cow_number)
+                attempted.append(entry)
+                self._submit_export_dates(entry, completed, stop)
+                completed.append(entry)
                 progress(
                     ExportProgress(
                         ExportStage.COW_COMPLETE,
-                        f"Export requested for cow {cow_number}.",
+                        f"Export requested: {entry.description}.",
                         position,
-                        len(request.cow_numbers),
+                        len(request.entries),
                     )
                 )
             return ExportBatchResult(tuple(completed), tuple(skipped))
@@ -385,7 +381,7 @@ class SmaxtecLoginSession:
         self._wait_workflow_visible(self._page.get_by_role("dialog"), stop)
 
     def _submit_export_dates(
-        self, request: ExportRequest, completed: list[str], stop: Event
+        self, request: CowExport, completed: list[CowExport], stop: Event
     ) -> None:
         assert self._page is not None
         dialog = self._page.get_by_role("dialog")

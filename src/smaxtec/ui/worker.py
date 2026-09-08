@@ -8,6 +8,7 @@ from threading import Event
 from PySide6.QtCore import QThread, Signal
 
 from smaxtec.application.exports import (
+    CowExport,
     ExportBatchResult,
     ExportError,
     ExportFailureCode,
@@ -38,7 +39,7 @@ class SessionWorker(QThread):
         self._credentials: Credentials | None = credentials
         self._stop = Event()
         self._commands: Queue[ExportRequest | None] = Queue()
-        self._attempted_exports: set[tuple[str, str, str, str]] = set()
+        self._attempted_exports: set[tuple[str, CowExport]] = set()
 
     def submit_exports(self, request: ExportRequest) -> None:
         self._commands.put(request)
@@ -142,32 +143,17 @@ class SessionWorker(QThread):
 
     def _without_attempted_exports(
         self, request: ExportRequest
-    ) -> tuple[ExportRequest | None, tuple[str, ...]]:
-        pending: list[str] = []
-        skipped: list[str] = []
-        for cow_number in request.cow_numbers:
-            target = self._fingerprint(request, cow_number)
-            (skipped if target in self._attempted_exports else pending).append(cow_number)
-        filtered = (
-            ExportRequest(request.farm, tuple(pending), request.start_date, request.end_date)
-            if pending
-            else None
-        )
+    ) -> tuple[ExportRequest | None, tuple[CowExport, ...]]:
+        pending: list[CowExport] = []
+        skipped: list[CowExport] = []
+        for entry in request.entries:
+            target = (request.farm.name, entry)
+            (skipped if target in self._attempted_exports else pending).append(entry)
+        filtered = ExportRequest(request.farm, tuple(pending)) if pending else None
         return filtered, tuple(skipped)
 
-    def _remember_attempts(self, request: ExportRequest, cow_numbers: tuple[str, ...]) -> None:
-        self._attempted_exports.update(
-            self._fingerprint(request, cow_number) for cow_number in cow_numbers
-        )
-
-    @staticmethod
-    def _fingerprint(request: ExportRequest, cow_number: str) -> tuple[str, str, str, str]:
-        return (
-            request.farm.name,
-            cow_number,
-            request.site_start_date,
-            request.site_end_date,
-        )
+    def _remember_attempts(self, request: ExportRequest, entries: tuple[CowExport, ...]) -> None:
+        self._attempted_exports.update((request.farm.name, entry) for entry in entries)
 
     @staticmethod
     def _close_session(session: LoginSession | None) -> None:

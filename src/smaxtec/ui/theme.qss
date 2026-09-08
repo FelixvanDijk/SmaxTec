@@ -66,3 +66,31 @@ QLabel#footnote { color: #6b7b6d; font-size: 11px; }
 QScrollBar:vertical { background: #eef2e9; width: 8px; }
 QScrollBar::handle:vertical { background: #b7c8b6; border-radius: 4px; min-height: 24px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QWidget#cowRows, QScrollArea#cowScroll { background: #ffffff; }
+QFrame#cowRow { background: #f5f8f2; border-radius: 8px; }
+QFrame#cowRow QLineEdit { padding: 8px 10px; background: #ffffff; }
+QFrame#cowRow QLineEdit:focus { padding: 7px 9px; }
+QLabel#rowNumber { color: #829181; font-size: 11px; font-weight: 600; }
+QLabel#columnLabel { color: #5b7462; font-size: 11px; font-weight: 600; }
+QPushButton#textButton {
+    color: #367449; background: transparent; border: none;
+    padding: 5px 4px; font-size: 12px;
+}
+QPushButton#textButton:hover { color: #163d26; text-decoration: underline; }
+QPushButton#removeRow {
+    color: #748570; background: transparent; padding: 0; font-size: 22px;
+}
+QPushButton#removeRow:hover { background: #fde9df; color: #a5442d; }
+QPushButton#foldRows {
+    background: #edf4e6; color: #54784a; border: 1px dashed #c2d6b8;
+    font-size: 12px; padding: 6px;
+}
+QPushButton#foldRows:hover { background: #e1edd6; }
+QFrame#sharedDates { background: #f2f6ef; border-radius: 8px; }
+QTableWidget {
+    background: #ffffff; alternate-background-color: #f1f6ed;
+    gridline-color: #e1e9dc; border: 1px solid #d3dfcd;
+    selection-background-color: #d9e9ce; selection-color: #244d40;
+}
+QHeaderView::section { background: #e9f0e3; color: #35553c; padding: 10px; border: none; }
+QDialog { background: #f7f9f4; }

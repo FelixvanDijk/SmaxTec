@@ -1,24 +1,20 @@
 """Desktop connection and export-request workspace."""
 
 from collections.abc import Callable
-from datetime import date, timedelta
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDialog,
     QFrame,
-    QGridLayout,
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QProgressBar,
     QPushButton,
     QScrollArea,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -31,9 +27,6 @@ from smaxtec.application.exports import (
     ExportRequest,
     ExportStage,
     Farm,
-    parse_cow_numbers,
-    parse_user_date,
-    validate_date_range,
 )
 from smaxtec.application.login import (
     Credentials,
@@ -42,15 +35,10 @@ from smaxtec.application.login import (
     LoginSession,
     LoginStage,
 )
+from smaxtec.ui.cow_editor import CowRequestsEditor
+from smaxtec.ui.export_review import ExportReviewDialog
+from smaxtec.ui.widgets import label
 from smaxtec.ui.worker import SessionWorker
-
-
-def label(text: str, name: str, *, wrap: bool = True) -> QLabel:
-    widget = QLabel(text)
-    widget.setObjectName(name)
-    widget.setWordWrap(wrap)
-    widget.setTextFormat(Qt.TextFormat.PlainText)
-    return widget
 
 
 class MainWindow(QMainWindow):
@@ -65,8 +53,8 @@ class MainWindow(QMainWindow):
         self._export_busy = False
         self._stopping = False
         self.setWindowTitle("SmaxTec Workbench")
-        self.resize(1120, 900)
-        self.setMinimumSize(880, 700)
+        self.resize(1220, 940)
+        self.setMinimumSize(1020, 700)
 
         root = QWidget()
         root.setObjectName("root")
@@ -81,7 +69,7 @@ class MainWindow(QMainWindow):
         content = QWidget()
         content.setObjectName("content")
         body = QVBoxLayout(content)
-        body.setContentsMargins(48, 34, 48, 28)
+        body.setContentsMargins(32, 28, 32, 24)
         body.setSpacing(18)
 
         top = QHBoxLayout()
@@ -94,7 +82,7 @@ class MainWindow(QMainWindow):
         body.addWidget(
             label(
                 "Connect your account, choose a farm, and request measured data "
-                "for one or more exact cow numbers.",
+                "with a date range tailored to each cow.",
                 "intro",
             )
         )
@@ -144,6 +132,11 @@ class MainWindow(QMainWindow):
         form.setContentsMargins(28, 22, 28, 24)
         form.setSpacing(9)
         form.addWidget(label("1. Connect your smaXtec account", "cardTitle"))
+        self.connection_fields = QWidget()
+        inputs = QVBoxLayout(self.connection_fields)
+        inputs.setContentsMargins(0, 0, 0, 0)
+        inputs.setSpacing(9)
+        form.addWidget(self.connection_fields)
 
         self.username = QLineEdit()
         self.username.setObjectName("username")
@@ -151,8 +144,8 @@ class MainWindow(QMainWindow):
         self.username.setAccessibleName("Email address")
         email_label = label("Email address", "fieldLabel")
         email_label.setBuddy(self.username)
-        form.addWidget(email_label)
-        form.addWidget(self.username)
+        inputs.addWidget(email_label)
+        inputs.addWidget(self.username)
 
         self.password = QLineEdit()
         self.password.setObjectName("password")
@@ -162,8 +155,8 @@ class MainWindow(QMainWindow):
         self.password.returnPressed.connect(self._start)
         password_label = label("Password", "fieldLabel")
         password_label.setBuddy(self.password)
-        form.addWidget(password_label)
-        form.addWidget(self.password)
+        inputs.addWidget(password_label)
+        inputs.addWidget(self.password)
 
         self.show_password = QCheckBox("Show password")
         self.show_password.toggled.connect(
@@ -171,7 +164,7 @@ class MainWindow(QMainWindow):
                 QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
             )
         )
-        form.addWidget(self.show_password)
+        inputs.addWidget(self.show_password)
         self.connect_button = QPushButton("Connect to smaXtec  →")
         self.connect_button.setObjectName("primary")
         self.connect_button.setMinimumHeight(46)
@@ -214,56 +207,17 @@ class MainWindow(QMainWindow):
         form.addWidget(farm_label)
         form.addWidget(self.farm)
 
-        cows_label = label("Cow numbers", "fieldLabel")
-        self.cows = QTextEdit()
-        self.cows.setObjectName("cows")
-        self.cows.setAccessibleName("Cow numbers")
-        self.cows.setPlaceholderText(
-            "Example: 57, 214, 608\nSeparate numbers with commas or new lines"
-        )
-        self.cows.setFixedHeight(82)
-        self.cows.textChanged.connect(self._update_selection_summary)
-        cows_label.setBuddy(self.cows)
-        form.addWidget(cows_label)
-        form.addWidget(self.cows)
-
-        dates = QGridLayout()
-        dates.setHorizontalSpacing(18)
-        start_label = label("From", "fieldLabel")
-        end_label = label("To", "fieldLabel")
-        self.start_date = self._date_entry(date.today() - timedelta(days=7), "Start date")
-        self.end_date = self._date_entry(date.today(), "End date")
-        start_label.setBuddy(self.start_date)
-        end_label.setBuddy(self.end_date)
-        dates.addWidget(start_label, 0, 0)
-        dates.addWidget(end_label, 0, 1)
-        dates.addWidget(self.start_date, 1, 0)
-        dates.addWidget(self.end_date, 1, 1)
-        form.addLayout(dates)
-
-        self.date_summary = label("", "privacy")
-        form.addWidget(self.date_summary)
-        self.selection_summary = label("Enter one or more cow numbers.", "privacy")
-        form.addWidget(self.selection_summary)
+        self.cow_editor = CowRequestsEditor()
+        form.addWidget(self.cow_editor)
         self.request_button = QPushButton("Review and request exports  →")
         self.request_button.setObjectName("primary")
         self.request_button.setMinimumHeight(48)
         self.request_button.setEnabled(False)
         self.request_button.clicked.connect(self._request_exports)
         form.addWidget(self.request_button)
-        self.start_date.textChanged.connect(self._update_date_summary)
-        self.end_date.textChanged.connect(self._update_date_summary)
-        self._update_date_summary()
+        self.cow_editor.changed.connect(self._update_request_enabled)
+        self.farm.currentIndexChanged.connect(self._update_request_enabled)
         return card
-
-    @staticmethod
-    def _date_entry(value: date, accessible_name: str) -> QLineEdit:
-        field = QLineEdit()
-        field.setInputMask("00/00/0000;_")
-        field.setText(value.strftime("%d/%m/%Y"))
-        field.setPlaceholderText("DD/MM/YYYY")
-        field.setAccessibleName(accessible_name)
-        return field
 
     def _status_card(self) -> QWidget:
         self.status_card = QFrame()
@@ -340,6 +294,7 @@ class MainWindow(QMainWindow):
             title = "Finish signing in in the browser"
         self._status(title, progress.message, "success" if self._connected else "neutral")
         if self._connected:
+            self.connection_fields.hide()
             self.connect_button.setText("Account connected")
             self.stop_button.setText("Disconnect")
             self._set_step(True)
@@ -371,7 +326,11 @@ class MainWindow(QMainWindow):
             return
         if progress.total:
             self.progress_bar.setRange(0, progress.total)
-            self.progress_bar.setValue(max(0, progress.current - 1))
+            self.progress_bar.setValue(
+                progress.current
+                if progress.stage == ExportStage.COW_COMPLETE
+                else max(0, progress.current - 1)
+            )
         else:
             self.progress_bar.setRange(0, 0)
         self.progress_bar.show()
@@ -391,10 +350,7 @@ class MainWindow(QMainWindow):
         farm = self.farm.currentData()
         if not isinstance(farm, Farm):
             raise ValueError("Connect your account and select a farm.")
-        cow_numbers = parse_cow_numbers(self.cows.toPlainText())
-        start = parse_user_date(self.start_date.text(), "start date")
-        end = parse_user_date(self.end_date.text(), "end date")
-        return ExportRequest(farm, cow_numbers, start, end)
+        return ExportRequest(farm, self.cow_editor.entries())
 
     def _request_exports(self) -> None:
         if self._worker is None or self._export_busy:
@@ -404,26 +360,23 @@ class MainWindow(QMainWindow):
         except ValueError as error:
             self._status("Check your request", str(error), "error")
             return
-        cows = ", ".join(request.cow_numbers)
-        answer = QMessageBox.question(
-            self,
-            "Confirm export requests",
-            f"Farm: {request.farm.name}\n"
-            f"Cows ({len(request.cow_numbers)}): {cows}\n"
-            f"Dates: {request.site_start_date} to {request.site_end_date}\n\n"
-            "This will send one measured-data export request per cow to smaXtec. Continue?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Cancel,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
+        if not self._review_request(request) or self._worker is None or self._stopping:
             return
         self._export_busy = True
         self._set_request_fields_enabled(False)
+        self._update_request_enabled()
         self.request_button.setText("Requesting exports…")
-        self.progress_bar.setRange(0, len(request.cow_numbers))
+        self.progress_bar.setRange(0, len(request.entries))
         self.progress_bar.setValue(0)
         self.progress_bar.show()
         self._worker.submit_exports(request)
+
+    def _review_request(self, request: ExportRequest) -> bool:
+        dialog = ExportReviewDialog(request, self)
+        try:
+            return dialog.exec() == QDialog.DialogCode.Accepted
+        finally:
+            dialog.deleteLater()
 
     def _on_export_complete(self, result: ExportBatchResult) -> None:
         self._export_busy = False
@@ -460,36 +413,11 @@ class MainWindow(QMainWindow):
 
     def _set_request_fields_enabled(self, enabled: bool) -> None:
         self.farm.setEnabled(enabled and self._farms_ready)
-        self.cows.setEnabled(enabled)
-        self.start_date.setEnabled(enabled)
-        self.end_date.setEnabled(enabled)
-
-    def _update_selection_summary(self) -> None:
-        try:
-            count = len(parse_cow_numbers(self.cows.toPlainText()))
-            self.selection_summary.setText(
-                f"{count} cow{'s' if count != 1 else ''} selected. Exact animal numbers only."
-            )
-        except ValueError:
-            self.selection_summary.setText("Enter one or more cow numbers.")
-        self._update_request_enabled()
-
-    def _update_date_summary(self) -> None:
-        try:
-            start = parse_user_date(self.start_date.text(), "start date")
-            end = parse_user_date(self.end_date.text(), "end date")
-            validate_date_range(start, end)
-        except ValueError as error:
-            self.date_summary.setText(str(error))
-        else:
-            self.date_summary.setText(
-                f"Confirmed range: {start.strftime('%d/%m/%Y')} through {end.strftime('%d/%m/%Y')}."
-            )
-        self._update_request_enabled()
+        self.cow_editor.setEnabled(enabled)
 
     def _update_request_enabled(self) -> None:
         valid = False
-        if self._connected and self._farms_ready and not self._export_busy:
+        if self._connected and self._farms_ready and not self._export_busy and not self._stopping:
             try:
                 self._make_request()
                 valid = True
@@ -514,6 +442,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.hide()
         self.stop_button.hide()
         self.connect_button.setText("Connect to smaXtec  →")
+        self.connection_fields.show()
         for widget in (self.username, self.password, self.show_password, self.connect_button):
             widget.setEnabled(True)
         self._connected = self._farms_ready = self._export_busy = False

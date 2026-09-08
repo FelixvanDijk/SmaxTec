@@ -20,7 +20,7 @@ platform-specific code so other desktop targets remain possible.
 
 ## Full intended workflow
 
-1. The GUI collects farm, date/time period, one or many cow identifiers, output
+1. The GUI collects farm, one or many cow identifiers each with its own From/To period, output
    location, and user-defined calculation/report settings.
 2. Sign into smaXtec and navigate the authorized farm/cow/export workflow.
 3. Request exports, which produce emails containing Excel download links.
@@ -89,7 +89,8 @@ clinical meanings, or website interactions that have not been established.
 ## Current scope
 
 Milestones 1 and 2 implement login plus farm/cow/date selection and measured-data
-export requests. M2 is awaiting the user's live submission confirmation. Each
+export requests. Version 0.3.0 adds individual dates per cow; client acceptance of
+this editor and live export dates remains pending. Each
 login scans the account's current farm list. Cow lookup must use the Animal number
 column and exact equality; a search for `57` must never select `657` or `257`.
 Each cow is submitted separately after an explicit GUI review. Never retry an
@@ -98,8 +99,12 @@ for the next reviewed batch using credentials held only in worker memory until
 disconnect/close. Preserve attempted-export guards across those fresh browsers.
 Dates must follow one auditable path: strict `DD/MM/YYYY` GUI input, real calendar
 validation, immutable date values, explicit confirmation, one serialization, and
-exact website-field verification before Export. Email access, downloads, workbook
-processing and analysis remain later work.
+exact website-field verification before Export. Each immutable `CowExport` carries
+its number and dates together through requests, results, errors and duplicate guards.
+Never restore a single batch-wide range. Folding changes visibility only: validate
+and include every row. Shared dates apply only on an explicit Apply to all action.
+Review must list every unique cow/period; the same cow with another period is distinct.
+Email access, downloads, workbook processing and analysis remain later work.
 
 No additional agents are required by this file. Delegate only if the user or
 applicable higher-priority instructions explicitly authorize parallel agents.

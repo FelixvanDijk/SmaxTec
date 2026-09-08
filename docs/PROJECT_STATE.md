@@ -1,7 +1,7 @@
 # Project state — start here each session
 
-Last updated: 2026-09-07. **M1 complete. M2.2 strict date-entry fix implemented; verification pending.**
-Next: user verifies exact dates and two consecutive batches, then M3 email collection.
+Last updated: 2026-09-08. **0.3.0 individual cow/date editor implemented and locally verified; CI pending.**
+Next: client verifies individual periods and compact/expanded editing, then M3 email collection.
 
 ## User intent and scope
 
@@ -27,8 +27,8 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
   request controls, progress, cancellation, disconnect, and orderly application close.
 - The Playwright adapter opens the supplied entry route, presses `Go to log in`,
   verifies the identity origin/form destination, fills credentials, submits once,
-  verifies authenticated navigation markers, and keeps an isolated browser open for
-  serialized farm discovery and export requests until disconnect or application close.
+  verifies authenticated navigation markers, and uses an isolated browser for
+  serialized farm discovery and an export batch. Subsequent batches reconnect as below.
 - Credentials are in memory only. Export requests are implemented; session persistence,
   mailbox access, downloaded files, workbook calculations, graphs and anomaly detection
   are not implemented yet.
@@ -38,9 +38,9 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 - Windows/Python 3.13 hash-pinned dependency lock, offline browser/Qt regression
   tests, a PyInstaller spec with bundled full Chromium, build/smoke scripts, and a
   GitHub Windows CI/artifact workflow are implemented.
-- M2 GUI adds a dynamically populated farm dropdown, multiple-cow input, native
-  `DD/MM/YYYY` date fields, selection count, request review/confirmation, batch
-  progress, partial-failure reporting and within-session duplicate prevention.
+- GUI has a dynamically populated farm dropdown, individual cow/From/To rows,
+  strict `DD/MM/YYYY` date fields, scrollable review, per-entry progress,
+  partial-failure reporting and within-session duplicate prevention.
 - The worker now holds a serialized command queue on the browser-owning thread.
   The adapter scans farms after login, selects one exactly, opens Animals, searches
   only Animal number, confirms an exact row, selects Measured data, fills dates and
@@ -52,11 +52,24 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 - Version 0.2.2 replaces the error-prone segmented date editors with strict masked
   `DD/MM/YYYY` fields. Parsed dates are visibly summarized, confirmed before side
   effects, serialized once, and verified exactly in smaXtec before Export is clicked.
+- Version 0.3.0 gives every cow its own immutable date range. Add/remove cow rows,
+  auto-fold after five, expand into a bounded scrollable list, and optionally Apply
+  dates to all with one-step Undo. Hidden rows are included and validated. The same
+  cow with different dates remains distinct through reconnection and partial failures.
+- Module map: `application/exports.py` defines `CowExport` and batch/result types;
+  `ui/cow_editor.py` owns editable rows and folding; `ui/export_review.py` displays
+  the complete frozen batch; `ui/widgets.py` shares plain-text and strict date fields.
 
 ## Verification and packaging evidence
 
-- 44 local tests pass, including strict date entry and website-mutation coverage;
-  lint/format, dependency and source smoke checks also pass.
+- Version 0.3.0: all **59 tests passed** locally (121 seconds), plus lint, formatting,
+  dependency checks and the source Qt/Chromium smoke test. Coverage includes
+  individual date preservation, 300-row editing/review, shared-date apply/undo,
+  invalid folded rows, cancelled review, real-browser offline submissions,
+  reconnection and partial-failure recovery. Native Windows compact, expanded,
+  shared-date and review views were visually checked, including 1020px-wide layout.
+  No live exports or emails were requested for this change. The new Windows CI
+  bundle check is pending; update this section after its run completes.
 - Live verification succeeded twice: initial structure inspection confirmed the
   fields were filled; the implemented adapter then emitted every expected stage
   through `connected`. Both sessions stopped after sign-in, with no export requests.
@@ -145,8 +158,8 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 ## Open questions for later milestones
 
 1. Confirm deployment OS coverage, distribution audience, branding, and signing.
-2. Confirm two consecutive M2.2 requests without credential re-entry, checking
-   the visible date summary, email count and whether From/To are inclusive dates.
+2. Confirm individual-period 0.3.0 requests, compact/expanded editing and consecutive
+   batches without credential re-entry; check email counts and inclusive date semantics.
 3. Inbox provider and delegated/shared mailbox behavior; sender/correlation fields
    from sanitized example export emails; approved download hosts/link lifetime.
 4. Representative sanitized Excel files: schema, units, timezones, missing values.
@@ -156,9 +169,9 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 ## Next-session handover
 
 1. Check current Git/CI state and the packaged launch limitation above.
-2. Record the user's repeat-batch and strict-date result: successful automatic
-   reconnection, exact workbook boundaries and email timing without committing
-   credentials, message links, personal data or source workbooks.
+2. Record the client's per-cow-date result: individually reviewed periods, folded
+   row editing, automatic reconnection, workbook boundaries and email timing without
+   committing credentials, message links, personal data or source workbooks.
 3. Begin M3 from the existing `SessionWorker`/`SmaxtecLoginSession` boundary. Add
    persistent job/correlation state before automated retries or inbox polling.
 4. Request sanitized email/Excel examples when reaching the relevant milestone;

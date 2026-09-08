@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 — 2026-09-08 (development preview)
+
+- Each cow row now has its own From and To dates, Add cow and remove controls.
+- Show all of the first five rows, then fold the middle behind an explicit count;
+  expand into a bounded scrollable list to edit hundreds of entries.
+- Add optional Apply to all dates with Undo; validate folded rows as well as visible ones.
+- Review every cow and its dates in a scrollable confirmation table; freeze the
+  reviewed values for submission and disable editing while the batch runs.
+- Carry immutable cow/date targets through the worker, website adapter, results,
+  partial failures and duplicate guards across browser reconnections. The same cow
+  with another period is distinct; identical targets are deduplicated.
+- Collapse the credential fields after connection to leave more room for requests.
+- Add editor stress coverage and real-browser offline tests tracing individual
+  dates through GUI submission, subsequent batches and partial-failure recovery.
+
 ## 0.2.2 — 2026-09-07 (development preview)
 
 - Replaced segmented date widgets with strict masked `DD/MM/YYYY` entry after a

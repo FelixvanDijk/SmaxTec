@@ -38,6 +38,10 @@ selection. There must be one collection/normalization/reporting pipeline.
 Create domain/reporting/mail/storage modules when the respective feature is
 implemented. Avoid speculative stubs that future agents must untangle.
 
+The request editor is in `ui/cow_editor.py`, scrollable immutable review in
+`ui/export_review.py`, and shared plain-text/date widgets in `ui/widgets.py`.
+`ui/window.py` composes those controls and owns connection and batch lifecycle feedback.
+
 ## Runtime model
 
 Qt runs the GUI on the main thread. A dedicated worker owns a Playwright instance
@@ -86,12 +90,11 @@ before allowing selection.
 
 ## Decision 005: One reviewed request per exact animal number
 
-Status: implemented in M2.
+Status: implemented in M2; the input design was superseded by Decisions 007 and 008.
 
-The GUI accepts comma, semicolon, whitespace or line-separated cow identifiers,
-preserves leading zeroes and order, and removes duplicate entries. It uses native
-date controls in `DD/MM/YYYY`, prevents future dates, and requires start <= end.
-A confirmation dialog shows farm, cow list/count and date range before side effects.
+Cow identifiers remain strings, with leading zeroes and order preserved. Each row
+now carries its own validated `DD/MM/YYYY` period. A scrollable confirmation lists
+all unique cow/period entries before side effects.
 
 The adapter searches only the header containing `data-testid="orderByMark"`, waits
 for filtered table results, and checks exact text in the `mark-link` column. Partial,
@@ -137,8 +140,9 @@ showed `02/09/2024` in the GUI. The two controls are now masked text fields requ
 exact `DD/MM/YYYY`. Pure application logic parses real calendar dates, rejects a
 reversed range, dates before 2000 and future end dates, and creates immutable values.
 
-The GUI shows the parsed range below the inputs and repeats it in the side-effect
-confirmation. The adapter serializes each date exactly once with `%d/%m/%Y`, fills
+Version 0.2.2 showed the parsed range below its shared inputs; 0.3.0 validates each
+row and lists all parsed dates in the side-effect confirmation. The adapter uses
+the single `%d/%m/%Y` serialization path for each date, fills
 the ordered From/To website fields, moves focus so website validation runs, then
 reads both fields back. Any mismatch stops before the final Export click. Tests
 trace `01/09/2026` through GUI typing, request construction and the synthetic
@@ -149,10 +153,43 @@ backend treats its endpoints as inclusive is a separate data-semantic question t
 confirm from the resulting workbook; email/workbook ingestion will automate that
 provenance check in later milestones.
 
+## Decision 008: Individual cow/period values and a folding row editor
+
+Status: implemented in 0.3.0 to meet the client's individual-date requirement.
+
+`CowExport(cow_number, start_date, end_date)` is a frozen, validated value. An
+`ExportRequest` holds a farm and an ordered tuple of these entries; there is no
+batch-wide From/To. Review, serial processing, date filling, completion/error reports
+and attempt fingerprints all use the same values. Identical targets are deduplicated
+in order. The same cow on a different period remains distinct, including after a
+browser replacement or partial failure. `ExportRequest.for_cows` is an explicit
+shared-period convenience for callers, not a second execution path.
+
+The editor uses lightweight row widgets with strict masked fields. At up to five
+rows, all are visible and the area grows. Above five, compact mode shows the first
+and latest two rows with an explicit folded count. Expanded mode uses a bounded
+scroll area of up to seven visible rows; hundreds remain accessible without extending
+the main window. Rows are hidden, never recreated or reparsed from screen order.
+Removing a row removes that entire cow/date association. Validation includes hidden
+rows and offers a button to reveal the first invalid row.
+
+Optional shared fields require an explicit Apply to all action. It validates the
+complete shared range before changing any row, updates folded rows and defaults for
+future additions, and offers one-step Undo until the next row edit/add/remove. Merely
+typing in the shared fields changes no existing target. The review table shows every
+unique entry; cancelling sends nothing. The queued batch is immutable and editor
+controls are disabled during export.
+
+This retains Qt's native controls and existing bundle without a new runtime dependency.
+The 300-row editor/review regression exercises folding, edits, identity and bounded
+height. If much larger lists become common, measure a virtual table/delegate design
+before replacing the current row widgets. The implementation uses Qt's documented
+[scroll-area behavior](https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QScrollArea.html).
+
 ## Data and workflow design to preserve
 
 - A future export job records a stable job ID, website farm ID + display name,
-  cow IDs as strings, explicit start/end and farm timezone, and report settings.
+  individual cow/start/end targets and farm timezone, and report settings.
 - Clarify inclusive/exclusive boundaries, daylight-saving time, cow number versus
   tag identity, available measurements and units using real samples before coding.
 - Each requested cow export gets a tracked state and correlation metadata.

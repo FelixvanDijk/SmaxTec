@@ -49,18 +49,21 @@ def validate_date_range(start_date: date, end_date: date) -> None:
 
 
 @dataclass(frozen=True)
-class ExportRequest:
-    farm: Farm
-    cow_numbers: tuple[str, ...]
+class CowExport:
+    """One indivisible export target; its dates always travel with its cow number."""
+
+    cow_number: str
     start_date: date
     end_date: date
 
     def __post_init__(self) -> None:
-        cleaned = tuple(dict.fromkeys(value.strip() for value in self.cow_numbers if value.strip()))
+        cleaned = self.cow_number.strip()
         if not cleaned:
-            raise ValueError("Enter at least one cow number.")
+            raise ValueError("Enter a cow number.")
+        if len(cleaned) > 64 or re.search(r"[,;\s]", cleaned):
+            raise ValueError("Enter one cow number per row (up to 64 characters).")
         validate_date_range(self.start_date, self.end_date)
-        object.__setattr__(self, "cow_numbers", cleaned)
+        object.__setattr__(self, "cow_number", cleaned)
 
     @property
     def site_start_date(self) -> str:
@@ -69,6 +72,30 @@ class ExportRequest:
     @property
     def site_end_date(self) -> str:
         return self.end_date.strftime("%d/%m/%Y")
+
+    @property
+    def description(self) -> str:
+        return f"Cow {self.cow_number} · {self.site_start_date} to {self.site_end_date}"
+
+
+@dataclass(frozen=True)
+class ExportRequest:
+    farm: Farm
+    entries: tuple[CowExport, ...]
+
+    def __post_init__(self) -> None:
+        # Copy mutable caller collections and deduplicate only identical targets.
+        entries = tuple(dict.fromkeys(self.entries))
+        if not entries:
+            raise ValueError("Enter at least one cow and date range.")
+        object.__setattr__(self, "entries", entries)
+
+    @classmethod
+    def for_cows(
+        cls, farm: Farm, cow_numbers: tuple[str, ...], start_date: date, end_date: date
+    ) -> "ExportRequest":
+        """Convenience for callers deliberately applying one period to several cows."""
+        return cls(farm, tuple(CowExport(cow, start_date, end_date) for cow in cow_numbers))
 
 
 class ExportStage(StrEnum):
@@ -91,8 +118,8 @@ class ExportProgress:
 
 @dataclass(frozen=True)
 class ExportBatchResult:
-    requested: tuple[str, ...]
-    skipped_as_already_attempted: tuple[str, ...] = ()
+    requested: tuple[CowExport, ...]
+    skipped_as_already_attempted: tuple[CowExport, ...] = ()
 
 
 class ExportFailureCode(StrEnum):
@@ -113,8 +140,8 @@ class ExportError(Exception):
         self,
         code: ExportFailureCode,
         message: str,
-        completed: tuple[str, ...] = (),
-        attempted: tuple[str, ...] = (),
+        completed: tuple[CowExport, ...] = (),
+        attempted: tuple[CowExport, ...] = (),
     ) -> None:
         super().__init__(message)
         self.code = code

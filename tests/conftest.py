@@ -120,6 +120,7 @@ def website():
                     footer.textContent = found.length ? `1–${{found.length}} of ${{found.length}}` : '0–0 of 0';
                     document.querySelectorAll('[data-cow]').forEach(button => button.onclick = () => {{
                       selectedCow = button.dataset.cow; dialog.hidden = false;
+                      dateInputs.forEach(input => input.value = '01/01/2024');
                     }});
                   }}
                   document.getElementById('animal-search').addEventListener('input', e => render(e.target.value));

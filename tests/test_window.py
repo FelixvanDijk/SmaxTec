@@ -2,9 +2,10 @@ from datetime import date
 from threading import get_ident
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QLineEdit, QMessageBox
+from PySide6.QtWidgets import QLineEdit
 
 from smaxtec.application.exports import (
+    CowExport,
     ExportBatchResult,
     ExportProgress,
     ExportStage,
@@ -41,11 +42,11 @@ class FakeSession:
             ExportProgress(
                 ExportStage.COW_COMPLETE,
                 "Export requested.",
-                len(request.cow_numbers),
-                len(request.cow_numbers),
+                len(request.entries),
+                len(request.entries),
             )
         )
-        return ExportBatchResult(request.cow_numbers)
+        return ExportBatchResult(request.entries)
 
     def is_open(self):
         return not self.closed
@@ -145,11 +146,14 @@ def test_user_can_submit_multiple_cows_and_dates_after_farms_load(qtbot, monkeyp
     window = MainWindow(lambda: session)
     qtbot.addWidget(window)
     fill(window)
-    window.cows.setPlainText("057, 57\n257")
-    window.start_date.selectAll()
-    qtbot.keyClicks(window.start_date, "01/09/2026")
-    window.end_date.selectAll()
-    qtbot.keyClicks(window.end_date, "03/09/2026")
+    first = window.cow_editor.rows[0]
+    first.cow.setText("057")
+    first.start_date.selectAll()
+    qtbot.keyClicks(first.start_date, "01/09/2026")
+    first.end_date.selectAll()
+    qtbot.keyClicks(first.end_date, "03/09/2026")
+    other = CowExport("257", date(2026, 8, 10), date(2026, 8, 12))
+    window.cow_editor.add_row(other)
     window._start()
     qtbot.waitUntil(lambda: window._farms_ready)
     assert [window.farm.itemText(index) for index in range(window.farm.count())] == [
@@ -157,18 +161,16 @@ def test_user_can_submit_multiple_cows_and_dates_after_farms_load(qtbot, monkeyp
         "TYB Farms LTD",
     ]
     assert window.request_button.isEnabled()
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
-    )
+    reviewed = []
+    monkeypatch.setattr(window, "_review_request", lambda request: reviewed.append(request) or True)
     window._request_exports()
     qtbot.waitUntil(lambda: len(session.requests) == 1)
     qtbot.waitUntil(lambda: not window._export_busy)
-    assert session.requests[0].cow_numbers == ("057", "57", "257")
-    assert session.requests[0].start_date == date(2026, 9, 1)
-    assert session.requests[0].end_date == date(2026, 9, 3)
-    assert window.date_summary.text() == "Confirmed range: 01/09/2026 through 03/09/2026."
+    assert session.requests[0] == reviewed[0]
+    assert session.requests[0].entries == (
+        CowExport("057", date(2026, 9, 1), date(2026, 9, 3)),
+        other,
+    )
     assert window.status_title.text() == "Export requests sent"
     window._stop()
     qtbot.waitUntil(lambda: window._worker is None)
@@ -179,29 +181,30 @@ def test_second_batch_reconnects_without_reentering_credentials(qtbot, monkeypat
     window = MainWindow(factory)
     qtbot.addWidget(window)
     fill(window)
-    window.cows.setPlainText("57")
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
-    )
+    row = window.cow_editor.rows[0]
+    row.cow.setText("57")
+    monkeypatch.setattr(window, "_review_request", lambda _request: True)
 
     window._start()
     qtbot.waitUntil(lambda: window._farms_ready)
     window._request_exports()
     qtbot.waitUntil(lambda: not window._export_busy)
     assert len(factory.sessions) == 1
-    assert factory.sessions[0].closed
+    qtbot.waitUntil(lambda: factory.sessions[0].closed)
     assert window.password.text() == ""
 
     window.farm.setCurrentText("TYB Farms LTD")
-    window.cows.setPlainText("12")
+    row.cow.setText("12")
+    row.start_date.setText("01/08/2026")
+    row.end_date.setText("03/08/2026")
     window._request_exports()
     qtbot.waitUntil(lambda: not window._export_busy)
     assert len(factory.sessions) == 2
-    assert factory.sessions[1].closed
+    qtbot.waitUntil(lambda: factory.sessions[1].closed)
     assert factory.sessions[1].requests[0].farm == Farm("TYB Farms LTD")
-    assert factory.sessions[1].requests[0].cow_numbers == ("12",)
+    assert factory.sessions[1].requests[0].entries == (
+        CowExport("12", date(2026, 8, 1), date(2026, 8, 3)),
+    )
     assert factory.sessions[0].credentials_seen == factory.sessions[1].credentials_seen
     assert factory.sessions[1].credentials_seen == [("analyst@example.test", "synthetic-password")]
 
@@ -211,5 +214,44 @@ def test_second_batch_reconnects_without_reentering_credentials(qtbot, monkeypat
     assert len(factory.sessions) == 2
     assert "Skipped 1" in window.status_message.text()
 
+    # The same cow with a different period is a new target, even after reconnecting.
+    row.end_date.setText("04/08/2026")
+    window._request_exports()
+    qtbot.waitUntil(lambda: not window._export_busy)
+    assert len(factory.sessions) == 3
+    assert factory.sessions[2].requests[0].entries == (
+        CowExport("12", date(2026, 8, 1), date(2026, 8, 4)),
+    )
+
     window._stop()
     qtbot.waitUntil(lambda: window._worker is None)
+
+
+def test_invalid_folded_row_blocks_review_and_cancel_never_queues_exports(qtbot, monkeypatch):
+    session = FakeSession()
+    window = MainWindow(lambda: session)
+    qtbot.addWidget(window)
+    fill(window)
+    window.cow_editor.rows[0].cow.setText("57")
+    for number in range(6):
+        window.cow_editor.add_row(CowExport(str(number), date(2026, 8, 1), date(2026, 8, 3)))
+    window._start()
+    qtbot.waitUntil(lambda: window._farms_ready)
+    reviewed = []
+    monkeypatch.setattr(
+        window, "_review_request", lambda request: reviewed.append(request) or False
+    )
+    hidden = window.cow_editor.rows[2]
+    hidden.end_date.setText("31/02/2026")
+    assert hidden.isHidden()
+    assert not window.request_button.isEnabled()
+    window._request_exports()
+    assert reviewed == []
+    hidden.end_date.setText("03/08/2026")
+    assert window.request_button.isEnabled()
+    window._request_exports()
+    assert len(reviewed) == 1
+    assert not window._export_busy
+    window._stop()
+    qtbot.waitUntil(lambda: window._worker is None)
+    assert session.requests == []
