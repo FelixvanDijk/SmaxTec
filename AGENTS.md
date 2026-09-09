@@ -104,7 +104,13 @@ its number and dates together through requests, results, errors and duplicate gu
 Never restore a single batch-wide range. Folding changes visibility only: validate
 and include every row. Shared dates apply only on an explicit Apply to all action.
 Review must list every unique cow/period; the same cow with another period is distinct.
-Email access, downloads, workbook processing and analysis remain later work.
+The user has now authorized M3 email collection/downloads. Read
+`docs/EMAIL_COLLECTION.md` before implementing it: the mailbox connector choice,
+tenant prerequisites and actual email links must be confirmed first. Runtime 0.3.0
+does not yet implement collection. Keep inboxes read-only, freeze the newest-N
+matching message selection, preserve raw workbook bytes, and never expose bearer
+links or bypass Safe Links/labeling policies. B3 animal name alone does not prove
+the requested Animal number, farm or dates. Analysis remains later work.
 
 No additional agents are required by this file. Delegate only if the user or
 applicable higher-priority instructions explicitly authorize parallel agents.

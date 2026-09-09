@@ -26,6 +26,12 @@ flowchart TD
 The automated anomaly path produces the same export-request inputs as manual cow
 selection. There must be one collection/normalization/reporting pipeline.
 
+M3 is now authorized but not implemented. Its provider-choice prerequisites,
+manual newest-N collection contract, trust boundaries and implementation sequence
+are recorded in [Email collection design](EMAIL_COLLECTION.md). Mailbox connection
+will be independent of the website session. Do not treat receipt order or workbook
+B3 animal name as verified website-request correlation.
+
 | Location | Responsibility | Must not own |
 | --- | --- | --- |
 | `src/smaxtec/ui/` | Widgets, styling, worker lifecycle, user feedback | Selectors, formulas, provider logic |

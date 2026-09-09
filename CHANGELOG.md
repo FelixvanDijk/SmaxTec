@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — M3 discovery (2026-09-09)
+
+- Documented the requested manual newest-N email collection workflow, direct/forwarded
+  link handling, B3-based names, per-user output folders and durable download state.
+- Compared corporate Graph sign-in with classic Outlook integration and recorded
+  tenant/Outlook prerequisites, Safe Links safeguards and sensitivity-label boundaries.
+- Inspected the supplied workbook read-only and documented outstanding email samples.
+  This is a design step only: runtime and packaged version remain 0.3.0.
+
 ## 0.3.0 — 2026-09-08 (development preview)
 
 - Each cow row now has its own From and To dates, Add cow and remove controls.

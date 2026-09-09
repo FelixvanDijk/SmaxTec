@@ -64,6 +64,7 @@ approval/signing and the polished installer remain release work.
 - [Architecture and decisions](docs/ARCHITECTURE.md)
 - [Current state and next session](docs/PROJECT_STATE.md)
 - [Milestones and acceptance criteria](docs/ROADMAP.md)
+- [Email collection design and prerequisites](docs/EMAIL_COLLECTION.md)
 - [Developer setup](docs/DEVELOPMENT.md)
 - [Packaging and release requirements](docs/RELEASING.md)
 - [Change history](CHANGELOG.md)

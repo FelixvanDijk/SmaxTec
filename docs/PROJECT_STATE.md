@@ -1,7 +1,8 @@
 # Project state — start here each session
 
-Last updated: 2026-09-08. **0.3.0 individual cow/date editor verified locally and packaged on Windows CI.**
-Next: client verifies individual periods and compact/expanded editing, then M3 email collection.
+Last updated: 2026-09-09. **Runtime 0.3.0 remains unchanged; M3 collection design prepared.**
+Next: resolve Outlook/Graph prerequisites and inspect original/forwarded email links,
+then implement the collection slice described in `EMAIL_COLLECTION.md`.
 
 ## User intent and scope
 
@@ -13,7 +14,30 @@ same pipeline automatically. Modularity and documentation across sessions matter
 
 The user explicitly wants incremental delivery and authorizes GitHub pushes after
 substantial milestones. M1 was login; M2 is farm/cow/date selection and export
-requests. Do not begin mailbox access or spreadsheet processing before its milestone.
+requests. The user has now authorized M3 email collection and B3-based file naming.
+Do not begin calculations or workbook restructuring before their later milestone.
+
+## M3 discovery — 2026-09-09
+
+- User needs an independent, manually triggered GUI collection section: newest N
+  matching smaXtec export emails, direct or forwarded, safe link downloads, and a
+  portable user-selected folder containing cow-named original workbooks.
+- Reviewed the supplied screenshot: export links have a stated 24-hour lifetime.
+  Inspected the named local sample read-only: both worksheets have the same numeric
+  B3 string. No file changes, Excel launch, label changes or mailbox access occurred.
+- New Outlook is running locally; classic Outlook COM is registered but an accessible
+  classic profile was not verified. The sample pywin32 approach is classic-only.
+- Researched official Microsoft authentication, Outlook compatibility, Safe Links and
+  label APIs. Recommended cross-user route is Graph delegated sign-in, subject to
+  an approved app registration and tenant policy. Classic Outlook remains conditional
+  on the deployment population; do not silently assume it exists for all users.
+- `docs/EMAIL_COLLECTION.md` records proposed GUI, frozen newest-N semantics,
+  forwarded-email trust checks, safe downloads, B3 limitations, portable output,
+  durable collection state, labeling policy boundaries and acceptance tests.
+- Pending user answers: Outlook edition coverage, availability of IT/app consent,
+  original and forwarded `.eml`/`.msg` examples/paths, and actual label requirements.
+  No runtime/dependency changes or new email feature are implemented in this step.
+  The 59-test/Windows build evidence below applies to unchanged version 0.3.0.
 
 ## Repository
 
@@ -165,8 +189,9 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 1. Confirm deployment OS coverage, distribution audience, branding, and signing.
 2. Confirm individual-period 0.3.0 requests, compact/expanded editing and consecutive
    batches without credential re-entry; check email counts and inclusive date semantics.
-3. Inbox provider and delegated/shared mailbox behavior; sender/correlation fields
-   from sanitized example export emails; approved download hosts/link lifetime.
+3. Confirm Microsoft 365 hosting, connector prerequisites and shared-mailbox behavior;
+   inspect original/forwarded email examples and approved download hosts. The supplied
+   email states 24 hours; forwarded arrival time does not reset link lifetime.
 4. Representative sanitized Excel files: schema, units, timezones, missing values.
 5. Exact calculations, workbook layout, graph types, and configuration controls.
 6. Versioned anomaly rules, validation cases, execution schedule and review policy.
@@ -177,8 +202,9 @@ requests. Do not begin mailbox access or spreadsheet processing before its miles
 2. Record the client's per-cow-date result: individually reviewed periods, folded
    row editing, automatic reconnection, workbook boundaries and email timing without
    committing credentials, message links, personal data or source workbooks.
-3. Begin M3 from the existing `SessionWorker`/`SmaxtecLoginSession` boundary. Add
-   persistent job/correlation state before automated retries or inbox polling.
+3. Read `EMAIL_COLLECTION.md` and resolve the pending user/IT inputs. Mailbox
+   connection must be independent of the website worker. Add persistent collection
+   state before resumable downloads; no inbox polling is requested for this slice.
 4. Request sanitized email/Excel examples when reaching the relevant milestone;
    do not select an inbox provider or invent schemas early.
 5. Before distribution beyond development, resolve signing/installation on the
