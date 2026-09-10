@@ -29,8 +29,11 @@ Run module entry points through the environment's Python; activation is optional
 ```
 
 Tests run an HTTP site on an ephemeral loopback port with synthetic credentials.
-They do not call smaXtec or request emails. Qt tests run offscreen. The smoke test
-opens the application and bundled Chromium against in-memory content only.
+They do not call smaXtec, Outlook or request emails. Collection tests use synthetic
+COM objects, mail messages, network responses and workbook packages. Qt tests run
+offscreen. The smoke test opens the application and bundled Chromium against
+in-memory content, verifies XML/OLE/Windows COM imports, and exercises private helper
+IPC with an invalid action rejected before mailbox access. Live checks stay opt-in.
 
 ## Dependency changes
 
@@ -38,6 +41,11 @@ Change `pyproject.toml`, regenerate the hash-pinned lock on the supported target
 then reinstall, test and rebuild. Check Playwright's Chromium revision and repeat
 the packaged browser smoke test whenever Playwright changes. Build backend and
 lock must agree on the setuptools version.
+
+M3 uses `olefile` for a deliberately narrow MSG root-stream reader, `defusedxml`
+for XLSX XML and Windows-only `pywin32` for classic Outlook. No full MSG/RTF parser,
+Excel installation, Graph app or mailbox password is needed for saved-email import.
+Keep third-party notices in the bundle when changing these dependencies.
 
 ```powershell
 .\.venv\Scripts\python.exe -m piptools compile --extra dev --generate-hashes --strip-extras --allow-unsafe --output-file requirements-dev.lock pyproject.toml

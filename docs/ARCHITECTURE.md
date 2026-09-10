@@ -14,11 +14,11 @@ and automation browser and provide a polished installer and GUI onboarding.
 flowchart TD
     UI[Desktop UI: inputs, progress, results] --> APP[Application workflows]
     APP --> WEB[smaXtec browser adapter]
-    APP --> MAIL[Email provider adapter — planned]
-    APP --> JOBS[Local job and artifact storage — planned]
+    APP --> MAIL[Classic Outlook / saved-email adapters]
+    APP --> JOBS[Local collection journal + manifest]
     APP --> DOMAIN[Pure validation, calculations, heuristics — planned]
     DOMAIN --> REPORTS[Workbook and graph generation — planned]
-    MAIL --> FILES[Validated downloads and source workbooks — planned]
+    MAIL --> FILES[Validated downloads and source workbooks]
     FILES --> DOMAIN
     AUTO[Anomaly selection — planned] --> APP
 ```
@@ -26,27 +26,33 @@ flowchart TD
 The automated anomaly path produces the same export-request inputs as manual cow
 selection. There must be one collection/normalization/reporting pipeline.
 
-M3 is now authorized but not implemented. Its provider-choice prerequisites,
-manual newest-N collection contract, trust boundaries and implementation sequence
-are recorded in [Email collection design](EMAIL_COLLECTION.md). Mailbox connection
-will be independent of the website session. Do not treat receipt order or workbook
-B3 animal name as verified website-request correlation.
+M3 is implemented in 0.4.0 with a classic-Outlook connector and saved-email fallback.
+Its confirmed provider boundaries, manual newest-N contract and remaining acceptance
+gates are recorded in [Email collection](EMAIL_COLLECTION.md). Mailbox connection
+is independent of the website session. Do not treat receipt order or workbook B3
+animal name as verified website-request correlation.
 
 | Location | Responsibility | Must not own |
 | --- | --- | --- |
 | `src/smaxtec/ui/` | Widgets, styling, worker lifecycle, user feedback | Selectors, formulas, provider logic |
 | `src/smaxtec/application/` | Workflow contracts, credentials in memory, progress/errors | Qt widgets, Playwright implementation |
 | `src/smaxtec/adapters/smaxtec/` | Browser ownership, login page and verified transitions | Report calculations or email behavior |
+| `src/smaxtec/adapters/mail/` | Read-only Outlook/helper, bounded email parsing and trusted-link downloads | Qt widgets, report formulas or mailbox mutations |
+| `src/smaxtec/adapters/workbooks.py` | Bounded XLSX/ZIP/XML inspection and B3 identity | Excel automation, label assignment or workbook rewriting |
 | `src/smaxtec/main.py` | Compose the app and concrete adapters | Business workflows |
 | `tests/` | Synthetic regression fixtures and UI behavior | Real credentials or live account tests |
 | `packaging/`, `scripts/` | Reproducible build and executable checks | End-user package installation |
 
-Create domain/reporting/mail/storage modules when the respective feature is
-implemented. Avoid speculative stubs that future agents must untangle.
+Create further domain/reporting modules when their feature is implemented. Avoid
+speculative stubs that future agents must untangle.
 
 The request editor is in `ui/cow_editor.py`, scrollable immutable review in
 `ui/export_review.py`, and shared plain-text/date widgets in `ui/widgets.py`.
 `ui/window.py` composes those controls and owns connection and batch lifecycle feedback.
+`ui/collection_panel.py` owns the independent email workspace and immutable review;
+`ui/collection_worker.py` runs its short-lived cancellable jobs. The window waits
+for both website and collection workers before closing. Concrete mailbox/service
+objects are lazy: opening the GUI does not read mail or create collection folders.
 
 ## Runtime model
 
@@ -192,6 +198,80 @@ height. If much larger lists become common, measure a virtual table/delegate des
 before replacing the current row widgets. The implementation uses Qt's documented
 [scroll-area behavior](https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QScrollArea.html).
 
+## Decision 009: Configured classic Outlook with an explicit saved-email fallback
+
+Status: implemented in 0.4.0; client/packaged evidence is tracked in PROJECT_STATE.
+
+The user prefers avoiding separate IT setup. Use classic Outlook's existing signed-in
+profile, enumerate available Inboxes and require an explicit choice. A read-only local
+profile check found one account and two stores; this is not evidence that every
+client has classic Outlook or that mailbox access is permitted everywhere.
+
+COM lives in a private child process, not on the GUI or browser thread. It has a
+120-second deadline, bounded IPC and cooperative parent cancellation that terminates
+only the helper, never Outlook. Frozen executables dispatch `--outlook-helper`
+before importing Qt; pythonw/frozen redirected standard pipes are restored without
+opening a console. No password is collected and no Office security guard is disabled.
+
+New Outlook does not expose this COM interface. Saved `.eml`/`.msg` import provides
+a manual fallback using the same parser/download pipeline. It is not an inbox scan.
+The email parser uses Python's email package and a bounded `olefile` root-stream MSG
+reader, not a full MSG/RTF/attachment processor. The smaller reader also avoids the
+licensing constraints of the initially considered GPL full-MSG dependency. Dependency
+inventory/notice verification remains a release requirement, not legal clearance.
+Nested attached messages must be extracted/saved explicitly before import.
+
+Graph delegated authentication remains the cross-edition future option, requiring
+an application registration and applicable tenant approval. Password capture,
+token copying, or mailbox scraping through the personal browser are not substitutes
+for that authorization. Revisit when new-Outlook-only users require inbox scanning.
+
+## Decision 010: Frozen selections, constrained downloads and original bytes
+
+`application/collection.py` defines provider-independent immutable messages, reviewed
+candidates, progress and results. Outlook scans newest-first by outer received time:
+1–1000 matching messages within 1–30 days, capped at 10,000 inspected items. Duplicate
+and problematic matches count toward N and remain visible; no top-up occurs. The
+preview freezes keys, order and link fingerprints. No HTML is rendered by the GUI.
+
+`adapters/mail/downloads.py` downloads the original verified link, including its Safe
+Links wrapper when present, and validates every hop. The observed smaXtec API route
+may redirect only to the same export object in the confirmed Google storage bucket;
+details are in EMAIL_COLLECTION. No cookies/account tokens are attached. Interstitials,
+authentication challenges, unfamiliar hosts/paths and oversized/non-XLSX responses
+fail without bypass or automatic retry. The remote basename is itself a bearer
+capability and must never enter logs, manifests or SQLite.
+
+`adapters/workbooks.py` validates bounded ZIP/XML content without extracting it or
+opening Excel. All visible data worksheets must provide one consistent supported
+B3 value; blanks, formulas in B3, conflicts and ambiguous identifiers fail. Numeric
+integer cells and digit strings with optional parenthesized annotations are supported;
+text leading zeroes remain intact. Accepted workbooks are renamed without rewriting,
+so existing labels remain unchanged. Public labeling is not implemented.
+
+## Decision 011: Local, recoverable collection state without stored bearer links
+
+`application/collection_service.py` orchestrates downloads; `collection_store.py`
+owns SQLite metadata and a JSON manifest. Output uses the OS-resolved Documents
+folder with a user-selectable root and unique timestamp/ID collection subfolder.
+The journal lives in the user's OS application-data location, not the installation.
+
+Persist the reviewed selection before file work. Record source keys, received times,
+irreversible link fingerprints, saved local names, B3 identity, hashes and curated
+statuses; never store email bodies, subjects, senders, remote names or complete URLs.
+Use exclusive staging, a prepared hash/name record and non-overwriting atomic publish.
+An OS-held collection lock prevents two windows writing one collection concurrently.
+Invalid downloads are not accepted as cow workbooks; incomplete staging is cleaned.
+
+Within one collection, duplicate export links share the first successfully validated
+file. Separate periods for the same B3 cow receive numbered filenames. New collections
+are deliberately independent rather than silently reusing a global downloaded cache.
+Retry incomplete uses the same frozen selection/folder. After restart, users re-select
+the same messages/files and explicitly choose their original collection folder; the
+service checks selection identity/order and existing file hashes using that user and
+computer's journal. Changed/missing completed files fail instead of being overwritten.
+Portable journal migration and automatic mailbox re-query are not implemented.
+
 ## Data and workflow design to preserve
 
 - A future export job records a stable job ID, website farm ID + display name,
@@ -209,11 +289,12 @@ before replacing the current row widgets. The implementation uses Qt's documente
 - Heuristics need version, rationale, inputs, thresholds, and explainable flags.
   Validate against reviewed cases. Keep user oversight and request/rate limits in
   the future unattended collection workflow.
-- Local SQLite is the intended job metadata store once persistence is needed.
-  Keep large source/output files on disk, not in database blobs. No hosted service
-  is required for the initial desktop product.
-- Inbox provider, OAuth setup, organizational consent, download domains, retention,
-  workbook schema, formulas, graph designs, and anomaly rules remain open.
+- Local SQLite stores implemented collection metadata; broader website job persistence
+  remains future work. Keep source/output files on disk, not in database blobs.
+  No hosted service is required for the initial desktop product.
+- Cross-edition OAuth/organizational consent, retention, normalized workbook schema,
+  formulas, graph designs and anomaly rules remain open. Broader provider/download
+  support requires verified examples, not expanded wildcard host allowances.
 
 ## Decision 001: Python + Qt + Playwright
 

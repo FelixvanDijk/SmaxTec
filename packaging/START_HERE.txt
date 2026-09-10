@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.3.0
+SmaxTec Workbench — desktop preview 0.4.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
@@ -17,8 +17,31 @@ SmaxTec Workbench — desktop preview 0.3.0
 No Python, editor, browser driver, or package installation is required.
 Your website password is used for the current session and is not saved by the app.
 
-This preview requests exports but does not collect the resulting emails yet.
-Mailbox connection, Excel consolidation, and graphs are not included.
+COLLECT THE EMAILED FILES — independent of website sign-in
+
+1. Wait until your emails have arrived, then choose Go to collection or scroll down.
+2. Choose Connect classic Outlook and select the right Inbox. Outlook must already
+   be signed in. Workbench does not ask for an email password or token.
+3. Set Latest matching email count and the received-time lookback, then Find export emails.
+   If you only have new Outlook, save your chosen emails as .eml or .msg and use
+   Import saved emails instead. Imports use the files you chose, not the latest inbox count.
+4. Review the list and any warnings. Use Browse to choose where collections are saved.
+5. Choose Download reviewed emails, then Open collection folder.
+   Each file uses its OWN B3 cow number: 203 (new girl) becomes cow-203.xlsx;
+   another cow gets its own number. Repeated cows receive numbered filenames.
+6. Retry incomplete downloads reuses this collection. After restarting Workbench
+   on this computer as the same user, re-select the same emails and choose
+   Resume existing collection to select their original collection folder.
+
+The default root is Documents / SmaxTec Workbench / Collections, resolved for your user.
+Each collection has a separate folder and a collection.json status/identity record.
+Existing workbooks are never overwritten. New collections are independent.
+Emails are not marked read, moved or deleted. Save attached forwarded messages as
+their own .eml/.msg before importing. Corporate access and link-protection policies apply.
+
+Excel is not opened. File sensitivity labels stay unchanged; Public is not applied.
+B3 naming does not verify the website farm, Animal number or export dates.
+Excel consolidation, calculations and graphs are not included yet.
 
 This is an unsigned development preview. The production release will have an
 installer and will be verified on a computer without developer tools installed.

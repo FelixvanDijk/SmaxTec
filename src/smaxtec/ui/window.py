@@ -1,8 +1,8 @@
-"""Desktop connection and export-request workspace."""
+"""Desktop website request and independent email collection workspace."""
 
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -35,6 +35,7 @@ from smaxtec.application.login import (
     LoginSession,
     LoginStage,
 )
+from smaxtec.ui.collection_panel import CollectionPanel
 from smaxtec.ui.cow_editor import CowRequestsEditor
 from smaxtec.ui.export_review import ExportReviewDialog
 from smaxtec.ui.widgets import label
@@ -42,7 +43,12 @@ from smaxtec.ui.worker import SessionWorker
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, session_factory: Callable[[], LoginSession]) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[[], LoginSession],
+        *,
+        collection_panel: CollectionPanel | None = None,
+    ) -> None:
         super().__init__()
         self._session_factory = session_factory
         self._worker: SessionWorker | None = None
@@ -73,27 +79,38 @@ class MainWindow(QMainWindow):
         body.setSpacing(18)
 
         top = QHBoxLayout()
-        top.addWidget(label("WORKSPACE  /  DATA REQUEST", "eyebrow"))
+        top.addWidget(label("WORKSPACE  /  DATA COLLECTION", "eyebrow"))
         top.addStretch()
-        top.addWidget(label("MILESTONE 2", "badge", wrap=False))
+        top.addWidget(label("MILESTONE 3", "badge", wrap=False))
         body.addLayout(top)
         body.addSpacing(8)
         body.addWidget(label("Choose the herd data you need.", "heading"))
         body.addWidget(
             label(
                 "Connect your account, choose a farm, and request measured data "
-                "with a date range tailored to each cow.",
+                "with a date range tailored to each cow. Collect emailed files when they arrive.",
                 "intro",
             )
         )
+        self.collection_jump = QPushButton("Already have the emails? Go to collection  ↓")
+        self.collection_jump.setObjectName("textButton")
+        body.addWidget(self.collection_jump, alignment=Qt.AlignmentFlag.AlignLeft)
         body.addWidget(self._connection_card())
         body.addWidget(self._request_card())
         body.addWidget(self._status_card())
+        self.collection = collection_panel if collection_panel is not None else CollectionPanel()
+        self.collection.idle.connect(self._on_collection_idle)
+        body.addWidget(self.collection)
+        self.collection_jump.clicked.connect(
+            lambda: scroll.verticalScrollBar().setValue(
+                self.collection.mapTo(content, QPoint(0, 0)).y() - 20
+            )
+        )
         body.addStretch()
         body.addWidget(
             label(
-                "Each cow creates one smaXtec export request. Email collection and "
-                "workbook processing are the next milestone.",
+                "Website requests and email collection are separate actions. "
+                "Workbook calculations, combined reports and analysis are the next milestone.",
                 "footnote",
             )
         )
@@ -253,7 +270,7 @@ class MainWindow(QMainWindow):
             widget.style().polish(widget)
 
     def _start(self) -> None:
-        if self._worker is not None:
+        if self._worker is not None or self._closing:
             return
         try:
             credentials = Credentials(self.username.text(), self.password.text())
@@ -353,7 +370,7 @@ class MainWindow(QMainWindow):
         return ExportRequest(farm, self.cow_editor.entries())
 
     def _request_exports(self) -> None:
-        if self._worker is None or self._export_busy:
+        if self._worker is None or self._export_busy or self._closing:
             return
         try:
             request = self._make_request()
@@ -461,9 +478,15 @@ class MainWindow(QMainWindow):
             self.password.setFocus()
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if self._worker is not None:
+        if self._worker is not None or self.collection.is_busy:
             self._closing = True
+            self.centralWidget().setEnabled(False)
             self._stop()
+            self.collection.cancel()
             event.ignore()
         else:
             event.accept()
+
+    def _on_collection_idle(self) -> None:
+        if self._closing:
+            self.close()

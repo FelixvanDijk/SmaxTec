@@ -1,13 +1,38 @@
 # Changelog
 
-## Unreleased — M3 discovery (2026-09-09)
+## 0.4.0 — 2026-09-10 (development preview)
+
+- Add a separate, manually triggered collection section below website requests.
+  Connect an existing classic Outlook profile and explicitly select its Inbox, or
+  import saved `.eml`/`.msg` messages without signing into smaXtec.
+- Review the newest N matching direct/forwarded emails within a received-time window.
+  Freeze selection; report problematic messages and duplicate links without topping
+  up with older messages. Saved-file import is explicitly manual, not an inbox scan.
+- Download through the confirmed smaXtec/Safe Links route, validate every redirect,
+  and reject unsupported hosts, blocked interstitials and non-workbook responses.
+- Inspect XLSX packages without opening Excel, read consistent visible-sheet B3
+  identifiers, and name each original workbook from its own cow number. Ignore a
+  parenthesized annotation, preserve text leading zeroes and avoid file overwrites.
+- Add per-user collection folders, a local SQLite journal and redacted JSON manifest.
+  Retry incomplete downloads or re-select the same emails after restart and resume
+  the existing collection; verify completed file hashes before reusing them.
+- Isolate classic Outlook COM in a bounded helper process; keep collection jobs off
+  the GUI thread and wait for both website and email workers during application close.
+- Add synthetic parser/download/workbook/storage/UI regression coverage and offline
+  helper/packaging checks. All 366 tests and source smoke pass locally. Two supplied
+  forwarded exports were collected successfully, named independently and resumed with
+  hash checks. Packaged CI and client Inbox acceptance are tracked in `docs/PROJECT_STATE.md`.
+- Keep sensitivity labels unchanged. Public assignment, Graph sign-in, automatic
+  website-request correlation, consolidation and analysis are not implemented.
+
+### Earlier M3 discovery
 
 - Documented the requested manual newest-N email collection workflow, direct/forwarded
   link handling, B3-based names, per-user output folders and durable download state.
 - Compared corporate Graph sign-in with classic Outlook integration and recorded
   tenant/Outlook prerequisites, Safe Links safeguards and sensitivity-label boundaries.
 - Inspected the supplied workbook read-only and documented outstanding email samples.
-  This is a design step only: runtime and packaged version remain 0.3.0.
+  That initial design-only step kept runtime 0.3.0 unchanged before this implementation.
 
 ## 0.3.0 — 2026-09-08 (development preview)
 

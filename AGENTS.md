@@ -104,13 +104,24 @@ its number and dates together through requests, results, errors and duplicate gu
 Never restore a single batch-wide range. Folding changes visibility only: validate
 and include every row. Shared dates apply only on an explicit Apply to all action.
 Review must list every unique cow/period; the same cow with another period is distinct.
-The user has now authorized M3 email collection/downloads. Read
-`docs/EMAIL_COLLECTION.md` before implementing it: the mailbox connector choice,
-tenant prerequisites and actual email links must be confirmed first. Runtime 0.3.0
-does not yet implement collection. Keep inboxes read-only, freeze the newest-N
-matching message selection, preserve raw workbook bytes, and never expose bearer
-links or bypass Safe Links/labeling policies. B3 animal name alone does not prove
-the requested Animal number, farm or dates. Analysis remains later work.
+M3 email collection is implemented in runtime 0.4.0; consult `docs/PROJECT_STATE.md`
+for its current verification/release evidence. Read `docs/EMAIL_COLLECTION.md`
+before changing it. Classic Outlook uses the user's configured profile and explicit
+Inbox choice through a bounded helper process; new-Outlook-only users import saved
+`.eml`/`.msg` files. Never add a mailbox password/token prompt or promise that
+corporate access policies require no IT approval. Graph remains a future connector.
+Keep inboxes read-only; freeze the newest-N matching selection including duplicates
+and problematic messages, without topping up. Preserve accepted workbook bytes.
+Validate every redirect through the confirmed Safe Links/smaXtec/exact-bucket route.
+The remote export object name itself is a bearer capability: never persist it,
+even as an "original filename". Keep only irreversible link hashes, source keys,
+received times, verified local filenames/B3 identity and file hashes in provenance.
+Retry/resume only the same reviewed selection and verify completed file hashes;
+never overwrite or automatically request replacement website exports. Resume uses
+the same user/computer's journal; new collections are not globally deduplicated.
+B3 animal name alone does not prove the requested Animal number, farm or dates.
+Excel is not opened and labels remain unchanged; Public assignment is not implemented.
+Analysis remains later work.
 
 No additional agents are required by this file. Delegate only if the user or
 applicable higher-priority instructions explicitly authorize parallel agents.

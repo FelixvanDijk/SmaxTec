@@ -1,5 +1,6 @@
 # PyInstaller spec. Build on Windows for a Windows distribution.
 from pathlib import Path
+from PyInstaller.utils.hooks import copy_metadata
 
 root = Path(SPECPATH).parent
 
@@ -9,7 +10,7 @@ a = Analysis(
     datas=[
         (str(root / "src" / "smaxtec" / "ui" / "theme.qss"), "smaxtec/ui"),
         (str(root / "packaging" / "START_HERE.txt"), "."),
-    ],
+    ] + sum((copy_metadata(package) for package in ("olefile", "defusedxml", "pywin32")), []),
     hiddenimports=[],
     hookspath=[],
     excludes=["tkinter", "pytest", "ruff"],

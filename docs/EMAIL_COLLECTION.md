@@ -1,227 +1,216 @@
-# M3: Email collection design and prerequisites
+# M3: Email collection — implementation and acceptance boundaries
 
-Status: design prepared on 2026-09-09; not implemented. Runtime remains 0.3.0.
-The user has authorized M3. Resolve the connection decision and inspect original
-and forwarded email samples before choosing an adapter or inventing download URLs.
+Status: implemented for development preview **0.4.0**. Full regression, packaged CI
+and client/live acceptance are recorded in `PROJECT_STATE.md`, not implied by this
+design record. The earlier 2026-09-09 proposal is superseded by the decisions below.
 
-## Required outcome
+## Implemented outcome
 
-After checking that exports have arrived, the user opens a new collection section
-below the website request controls. They connect/select their own mailbox, choose
-how many recent export emails to collect, review the selection and download them
-into one clearly identified folder. Excel need not open to identify or rename files.
-Mailbox connection is independent of the smaXtec account/session.
+After checking that export emails have arrived, the user opens **3. Collect your
+emailed exports** below the website controls, or uses the jump link near the top.
+They choose an Inbox or saved email files, review the messages, then explicitly
+download this frozen selection. Collection does not require a smaXtec login and
+never requests replacement website exports automatically.
 
-Initial users receive corporate Outlook mail at AHV and Elanco. Exports may be
-received directly from `noreply@smaxtec.com` or forwarded by another person. There
-is a download link, not a workbook attachment. The supplied screenshot says the
-link is available for **24 hours**. Request order is not arrival order.
+Each accepted workbook is kept as its original bytes and named using **its own**
+B3 identifier. For example, one file with `203 (new girl)` becomes `cow-203.xlsx`;
+another file with `257` becomes `cow-257.xlsx`. These are examples, not constant names.
+No calculations, combined workbook, graphs or verified request correlation exist yet.
 
-Read-only inspection of the supplied local workbook found two worksheets with
-the same numeric-string B3 value, no custom properties, and no macro/external-link
-parts. The file was not modified or opened in Excel. This is one structural sample,
-not a guarantee about every export, spreadsheet identity or corporate label policy.
-Do not commit that workbook, email bodies, screenshot or full download links.
+The screenshot says export links last **24 hours**. Forwarding the message does not
+renew that lifetime, and arrival order does not establish which request a file belongs to.
 
-## Decision to confirm: mailbox connection
+## Connection decision: existing classic Outlook, with saved-email fallback
 
-| Route | User experience | Prerequisites and limitations |
+| Route | Implemented user experience | Boundary |
 | --- | --- | --- |
-| Microsoft Graph delegated OAuth — recommended cross-user route | Connect Microsoft account, normal Microsoft sign-in/MFA, then select an authorized mailbox/folder | Developer/IT-owned app registration and tenant consent/access policies; does not depend on Outlook desktop edition |
-| Classic Outlook adapter — possible initial route if confirmed | Use an already configured Outlook profile and explicitly choose its mailbox | Installed/configured classic Outlook for Windows and permitted programmatic access; does not cover new-Outlook-only users |
-| Import saved email files — possible fallback, not an inbox connector | User selects/saves the desired messages and imports them | No automatic newest-N inbox scan; confirm saved formats and forwarding examples before implementation |
+| Classic Outlook for Windows | Connect classic Outlook, then explicitly select one available Inbox | Requires an installed/configured signed-in classic profile and permitted programmatic access |
+| Saved `.eml` / `.msg` | Import saved emails selected by the user | Works independently of desktop Outlook; manual selection, not a newest-N inbox scan |
+| Microsoft Graph delegated sign-in | Not implemented | Future cross-edition connector requiring an app registration and applicable tenant approval |
 
-Microsoft marks Outlook Object Model/MAPI unsupported in new Outlook. Bundling
-`pywin32` cannot add that capability. New Outlook was running on the development
-computer during inspection; classic COM registration also exists, which does not
-establish that a usable classic profile is configured.
-[Outlook feature comparison](https://support.microsoft.com/en-us/outlook/getstarted/feature-comparison-between-new-outlook-and-classic-outlook).
+A read-only local profile check confirmed **one account and two stores**. This proves
+a configured local classic profile is available, not that all target computers have
+classic Outlook or that both organisations permit every programmatic mailbox operation.
+No account names, store identities or mailbox contents belong in this document.
 
-For Graph, provision a public-client application for organizational accounts; do
-not ship a client secret or capture the mailbox password. Start with delegated
-`Mail.Read`, not Mail.Send/Mail.ReadWrite or organization-wide application access.
-Message bodies are needed for links, so Mail.ReadBasic is insufficient. Shared
-mailboxes require existing user access and the appropriate delegated permission;
-add that capability only when required. Microsoft recommends a registered native
-redirect for interactive desktop authentication. Keep tokens in memory initially.
-[MSAL public clients](https://learn.microsoft.com/en-us/entra/msal/python/getting-started/client-applications),
-[interactive authentication](https://learn.microsoft.com/en-us/entra/msal/python/getting-started/acquiring-tokens),
-[Graph permissions](https://learn.microsoft.com/en-us/graph/permissions-reference),
-[shared mail](https://learn.microsoft.com/en-us/graph/outlook-share-messages-folders).
+Only a separate, bounded helper process imports COM and reads the user's Outlook
+profile. Selecting an Inbox is mandatory; Workbench does not silently choose the
+default account. It never marks mail read, moves, deletes, modifies or sends messages,
+and never calls Quit on the user's Outlook. Cancellation/deadline cleanup ends only
+Workbench's helper. Outlook security prompts are not dismissed or disabled.
+[Outlook protected properties](https://learn.microsoft.com/en-us/office/vba/outlook/how-to/security/protected-properties-and-methods).
 
-Do not promise end-user consent will work: tenant policy, app assignment and
-Conditional Access can require IT involvement. Microsoft's managed recommended
-consent policy excludes ordinary apps' Mail.Read/Mail.Read.Shared user consent.
-The development team/IT owns setup once; ordinary users must not create their own
-registrations, enter client IDs, install packages or edit configuration files.
-Confirm Microsoft 365/Exchange Online hosting rather than inferring it from the
-email domains. Confirm whether Windows broker/device-compliance support is required.
-[Consent policies](https://learn.microsoft.com/en-gb/entra/identity/enterprise-apps/manage-app-consent-policies).
+New Outlook does not expose the classic Object Model/MAPI interface; merely having
+Outlook downloaded does not establish COM support. Its users can save their chosen
+messages and use import. [Microsoft's feature comparison](https://support.microsoft.com/en-us/outlook/getstarted/feature-comparison-between-new-outlook-and-classic-outlook).
 
-For classic Outlook, never silently use the default account. Enumerate permitted
-accounts/stores, obtain explicit selection, and use that store's Inbox. The supplied
-example's Namespace.GetDefaultFolder selects the default store. HTMLBody/Body and
-address properties can trigger Outlook's programmatic-access guard. Never disable
-it. Isolate COM work in a bounded helper process if prompts can block cancellation;
-do not call Quit on the user's Outlook application.
-[Store Inbox](https://learn.microsoft.com/en-us/office/vba/api/outlook.store.getdefaultfolder),
-[protected properties](https://learn.microsoft.com/en-us/office/vba/outlook/how-to/security/protected-properties-and-methods).
+Workbench does not collect an email password, ask users to copy authentication tokens,
+or borrow their personal browser session. It relies on the sign-in already configured
+in classic Outlook. This avoids provisioning a separate Graph application for this
+connector, but is **not a guarantee that IT involvement is unnecessary**: corporate
+programmatic-access, device and link-protection policies still apply. Never bypass them.
 
-## GUI and selection contract
+If automatic inbox access is required for new-Outlook-only users, revisit Graph using
+a registered public-client app and minimum delegated read permission. Microsoft sign-in/
+MFA does not remove app registration or tenant consent prerequisites. The development
+team/IT owns that setup, not ordinary users; no client secret belongs in a desktop app.
+[Public client authentication](https://learn.microsoft.com/en-us/entra/msal/python/getting-started/client-applications),
+[consent policies](https://learn.microsoft.com/en-gb/entra/identity/enterprise-apps/manage-app-consent-policies).
 
-Proposed controls (labels can be refined during visual testing):
+## Exact selection semantics
 
-1. **3. Collect emailed exports** — separate account status and Connect/Disconnect.
-2. Mailbox/folder selection (Inbox by default), **Latest [10] matching emails**,
-   visible received-date/lookback controls and **Save to [folder] / Browse**.
-3. **Find export emails** — user-triggered; no polling or automatic downloads.
-4. A scrollable preview: received time, sender, subject, direct/forwarded status,
-   previous collection status and any ambiguity/expiry warnings.
-5. **Download these N emails** — freezes the reviewed message IDs; progress,
-   cancellation, per-item errors and an **Open collection folder** action.
+- **Latest** accepts 1–1000 matching emails, default 10; received-time lookback is
+  1–30 days, default 1. The helper scans descending outer ReceivedTime, checks ordering,
+  inspects at most 10,000 items and has a 120-second overall helper deadline.
+- N counts qualifying export messages, not arbitrary Inbox mail or guaranteed files.
+  Duplicate links and problematic matches stay in the selection. A message with
+  multiple different valid export links is an issue, not a guessed choice.
+- The preview displays received time, sender, subject, direct/forwarded source and
+  ready/duplicate/problem status as inert text. It does not render HTML, load images
+  or expose URLs. Warnings cover fewer matches and scan limitations.
+- **Download reviewed emails** uses exactly the immutable candidates displayed.
+  Later arrivals do not change them; duplicates, failures and missing links do not
+  cause top-ups. Changing Inbox/scan settings invalidates review.
+- **Import saved emails** processes only selected `.eml`/`.msg` files and is labelled
+  manual. Inbox Latest/lookback settings do not silently filter imports. The same
+  exported message saved in both formats may resolve to the same export-link
+  fingerprint and is treated as a duplicate within the resulting collection.
 
-"Latest 10" means ten qualifying messages, newest by the chosen folder's received
-time, not the ten newest arbitrary inbox messages. For forwarded mail this is the
-outer message's received time, not the original export creation time. Pagination
-must be ordered and bounded. Show when a scan/lookback limit was reached or fewer
-than N matches were found. Do not silently scan an entire mailbox indefinitely.
-[Graph paging/order](https://learn.microsoft.com/en-us/graph/api/user-list-messages?view=graph-rest-1.0).
+Direct recognition uses the actual SMTP sender `noreply@smaxtec.com` and known export
+content. Inline forwarded mail needs recognizable export content and a verified
+download-link pattern. A display name or quoted From text is not authentication by
+itself; the downloader's constrained origin/path policy remains mandatory.
 
-Freeze the candidate selection for review and download: a new email arriving later
-must not change it. Exact duplicate links/messages are reported, not silently
-replaced with older messages. If one email contains multiple different export links,
-require explicit disambiguation; N emails does not automatically mean N cows/files.
-Failures do not "top up" the batch with older emails. Requesting new website exports
-is never a side effect of collection, retries or expired links.
+Saved MIME messages use Python's email parser; MSG uses a bounded `olefile` reader
+for known root message properties and HTML/plain-text body streams. RTF and attached
+message recursion are not implemented. For a forward containing an attached `.eml`
+or `.msg`, save/extract that attached message and import it explicitly. Do not expand
+this into arbitrary attachment extraction or silently import unrelated attachments.
 
-Inbox access is read-only: do not mark read, move, delete or modify messages.
-Do not render HTML or load email images/scripts. Recognize direct sender SMTP
-exactly; forwarded mail needs both recognizable export content and a verified
-download-link pattern. Quoted From text/display names are not authentication.
-Attached-message forwards (`.eml`/`.msg`) need explicit support/tests if present.
+## Confirmed download route and trust boundary
 
-## Download trust boundary
+Supplied forwarded examples established these route shapes. No actual object
+identifier is recorded: **the remote export basename itself is a bearer capability**.
 
-Inspect the actual href and redirect chain from authorized original/forwarded
-samples before implementing the production allowlist. The screenshot alone cannot
-establish the host, signature parameters, Safe Links wrapping or landing-page flow.
-All development/CI fixtures must use synthetic messages and links.
+| Hop | Allowed shape |
+| --- | --- |
+| Microsoft Safe Links, if present | Recognized `*.safelinks.protection.outlook.com` wrapper carrying the verified export destination |
+| smaXtec | `https://api.smaxtec.com/api/v2/data/downloads/export-….xlsx` |
+| Storage redirect | `https://storage.googleapis.com/anthilldata_excel_exports/` followed by the **same** export object |
 
-- Allow only confirmed HTTPS origins/path patterns. Validate every redirect,
-  with bounded redirect count, size, duration and cancellation. Reject URL
-  credentials, insecure protocols, private/local/link-local destinations,
-  unexpected ports and unrecognized hosts. Do not allow all AWS/Azure domains.
-- Never include website/Microsoft tokens or cookies in file-host requests. Use an
-  isolated downloader; direct HTTP versus a browser-mediated download depends on
-  the verified flow and corporate protection behavior.
-- Preserve Safe Links checks. Its embedded destination may aid classification,
-  but do not fetch that destination directly to skip a warning or block. Do not
-  click through security warnings or disable TLS/proxy protections.
-- Handle expired/access-denied links, authentication challenges, interrupted
-  downloads and HTML instead of XLSX as explicit failures. A generic 403 alone
-  does not prove expiration. No unbounded retries.
-- Treat full URLs as bearer secrets: never log, persist in manifests, display in
-  diagnostics or include in exception text. Store only opaque source IDs and
-  irreversible fingerprints as needed for deduplication.
+The production allowlist is the exact host/bucket/path relationship, not all Google
+storage or other cloud-hosted files. The unwrapped API URL is used only to classify
+and fingerprint a Safe Links target; the actual download starts at the original
+wrapper and retains its checks. Wrapper nesting, redirects, time and size are bounded.
+Every hop must preserve the intended object. Unknown hosts, changed objects, URL
+credentials, insecure schemes, unexpected ports and private network destinations
+are rejected. No website/Microsoft cookies, credentials or tokens accompany requests.
 
-Microsoft documents Safe Links as URL rewriting plus time-of-click checks.
-[Safe Links](https://learn.microsoft.com/en-us/defender-office-365/safe-links-about).
+A Safe Links warning/interstitial is not a workbook and is never clicked through.
+HTML/JSON/error responses, authentication challenges, invalid redirects, unavailable
+links and interrupted/oversized downloads produce curated errors. An unavailable link
+is not automatically diagnosed as expired. No download or website submission retries
+occur without a user action. [Microsoft Safe Links behavior](https://learn.microsoft.com/en-us/defender-office-365/safe-links-about).
 
-## Workbook validation and cow identity
+Downloads have a 100 MiB compressed-file limit and 90-second overall deadline,
+with short bounded network operations. Cancellation can stop waiting for system DNS;
+at most one such background call may remain outstanding per downloader and it cannot
+write a workbook. Its late response is discarded/closed before another attempt.
 
-Validate the file itself, not merely its name or MIME type. Bound compressed size,
-ZIP member count/uncompressed sizes and XML parsing; reject archive traversal,
-macro-capable/unexpected formats and suspicious structures. Do not extract ZIP
-members into arbitrary paths or execute formulas, macros or external links.
-If using openpyxl, include its recommended XML hardening; do not rewrite files just
-to rename them. [openpyxl security notes](https://openpyxl.readthedocs.io/en/stable/).
+Never log, display or persist complete URLs, the remote filename/object name, raw HTTP
+exception strings or response bodies. Persist only irreversible fingerprints and
+curated status. The final local `cow-…xlsx` filename is safe application metadata,
+not the remote capability-bearing basename.
 
-Read B3 from the agreed data worksheet(s). Confirm worksheet selection using further
-samples; detect conflicting B3 values rather than trusting the active sheet. A blank,
-formula, error or ambiguous identifier is a visible validation failure.
+## Workbook validation and identity
 
-For text identifiers, accept an anchored numeric value with an optional parenthesized
-annotation: `203 (new girl)` becomes `203`; `00203` remains `00203`. Do not simply
-remove every nondigit: `203/204` must not become `203204`. Specify and test numeric
-cell handling separately. Keep the original B3 text as provenance outside Git.
+The inspector uses ZIP and hardened XML parsing, not Excel automation or workbook
+rewriting. It validates package structure, CRCs, relationship paths and content types,
+with limits on member count, expansion, XML size and compression ratio. No member is
+extracted to an arbitrary path. Encrypted, macro/embedded/external-active or otherwise
+unsupported packages are rejected.
 
-B3 is an **animal name**, whereas website lookup uses **Animal number**. Their
-equality must not be assumed universally. B3 alone cannot prove farm, export period
-or which website batch produced a workbook. Newest-N collection remains independent;
-record any requested batch as context, not a verified match. Farm/period reconciliation
-requires confirmed workbook metadata and later acceptance tests.
+All **visible** data worksheets must contain a supported, consistent B3 identity.
+Blank/missing cells, formulas in B3, error values, conflicting identifiers and ambiguous
+names fail visibly. The rules remain conservative until more schemas are reviewed.
 
-## Destination, naming and durable state
+- Text `203 (new girl)` becomes `203`; text `00203` preserves its leading zeroes.
+- A supported numeric integer becomes its decimal digit identifier. Numeric cells
+  cannot preserve formatting-only leading zeroes that were not stored as text.
+- `203/204` is rejected, never combined into `203204`.
+- Original B3 text remains in local provenance. Accepted bytes are unchanged;
+  failed downloads/identification do not enter the collection as cow files.
 
-Offer the OS-resolved Documents folder via Qt standard paths, not a username,
-hardcoded drive or assumed OneDrive directory. Let the user change it with Browse.
-Proposed default: `Documents/SmaxTec Workbench/Collections/`.
-Create a unique timestamp + random-ID folder for every reviewed collection.
+B3 is an **animal name**, whereas website lookup uses **Animal number**. Equality is
+not guaranteed. Collection does not verify farm, period, requested cow number or the
+originating website batch. Future normalization/correlation requires representative
+metadata samples and explicit acceptance criteria.
 
-Within it, retain validated original bytes under names such as `cow-203.xlsx` and
-`cow-203__02.xlsx`. Multiple periods for one cow are legitimate. Never overwrite a
-previous file, trust a server filename as a path, or modify unrelated Downloads files.
-Stage incomplete data separately and publish completed files atomically with
-collision-safe reservation. Failed identification can be quarantined and surfaced
-for review; it must not silently enter future analysis as validated cow data.
+## Destination, duplicates and durable recovery
 
-Add a small local SQLite collection journal in the OS-resolved per-user application
-data directory, plus a useful manifest in the collection folder. Record batch/item
-IDs, selected mailbox/folder reference, source message ID/received time, app version,
-status/error code, original/saved filename, cow identifier and SHA-256. Do not store
-email bodies, credentials, session cookies or bearer links.
+The default root is the OS-resolved Documents folder plus
+`SmaxTec Workbench/Collections`. Browse lets each user choose another location.
+The installation folder, a hardcoded username, Downloads and a particular OneDrive
+path are never assumed. New collections receive unique timestamp/ID subfolders.
 
-Persist the reviewed selection before download work. Record per-item progress so
-cancellation, a crash or restart does not lose completed files. Retry only explicitly
-selected failed items, reacquiring links from authorized messages rather than storing
-bearer URLs. Reconcile an interrupted publish by verifying the file/hash; never
-silently overwrite. Present previously collected items as such, with an explicit
-reuse/retry choice; do not silently skip them and substitute older messages.
+`cow-203.xlsx`, `cow-203__02.xlsx`, etc. preserve different workbooks for the same
+identifier without overwriting. Exact duplicate export links within a collection
+refer to the first successfully validated file. **New collections are independent**;
+no global cache silently suppresses newly selected messages.
 
-## Sensitivity labels: separate, policy-aware capability
+`application/collection_store.py` writes a SQLite journal in the per-user OS application
+data location and `collection.json` in each output folder. It records collection ID,
+version, ordered opaque source keys, received times, link fingerprints, saved filenames,
+B3 identity, content hashes and curated statuses. Bodies, subjects, senders, account
+credentials, remote basenames and bearer links are not persisted there.
 
-Reading ordinary XLSX bytes without Excel avoids triggering Excel's open/save label
-UI. It does **not** classify the file as Public or establish permission to leave it
-unlabeled. Mandatory labeling is documented as an Office open/save behavior;
-confirm the organisation's actual policy for this automated collection workflow.
-[Office labeling behavior](https://learn.microsoft.com/en-us/purview/sensitivity-labels-office-apps).
+Reviewed selection is journaled before work. A prepared local filename/hash is recorded
+before non-overwriting atomic publication. An OS collection lock prevents concurrent
+writers; completed-file hashes reconcile interrupted publication. Workbooks are not
+rewritten. Normal failure/cancellation cleans incomplete staging; cleanup failure
+must stay visible instead of masquerading as a completed file.
 
-Preserve original metadata and encryption. Do not downgrade an existing label,
-fabricate Public metadata or bypass restrictions on protected files. If automatic
-Public labeling is required for these exports, obtain each organisation's published
-label mapping and approval and choose a supported authenticated mechanism. Excel's
-SensitivityLabel API requires compatible Excel; Microsoft Information Protection
-SDK introduces additional identity/runtime/deployment requirements. The displayed
-name alone is not a universal label ID. Save and verify a labeled copy while retaining
-the original; report "label unchanged" unless labeling actually succeeded.
-[Excel label API](https://learn.microsoft.com/en-us/office/vba/api/excel.workbook.sensitivitylabel),
-[SetLabel](https://learn.microsoft.com/en-us/office/vba/api/office.sensitivitylabel.setlabel),
-[MIP prerequisites](https://learn.microsoft.com/en-us/information-protection/develop/setup-configure-mip).
+**Retry incomplete downloads** reuses the same in-memory selection/folder.
+After restart, re-select the same original messages/files, review them, then choose
+**Resume existing collection** and its previous folder. The same user's local journal
+must exist on the same computer. Keys, fingerprints and order must match; no bearer
+URLs are recovered from storage and no old emails are automatically rescanned.
+Changed/missing completed files cause a protective failure, not an overwrite.
+Cross-computer journal migration and retention/backup automation are future work.
 
-## Implementation slices and acceptance tests
+## Sensitivity labels are unchanged — not Public
 
-1. Resolve mailbox route/tenant prerequisites; inspect sanitized original and
-   forwarded message structures, href/redirect behavior, worksheet identity and policy.
-2. Add typed mailbox/message/collection contracts and read-only candidate discovery
-   through the selected adapter. Test mixed inboxes, pagination, multiple accounts,
-   forwarding, ambiguity, latest-N boundaries and frozen selections.
-3. Add download validation, B3 extraction, collision-safe files and durable collection
-   state. Test expired/blocked/redirected links, hostile HTML/XML/ZIP, invalid IDs,
-   repeated cows/different periods, cancellation, resume and filesystem errors.
-4. Add the GUI card, review table, progress/results and folder actions with blocking
-   work off the GUI thread. Verify account disconnect and application shutdown.
-5. Verify label handling only against approved policies/methods, preserving originals.
-6. Run full regressions and packaged Windows smoke tests. Perform a narrowly scoped,
-   user-approved live collection against both organisations and direct/forwarded mail.
-   Confirm no mailbox changes and no credentials/links in repository or diagnostics.
+Ordinary XLSX bytes can be inspected without Excel, so collection does not trigger
+Excel's interactive label picker. It does **not** apply Public, grant permission to
+leave a file unlabeled, or change classification/encryption. The UI/manifest say labels
+are unchanged. Protected/unsupported files are rejected, not decrypted or downgraded.
+[Office label behavior](https://learn.microsoft.com/en-us/purview/sensitivity-labels-office-apps).
 
-### Inputs still needed
+If approved automatic Public labeling is required, obtain each tenant's published
+label mapping and approved authenticated mechanism. Do not fabricate label metadata
+or assume a display name maps to a universal ID. Preserve the original and verify
+a separately labeled copy. That capability is not implemented in this slice.
+[Excel label API](https://learn.microsoft.com/en-us/office/vba/api/excel.workbook.sensitivitylabel).
 
-- Must the initial release support new Outlook/browser-only users, or is classic
-  Outlook installed/configured for everyone?
-- Who can own an approved Microsoft app registration and arrange AHV/Elanco consent
-  if Graph is selected? Confirm mailbox hosting and any shared-mailbox need.
-- One original and one representative forwarded export email as `.eml`/`.msg` or
-  their local paths. Keep full URLs private; a screenshot is insufficient for hrefs.
-- Whether Public must be applied by this workflow itself; if so, tenant-specific
-  approved label details and a supported authenticated labeling method.
+## Verification and remaining acceptance work
+
+Synthetic coverage spans parsing, newest-N selection, hostile links/workbooks, duplicates,
+recovery, frozen reviews, cancellation and coordinated shutdown. Offline helper tests
+reject an invalid action before COM access, including source/pythonw private pipes.
+Full-suite and bundle results must be checked in PROJECT_STATE; synthetic passes
+do not establish live client behavior.
+
+Before calling M3 accepted:
+
+1. Verify the supplied forwarded samples through the implemented download/inspection
+   path where links remain usable; retain only sanitized outcome evidence in Git.
+2. Obtain an original direct email and verify it live; direct fixtures alone cannot
+   establish real-world coverage. Verify forwarding in both organisations.
+3. Confirm Outlook editions/profiles, programmatic-access prompts, Safe Links and
+   enterprise proxies on client computers. Do not promise no IT involvement.
+4. Confirm preserving labels is acceptable; Public assignment requires separate
+   approval/configuration and implementation if mandatory.
+5. Pass full regression and packaged smoke; review locked dependency notices,
+   signing/installation gates, same-user recovery and errors on clean targets.
+6. Obtain representative schemas before farm/date reconciliation, calculations,
+   combined reports or analysis.

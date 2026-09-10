@@ -1,13 +1,14 @@
 """Application composition and entry point."""
 
+from __future__ import annotations
+
 import os
 import sys
 from importlib.resources import files
+from typing import TYPE_CHECKING
 
-from PySide6.QtWidgets import QApplication
-
-from smaxtec.adapters.smaxtec.login import SmaxtecLoginSession
-from smaxtec.ui.window import MainWindow
+if TYPE_CHECKING:
+    from smaxtec.ui.window import MainWindow
 
 
 def configure_runtime() -> None:
@@ -19,12 +20,23 @@ def configure_runtime() -> None:
 
 
 def create_window() -> MainWindow:
+    from smaxtec.adapters.smaxtec.login import SmaxtecLoginSession
+    from smaxtec.ui.window import MainWindow
+
     window = MainWindow(SmaxtecLoginSession)
     window.setStyleSheet(files("smaxtec.ui").joinpath("theme.qss").read_text(encoding="utf-8"))
     return window
 
 
 def main() -> int:
+    # The private helper must not construct Qt, a browser, or a desktop window.
+    if "--outlook-helper" in sys.argv:
+        from smaxtec.adapters.mail.outlook_helper import main as outlook_helper_main
+
+        return outlook_helper_main()
+
+    from PySide6.QtWidgets import QApplication
+
     configure_runtime()
     app = QApplication(sys.argv)
     app.setApplicationName("SmaxTec Workbench")

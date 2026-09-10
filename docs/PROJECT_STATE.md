@@ -1,8 +1,9 @@
 # Project state — start here each session
 
-Last updated: 2026-09-09. **Runtime 0.3.0 remains unchanged; M3 collection design prepared.**
-Next: resolve Outlook/Graph prerequisites and inspect original/forwarded email links,
-then implement the collection slice described in `EMAIL_COLLECTION.md`.
+Last updated: 2026-09-10. **Runtime 0.4.0 implements manual email collection.**
+Supplied forwarded EML/MSG samples were successfully downloaded and named from B3.
+Next: client acceptance of Inbox selection/collection on target machines, then agree
+M4 workbook schema and calculations. Final Windows build evidence is recorded below.
 
 ## User intent and scope
 
@@ -17,27 +18,44 @@ substantial milestones. M1 was login; M2 is farm/cow/date selection and export
 requests. The user has now authorized M3 email collection and B3-based file naming.
 Do not begin calculations or workbook restructuring before their later milestone.
 
-## M3 discovery — 2026-09-09
+## M3 implementation and acceptance boundaries
 
-- User needs an independent, manually triggered GUI collection section: newest N
-  matching smaXtec export emails, direct or forwarded, safe link downloads, and a
-  portable user-selected folder containing cow-named original workbooks.
-- Reviewed the supplied screenshot: export links have a stated 24-hour lifetime.
-  Inspected the named local sample read-only: both worksheets have the same numeric
-  B3 string. No file changes, Excel launch, label changes or mailbox access occurred.
-- New Outlook is running locally; classic Outlook COM is registered but an accessible
-  classic profile was not verified. The sample pywin32 approach is classic-only.
-- Researched official Microsoft authentication, Outlook compatibility, Safe Links and
-  label APIs. Recommended cross-user route is Graph delegated sign-in, subject to
-  an approved app registration and tenant policy. Classic Outlook remains conditional
-  on the deployment population; do not silently assume it exists for all users.
-- `docs/EMAIL_COLLECTION.md` records proposed GUI, frozen newest-N semantics,
-  forwarded-email trust checks, safe downloads, B3 limitations, portable output,
-  durable collection state, labeling policy boundaries and acceptance tests.
-- Pending user answers: Outlook edition coverage, availability of IT/app consent,
-  original and forwarded `.eml`/`.msg` examples/paths, and actual label requirements.
-  No runtime/dependency changes or new email feature are implemented in this step.
-  The 59-test/Windows build evidence below applies to unchanged version 0.3.0.
+- User confirmed Outlook is installed and prefers avoiding separate tenant setup;
+  edition coverage is still unknown. Implemented configured **classic Outlook**
+  access, with manual `.eml`/`.msg` import for new-Outlook-only machines. Graph is
+  not implemented. Corporate programmatic-access policies may still require IT.
+- Collection is independent of website login. Connect classic Outlook, explicitly
+  choose an Inbox, find the latest N matching messages, review and download. No
+  automatic polling or changes to read flags/messages. Counts include duplicates
+  and problematic matching emails; failures do not substitute older messages.
+- The production helper successfully discovered two local Inbox choices. This was
+  profile discovery only: no live Inbox messages were scanned. Newest-N scanning is
+  covered with synthetic COM fixtures; end-to-end live Inbox acceptance is pending.
+- The four supplied saved emails (two forwarded examples in EML and MSG) matched
+  two unique exports. The actual production pipeline followed their Safe Links,
+  smaXtec API and exact storage-bucket redirects, downloaded two original XLSX files,
+  read two different B3 identities, named each correctly, reported the other two
+  messages as duplicates, then resumed the same folder with hash verification.
+- Live samples revealed legitimate internal `../comments` and `../drawings` OOXML
+  references. The reader now resolves these inside the package while rejecting
+  above-root escapes; ZIP member traversal and external/active content remain rejected.
+- No original direct email was supplied: direct-mail recognition is synthetically
+  verified only. Attached-message forwards/RTF-only MSG are unsupported; use a saved
+  standalone message/EML. Forwarded arrival time does not renew the stated 24-hour link.
+- Output defaults to OS Documents/SmaxTec Workbench/Collections, with Browse and a
+  unique folder per collection. SQLite lives in Qt AppLocalDataLocation. Durable state
+  stores source hashes, status, B3 and file hashes, never bodies, URLs or remote export
+  basenames (which are bearer capabilities too). Resume requires the same ordered
+  selection, same user/computer journal and original folder; it never overwrites files.
+- Excel is never opened; raw bytes and existing labels remain unchanged. This does
+  **not** apply Public. Tenant-approved classification details are required if that
+  capability is mandatory. Protected or unsupported workbooks fail visibly.
+- B3 is an animal name, not independently verified Animal number/farm/date correlation.
+  This milestone does not confirm website date semantics or perform calculations.
+- Runtime dependencies added: defusedxml, olefile, Windows-only pywin32; hash lock
+  updated. A full MSG parser was considered but not retained due to distribution
+  licensing/dependency scope. New dependency metadata/license notices ship in the bundle.
+- Read `EMAIL_COLLECTION.md` and architecture Decisions 009–011 before extending this.
 
 ## Repository
 
@@ -53,9 +71,9 @@ Do not begin calculations or workbook restructuring before their later milestone
   verifies the identity origin/form destination, fills credentials, submits once,
   verifies authenticated navigation markers, and uses an isolated browser for
   serialized farm discovery and an export batch. Subsequent batches reconnect as below.
-- Credentials are in memory only. Export requests are implemented; session persistence,
-  mailbox access, downloaded files, workbook calculations, graphs and anomaly detection
-  are not implemented yet.
+- Website credentials are in memory only. Export requests, read-only classic Outlook
+  selection, saved-email import and validated downloads are implemented. Website-session
+  persistence, workbook calculations, graphs and anomaly detection remain later work.
 - `Start SmaxTec.cmd` in the repository root opens the GUI with the existing local
   `.venv` so the user can test by double-clicking. It installs nothing and applies
   only to a prepared developer working folder, not fresh end-user installations.
@@ -68,7 +86,7 @@ Do not begin calculations or workbook restructuring before their later milestone
 - The worker now holds a serialized command queue on the browser-owning thread.
   The adapter scans farms after login, selects one exactly, opens Animals, searches
   only Animal number, confirms an exact row, selects Measured data, fills dates and
-  submits one export per cow. Email retrieval remains unimplemented.
+  submits one export per cow. Independent collection is available in the third GUI card.
 - Version 0.2.1 closes the browser after every completed or failed export batch.
   The next reviewed request automatically signs into a fresh isolated browser using
   credentials retained only in worker memory. Farm choices refresh, selected farms
@@ -83,9 +101,23 @@ Do not begin calculations or workbook restructuring before their later milestone
 - Module map: `application/exports.py` defines `CowExport` and batch/result types;
   `ui/cow_editor.py` owns editable rows and folding; `ui/export_review.py` displays
   the complete frozen batch; `ui/widgets.py` shares plain-text and strict date fields.
+- Collection module map: `ui/collection_panel.py` and `collection_worker.py` own the
+  independent review/worker lifecycle; `application/collection*.py` own contracts,
+  orchestration and SQLite state; `adapters/mail/` owns Outlook helper, message parsing
+  and bounded downloads; `adapters/workbooks.py` owns read-only ZIP/XML B3 validation.
 
 ## Verification and packaging evidence
 
+- 0.4.0: **366 tests passed** locally (116 seconds), with lint, formatting,
+  dependency checks and source smoke passing. Coverage includes direct/forwarded
+  parsing, Safe Links, bounds/cancellation, exact newest-N selection, per-file B3,
+  real OOXML relationship resolution, file collisions, frozen-selection resume,
+  interrupted publication/hash guards, helper IPC and both-worker GUI shutdown.
+  Final Windows CI is pending; earlier 0.3.0 evidence does not prove the new bundle.
+  The production sample-download and profile-discovery results above are live verified.
+  Native Windows collection UI was visually checked at 1020px minimum width, including
+  local received timestamps, a bounded preview and visible status columns. Source smoke
+  (Qt, Chromium, XML/OLE parsers, COM-module imports and private helper IPC) passed.
 - Version 0.3.0: all **59 tests passed** locally (121 seconds), plus lint, formatting,
   dependency checks and the source Qt/Chromium smoke test. Coverage includes
   individual date preservation, 300-row editing/review, shared-date apply/undo,
@@ -189,9 +221,9 @@ Do not begin calculations or workbook restructuring before their later milestone
 1. Confirm deployment OS coverage, distribution audience, branding, and signing.
 2. Confirm individual-period 0.3.0 requests, compact/expanded editing and consecutive
    batches without credential re-entry; check email counts and inclusive date semantics.
-3. Confirm Microsoft 365 hosting, connector prerequisites and shared-mailbox behavior;
-   inspect original/forwarded email examples and approved download hosts. The supplied
-   email states 24 hours; forwarded arrival time does not reset link lifetime.
+3. Client-test configured classic Outlook on both organisations' computers, explicit
+   Inbox choice and direct/forwarded newest-N results. Confirm new-Outlook-only coverage,
+   shared stores, enterprise proxies and any mandatory classification requirements.
 4. Representative sanitized Excel files: schema, units, timezones, missing values.
 5. Exact calculations, workbook layout, graph types, and configuration controls.
 6. Versioned anomaly rules, validation cases, execution schedule and review policy.
@@ -202,11 +234,12 @@ Do not begin calculations or workbook restructuring before their later milestone
 2. Record the client's per-cow-date result: individually reviewed periods, folded
    row editing, automatic reconnection, workbook boundaries and email timing without
    committing credentials, message links, personal data or source workbooks.
-3. Read `EMAIL_COLLECTION.md` and resolve the pending user/IT inputs. Mailbox
-   connection must be independent of the website worker. Add persistent collection
-   state before resumable downloads; no inbox polling is requested for this slice.
-4. Request sanitized email/Excel examples when reaching the relevant milestone;
-   do not select an inbox provider or invent schemas early.
+3. Read `EMAIL_COLLECTION.md`, test live Inbox collection without modifying messages,
+   and verify failed/cancelled collection recovery using the same reviewed selection.
+   No polling, Graph setup or Public assignment is implemented or implied.
+4. For M4 obtain reviewed workbook metadata/schema, units, timezone, exact formulas
+   and desired master layout. Reconcile farm/Animal number/periods before analysis;
+   never infer verified request matches from B3 or email arrival order.
 5. Before distribution beyond development, resolve signing/installation on the
    target computers and pass the gates in `RELEASING.md`.
 

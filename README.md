@@ -5,11 +5,12 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-The first milestone is complete. The second adds dynamic farm selection, one or
-more exact cow numbers, individual date ranges and measured-data export requests. Login and
-the M2 website structure are live-verified; exports and failure paths are covered
-against a synthetic site. Inbox integration, workbooks and analysis follow.
-See [current status](docs/PROJECT_STATE.md) for evidence and limitations.
+Version 0.4.0 adds collection of emailed exports to the existing farm/cow/date
+request workflow. Use a configured classic Outlook profile or import saved email
+files, review the selection, then collect original workbooks named from each file's
+B3 cow identifier. Consolidation, calculations and analysis remain later work.
+See [current status](docs/PROJECT_STATE.md) for verified evidence and remaining gates;
+implementation is not a claim that client acceptance or a production release is complete.
 
 ## Test on the current development computer
 
@@ -21,8 +22,7 @@ Connect with your smaXtec email and password and choose a farm. Enter a cow numb
 with its own From and To dates, then **Add cow** for each additional entry.
 Choose **Review and request exports** and check the full table to submit one measured-
 data export per exact cow and period. Complete any extra verification in the browser
-if prompted. Choose **Disconnect** to close the session. The app does not collect
-the resulting emails yet.
+if prompted. Choose **Disconnect** to close the website session.
 
 Enter both dates as complete `DD/MM/YYYY` values in each row. After five rows the
 middle folds away; **Expand all** opens the full scrollable list, and **Compact view**
@@ -44,6 +44,39 @@ memory until you disconnect or close Workbench.
 The launcher is for this prepared working folder. It does not replace the bundled
 distribution for other computers; a fresh source checkout needs developer setup.
 
+## Collect the emailed Excel files
+
+Collection works independently of website sign-in. When the emails have arrived,
+use **Go to collection** or scroll to **3. Collect your emailed exports**.
+
+1. Select **Connect classic Outlook**, then explicitly choose the correct Inbox.
+   Outlook must already be installed, configured and signed in; Workbench never
+   asks for an email password or an authentication token. Corporate policies still apply.
+2. Choose **Latest** matching email count and the received-time lookback in days,
+   then **Find export emails**. This counts matching exports, not arbitrary inbox mail.
+   For new-Outlook-only users, save the desired emails as `.eml` or `.msg` and use
+   **Import saved emails** instead; that imports the chosen files, not the latest N.
+3. Review the full list, including duplicates and warnings. Change the output root
+   with **Browse** if needed, then **Download reviewed emails**. New arrivals and
+   failures cannot silently replace items in this reviewed selection.
+4. Choose **Open collection folder**. Every workbook uses its own B3 identifier:
+   `203 (new girl)` becomes `cow-203.xlsx`, while another cow gets its own filename.
+   Further files for the same cow receive numbered suffixes and never overwrite.
+
+The default root is your Windows Documents folder under
+`SmaxTec Workbench/Collections`; each collection gets its own timestamped folder.
+`collection.json` records file status, identity and hashes without email links.
+Use **Retry incomplete downloads** for the same collection. After restarting on
+the same user/computer, re-select the same emails and use **Resume existing collection**
+to choose their original folder. New collections are independent, not globally deduplicated.
+
+No emails are marked read, moved or deleted. An email forwarded as an attachment
+must first be saved/extracted as its own `.eml` or `.msg`. Link expiry remains tied
+to the original export, not when it was forwarded. Blocked security checks are not bypassed.
+Excel is not opened and labels are **unchanged**, not automatically set to Public.
+B3 is an animal name; collection does not verify the website farm, Animal number
+or requested date period. Check these before later analysis.
+
 ## Download the packaged desktop preview
 
 Download the `SmaxTec-Workbench-windows-preview` artifact from the latest successful
@@ -52,11 +85,13 @@ artifact wrapper and the included application ZIP, and open `SmaxTec Workbench.e
 Keep its `_internal` folder alongside it. The runtime and browser are included.
 CI artifacts expire after 14 days; these are development previews, not releases.
 
-This version signs into smaXtec and requests measured-data exports for the reviewed
-farm, exact cow numbers and individual date ranges. Credentials are entered in the GUI and are
-not saved. The unsigned executable was denied execution on the current development
-computer, although it passed the independent Windows CI smoke test. Target-machine
-approval/signing and the polished installer remain release work.
+Website credentials are entered in the GUI and are not saved. The unsigned
+executable was denied execution on the current development computer; prior versions
+passed independent Windows CI smoke tests. Consult current status for 0.4.0 build
+evidence rather than assuming a successful earlier artifact includes this feature.
+Target-machine approval/signing, third-party license review and the polished
+installer remain release work. Classic Outlook connection requires classic Outlook;
+having only new Outlook installed does not add that automation interface.
 
 ## Project memory
 

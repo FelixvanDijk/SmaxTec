@@ -20,7 +20,7 @@ try {
     }
     $taskProcess.Refresh()
     if ($taskProcess.ExitCode -ne 0) { throw "Packaged smoke test failed ($($taskProcess.ExitCode))." }
-    Write-Output 'PASS: packaged Qt window and bundled Chromium run without developer PATH/cache.'
+    Write-Output 'PASS: packaged Qt, Chromium, email parsers and private Outlook-helper IPC run offline without developer PATH/cache.'
 } finally {
     $env:PATH = $taskOldPath
     $env:PYTHONPATH = $taskOldPythonPath
