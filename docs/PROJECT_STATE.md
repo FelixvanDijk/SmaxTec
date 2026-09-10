@@ -113,7 +113,12 @@ Do not begin calculations or workbook restructuring before their later milestone
   parsing, Safe Links, bounds/cancellation, exact newest-N selection, per-file B3,
   real OOXML relationship resolution, file collisions, frozen-selection resume,
   interrupted publication/hash guards, helper IPC and both-worker GUI shutdown.
-  Final Windows CI is pending; earlier 0.3.0 evidence does not prove the new bundle.
+  **GitHub Windows CI passed** for implementation commit `8886ebe`: locked install,
+  regression/lint checks, executable build, Qt/Chromium/parser/COM-helper smoke and upload.
+  [Verified 0.4.0 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34443805870).
+  [0.4.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34443805870/artifacts/10139046476)
+  is approximately 282 MiB, retained for 14 days. It remains unsigned; client-machine
+  installation/Inbox acceptance and production signing are not proven by this CI run.
   The production sample-download and profile-discovery results above are live verified.
   Native Windows collection UI was visually checked at 1020px minimum width, including
   local received timestamps, a bounded preview and visible status columns. Source smoke

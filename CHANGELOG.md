@@ -21,7 +21,8 @@
 - Add synthetic parser/download/workbook/storage/UI regression coverage and offline
   helper/packaging checks. All 366 tests and source smoke pass locally. Two supplied
   forwarded exports were collected successfully, named independently and resumed with
-  hash checks. Packaged CI and client Inbox acceptance are tracked in `docs/PROJECT_STATE.md`.
+  hash checks. GitHub Windows executable build/smoke passed; the preview artifact and
+  pending client Inbox acceptance are recorded in `docs/PROJECT_STATE.md`.
 - Keep sensitivity labels unchanged. Public assignment, Graph sign-in, automatic
   website-request correlation, consolidation and analysis are not implemented.
 

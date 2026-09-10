@@ -103,3 +103,16 @@ uploaded its approximately 277 MiB
 [Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34233762511/artifacts/10059101566).
 Client acceptance of individual periods and expanded/compact editing remains pending;
 the synthetic tests do not establish live workbook date-boundary semantics.
+
+## M3 evidence
+
+The [0.4.0 email collection run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34443805870)
+passed the locked install, regression and code checks, built the executable and passed
+the packaged Qt/Chromium/parser/COM-helper smoke. The approximately 282 MiB
+[Windows preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34443805870/artifacts/10139046476)
+is retained for 14 days. Local verification passed 366 tests and collected the two
+provided forwarded-message samples through the production pipeline with independent
+B3 naming, duplicate detection and hash-verified resume. No Outlook/Excel installation
+was used by CI to open an actual mailbox or workbook: COM-module import and private
+helper IPC were tested without creating Outlook. Configured profile, corporate policy,
+Inbox access, signing and clean-client-machine acceptance remain separate gates.
