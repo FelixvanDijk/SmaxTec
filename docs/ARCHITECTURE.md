@@ -277,8 +277,8 @@ Portable journal migration and automatic mailbox re-query are not implemented.
 
 ## Decision 012: Microsoft Graph delegated sign-in for cross-edition Inbox access
 
-Status: implemented in 0.4.1 source and synthetic tests; app registration, tenant
-consent, live acceptance and packaged evidence remain pending.
+Status: implemented and package-smoke-tested in 0.4.1; app registration, tenant
+consent and live acceptance remain pending.
 
 New Outlook intentionally lacks the classic Outlook Object Model/MAPI integration,
 so automating either the new client or Outlook Web would couple the product to a UI

@@ -4,7 +4,7 @@ Last updated: 2026-09-10. **Runtime 0.4.1 source adds Microsoft 365 Inbox access
 fixes protected/nested-forward discovery.** Classic live diagnosis now shows the 10
 recognizable messages that 0.4.0 hid, but their protected bodies remain unreadable.
 Next: obtain the approved Entra public-client application ID and `Mail.Read` consent,
-then live-test Microsoft sign-in and run packaged CI before beginning M4.
+then live-test Microsoft sign-in before beginning M4. Packaged CI now passes.
 
 ## User intent and scope
 
@@ -130,8 +130,12 @@ Do not begin calculations or workbook restructuring before their later milestone
   No messages were changed and no links/downloads were emitted. A 0.4.1 Windows
   directory bundle and approximately 288 MB archive built locally with MSAL included,
   but this machine again denied execution of the unsigned EXE both in the workspace
-  and a fresh temporary folder. Packaged smoke/CI and live Graph sign-in remain
-  pending; do not call this a released build.
+  and a fresh temporary folder. **GitHub Windows CI passed** for `0ac21b6`: locked
+  install, all checks, executable build, packaged Qt/Chromium/MSAL/Outlook-helper
+  smoke and artifact upload. [Verified 0.4.1 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34489046168).
+  The [0.4.1 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34489046168/artifacts/10157102934)
+  is approximately 288 MiB and retained for 14 days. Live Graph sign-in, app consent,
+  signing and clean-client acceptance remain pending; this is not a released build.
 - 0.4.0: **366 tests passed** locally (116 seconds), with lint, formatting,
   dependency checks and source smoke passing. Coverage includes direct/forwarded
   parsing, Safe Links, bounds/cancellation, exact newest-N selection, per-file B3,

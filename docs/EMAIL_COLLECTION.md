@@ -2,8 +2,8 @@
 
 Status: classic/import collection shipped in preview **0.4.0**. Preview **0.4.1**
 implements the Microsoft 365 connector and nested-forward/classic-protection fixes;
-an approved Entra application ID, tenant consent, packaged CI and live Graph acceptance
-are still pending. Evidence belongs in `PROJECT_STATE.md`, not implied by this record.
+an approved Entra application ID, tenant consent and live Graph acceptance are still
+pending. Packaged CI passes; evidence belongs in `PROJECT_STATE.md`.
 
 ## Implemented outcome
 

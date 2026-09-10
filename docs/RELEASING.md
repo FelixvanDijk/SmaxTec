@@ -113,11 +113,13 @@ the synthetic tests do not establish live workbook date-boundary semantics.
 ## M3 evidence
 
 Version 0.4.1 passes 384 local tests plus dependency/lint/format/source smoke checks.
-Its Windows directory bundle and approximately 288 MB archive build with MSAL and
+Its Windows directory bundle and approximately 288 MiB archive build with MSAL and
 transitives included. This development machine still denies execution of the unsigned
 EXE from both the OneDrive workspace and a fresh temporary directory, so local packaged
-smoke is not claimed. GitHub Windows packaged smoke, Entra app configuration and live
-Graph acceptance remain pending.
+smoke is not claimed. The independent [0.4.1 Windows CI run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34489046168)
+passed locked installation, checks, executable build, packaged smoke and uploaded the
+[temporary preview artifact](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34489046168/artifacts/10157102934).
+Entra app configuration/consent and live Graph acceptance remain pending.
 
 The [0.4.0 email collection run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34443805870)
 passed the locked install, regression and code checks, built the executable and passed

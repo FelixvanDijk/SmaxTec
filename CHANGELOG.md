@@ -19,8 +19,8 @@
 - Add synthetic Graph authentication/pagination/failure/cancellation tests, classic
   protection and nested-forward regressions, Microsoft-first GUI controls, MSAL runtime
   dependency locking and bundled dependency metadata. All 384 tests and source smoke
-  pass locally; the Windows bundle builds, while packaged CI and live Graph acceptance
-  are recorded separately in `docs/PROJECT_STATE.md`.
+  pass locally; independent Windows executable build and packaged smoke also pass in
+  CI. Live Graph/tenant acceptance is recorded separately in `docs/PROJECT_STATE.md`.
 
 ## 0.4.0 — 2026-09-10 (development preview)
 
