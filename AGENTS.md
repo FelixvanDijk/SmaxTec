@@ -104,12 +104,15 @@ its number and dates together through requests, results, errors and duplicate gu
 Never restore a single batch-wide range. Folding changes visibility only: validate
 and include every row. Shared dates apply only on an explicit Apply to all action.
 Review must list every unique cow/period; the same cow with another period is distinct.
-M3 email collection is implemented in runtime 0.4.0; consult `docs/PROJECT_STATE.md`
-for its current verification/release evidence. Read `docs/EMAIL_COLLECTION.md`
-before changing it. Classic Outlook uses the user's configured profile and explicit
-Inbox choice through a bounded helper process; new-Outlook-only users import saved
-`.eml`/`.msg` files. Never add a mailbox password/token prompt or promise that
-corporate access policies require no IT approval. Graph remains a future connector.
+M3 email collection began in runtime 0.4.0; 0.4.1 adds the preferred Microsoft 365
+Graph connector and protected/nested-forward fixes. Consult `docs/PROJECT_STATE.md`
+for its current verification/release evidence and read `docs/EMAIL_COLLECTION.md`
+before changing it. Graph uses delegated `Mail.Read`, system-browser MSAL/MFA and
+memory-only tokens; an approved public-client app ID/localhost redirect and tenant
+consent are deployment prerequisites, not ordinary user configuration. Never add a
+mailbox password, client secret, copied-token prompt, Outlook Web scraping or consent
+bypass. Classic Outlook remains a bounded-helper fallback and may surface protected
+messages without readable links; saved `.eml`/`.msg` import remains available.
 Keep inboxes read-only; freeze the newest-N matching selection including duplicates
 and problematic messages, without topping up. Preserve accepted workbook bytes.
 Validate every redirect through the confirmed Safe Links/smaXtec/exact-bucket route.

@@ -8,9 +8,10 @@
 
 The build runs checks, bundles the application with Chromium, starts the executable
 with Python removed from PATH and an unavailable external browser cache, and
-produces `dist/SmaxTec-Workbench-0.4.0-windows-x64.zip`.
-The spec includes distribution metadata/license notices for olefile, defusedxml
-and pywin32. This does not replace the product-wide license inventory/release review.
+produces `dist/SmaxTec-Workbench-0.4.1-windows-x64.zip`.
+The spec includes distribution metadata/license notices for olefile, defusedxml,
+pywin32, MSAL and its direct/transitive runtime dependencies. This does not replace
+the product-wide license inventory/release review.
 
 Unzip the complete folder and open `SmaxTec Workbench.exe`; `_internal` must stay
 beside it. `START_HERE.txt` explains the preview in user terms. The binary/archive
@@ -23,14 +24,15 @@ Build on Windows; PyInstaller does not make another platform's binaries from a
 single build host. Only full Chromium is shipped; its headless mode runs the
 offline smoke test. Browser updates require rebuilding the application.
 
-The 0.4.0 smoke imports the email/XML parsers and Windows COM runtime modules without
+The 0.4.1 smoke imports the email/XML/MSAL parsers and Windows COM runtime modules without
 creating Outlook. It checks private helper IPC with an invalid action rejected before
 the helper imports COM or accesses Outlook. It does not prove a
-configured client mailbox, permitted COM access or live downloads. The helper uses
+configured Graph registration/consent, permitted COM access or live downloads. The helper uses
 the same bundled executable via `--outlook-helper`; users do not install Python or pywin32.
 Classic Outlook itself must already be installed/configured for automatic inbox access.
-New-Outlook-only users use saved-email import unless a future approved Graph connector
-is implemented. Workbench does not bypass corporate account or link-protection policies.
+New-Outlook/Outlook-Web users use the Graph connector after the release's Entra app is
+approved, or saved-email import. Workbench does not bypass corporate account, consent,
+programmatic-access or link-protection policies.
 
 ## Production release gates — still outstanding
 
@@ -45,8 +47,9 @@ is implemented. Workbench does not bypass corporate account or link-protection p
   Review the Qt distribution/licensing choice before external distribution; do
   not assign an open-source license to this contracted project's code without
   the owner's instruction.
-- Include `olefile` (BSD), `defusedxml` (PSF) and `pywin32` (PSF) alongside Qt,
-  Playwright and Chromium in that inventory, checking the exact locked versions and
+- Include `olefile` (BSD), `defusedxml` (PSF), `pywin32` (PSF), MSAL (MIT), requests,
+  PyJWT, cryptography, cffi, charset-normalizer, idna, urllib3 and certifi alongside
+  Qt, Playwright and Chromium in that inventory, checking exact locked versions and
   bundled transitive notices. A minimal OLE MSG reader replaced the initially
   considered GPL full-MSG dependency; verify removed packages do not remain in the
   final distribution. This inventory note is not a legal compatibility determination.
@@ -54,6 +57,9 @@ is implemented. Workbench does not bypass corporate account or link-protection p
   comprehension with nontechnical users; provide support and recovery instructions.
 - Validate account onboarding, mailbox authorization, enterprise proxy behavior,
   offline/errors, cancellation, shutdown, and upgrade behavior on actual targets.
+- Register/approve the production public-client Entra application, localhost redirect
+  and delegated `Mail.Read` in every supported tenant. Embed its non-secret app ID,
+  verify publisher/consent presentation and confirm disconnect/upgrade token handling.
 - Establish redacted diagnostic export, retention rules, output backups and atomic
   writes as soon as real job/data storage is introduced.
 - Exercise collection from direct and inline-forwarded mail in both organisations,
@@ -105,6 +111,13 @@ Client acceptance of individual periods and expanded/compact editing remains pen
 the synthetic tests do not establish live workbook date-boundary semantics.
 
 ## M3 evidence
+
+Version 0.4.1 passes 384 local tests plus dependency/lint/format/source smoke checks.
+Its Windows directory bundle and approximately 288 MB archive build with MSAL and
+transitives included. This development machine still denies execution of the unsigned
+EXE from both the OneDrive workspace and a fresh temporary directory, so local packaged
+smoke is not claimed. GitHub Windows packaged smoke, Entra app configuration and live
+Graph acceptance remain pending.
 
 The [0.4.0 email collection run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34443805870)
 passed the locked install, regression and code checks, built the executable and passed

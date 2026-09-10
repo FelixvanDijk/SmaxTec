@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.1 — 2026-09-10 (development preview)
+
+- Add a preferred **Sign in with Microsoft 365** route using delegated Graph access,
+  Microsoft system-browser sign-in/MFA and memory-only tokens. It works independently
+  of new Outlook, Outlook on the web or classic Outlook. An approved public-client
+  application ID, localhost redirect and tenant `Mail.Read` consent are still required
+  before live deployment; no email password or client secret is collected.
+- Keep Graph Inbox access read-only and newest-first. Bound HTTP calls, pages, bodies,
+  responses, total items and time; validate every opaque pagination URL before sending
+  the bearer token. Store only one-way message keys and clear the session on Disconnect.
+- Fix classic Outlook's misleading zero result under corporate programmatic-access
+  protection. A read-only live scan now exposes 10 recognizable export subjects as
+  `content blocked` problem rows while leaving the blocked bodies and links untouched.
+- Recognize inline forwards of forwards from their fully validated smaXtec export link
+  even when outer subject/sender wording has changed. Forward-as-attachment remains an
+  explicit saved-email import case.
+- Add synthetic Graph authentication/pagination/failure/cancellation tests, classic
+  protection and nested-forward regressions, Microsoft-first GUI controls, MSAL runtime
+  dependency locking and bundled dependency metadata. All 384 tests and source smoke
+  pass locally; the Windows bundle builds, while packaged CI and live Graph acceptance
+  are recorded separately in `docs/PROJECT_STATE.md`.
+
 ## 0.4.0 — 2026-09-10 (development preview)
 
 - Add a separate, manually triggered collection section below website requests.

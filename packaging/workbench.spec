@@ -10,7 +10,26 @@ a = Analysis(
     datas=[
         (str(root / "src" / "smaxtec" / "ui" / "theme.qss"), "smaxtec/ui"),
         (str(root / "packaging" / "START_HERE.txt"), "."),
-    ] + sum((copy_metadata(package) for package in ("olefile", "defusedxml", "pywin32")), []),
+    ] + sum(
+        (
+            copy_metadata(package)
+            for package in (
+                "olefile",
+                "defusedxml",
+                "pywin32",
+                "msal",
+                "requests",
+                "PyJWT",
+                "cryptography",
+                "cffi",
+                "charset-normalizer",
+                "idna",
+                "urllib3",
+                "certifi",
+            )
+        ),
+        [],
+    ),
     hiddenimports=[],
     hookspath=[],
     excludes=["tkinter", "pytest", "ruff"],

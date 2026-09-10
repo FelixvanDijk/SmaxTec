@@ -121,6 +121,31 @@ def _read_message(mail: Any, identity: str, received: datetime) -> MailMessage:
     )
 
 
+def _blocked_candidate(mail: Any, identity: str, received: datetime) -> MailCandidate | None:
+    """Surface a recognizable message when Outlook blocks protected body fields."""
+    try:
+        entry_id = str(mail.EntryID or "")
+        subject = str(mail.Subject or "")[:500]
+    except Exception:
+        return None
+    normalized = " ".join(subject.casefold().split())
+    if not entry_id or "excel export" not in normalized or "successfully created" not in normalized:
+        return None
+    from smaxtec.adapters.mail.messages import safe_text
+
+    return MailCandidate(
+        key=message_key(identity, entry_id),
+        subject=safe_text(subject),
+        sender="",
+        received_at=received,
+        kind="content blocked",
+        issue=(
+            "Classic Outlook blocked access to this email's contents. "
+            "Sign in with Microsoft 365 or save and import the email."
+        ),
+    )
+
+
 def _scan(
     inbox: Any,
     identity: str,
@@ -178,8 +203,13 @@ def _scan(
         except CollectionError:
             raise
         except Exception:
-            unreadable += 1
-            continue
+            candidate = _blocked_candidate(mail, identity, received)
+            if candidate is None:
+                unreadable += 1
+                continue
+            if candidate.key in seen:
+                raise _error("outlook_changed") from None
+            seen.add(candidate.key)
         if candidate is not None:
             record = asdict(candidate)
             record["received_at"] = candidate.received_at.isoformat()

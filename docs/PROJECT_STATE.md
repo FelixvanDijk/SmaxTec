@@ -1,9 +1,10 @@
 # Project state — start here each session
 
-Last updated: 2026-09-10. **Runtime 0.4.0 implements manual email collection.**
-Supplied forwarded EML/MSG samples were successfully downloaded and named from B3.
-Next: client acceptance of Inbox selection/collection on target machines, then agree
-M4 workbook schema and calculations. Final Windows build evidence is recorded below.
+Last updated: 2026-09-10. **Runtime 0.4.1 source adds Microsoft 365 Inbox access and
+fixes protected/nested-forward discovery.** Classic live diagnosis now shows the 10
+recognizable messages that 0.4.0 hid, but their protected bodies remain unreadable.
+Next: obtain the approved Entra public-client application ID and `Mail.Read` consent,
+then live-test Microsoft sign-in and run packaged CI before beginning M4.
 
 ## User intent and scope
 
@@ -20,17 +21,23 @@ Do not begin calculations or workbook restructuring before their later milestone
 
 ## M3 implementation and acceptance boundaries
 
-- User confirmed Outlook is installed and prefers avoiding separate tenant setup;
-  edition coverage is still unknown. Implemented configured **classic Outlook**
-  access, with manual `.eml`/`.msg` import for new-Outlook-only machines. Graph is
-  not implemented. Corporate programmatic-access policies may still require IT.
-- Collection is independent of website login. Connect classic Outlook, explicitly
-  choose an Inbox, find the latest N matching messages, review and download. No
-  automatic polling or changes to read flags/messages. Counts include duplicates
-  and problematic matching emails; failures do not substitute older messages.
-- The production helper successfully discovered two local Inbox choices. This was
-  profile discovery only: no live Inbox messages were scanned. Newest-N scanning is
-  covered with synthetic COM fixtures; end-to-end live Inbox acceptance is pending.
+- Microsoft 365 delegated sign-in is now the preferred cross-edition connector. It
+  uses the system browser/MFA and Graph, so it works independently of new Outlook,
+  Outlook on the web or classic Outlook. The code and synthetic tests are complete;
+  an approved Entra public-client ID, localhost redirect and tenant `Mail.Read`
+  consent are still required before live use. No email password/client secret is used.
+- Classic Outlook and manual `.eml`/`.msg` import remain explicit fallbacks. Corporate
+  programmatic-access policies are never disabled or bypassed.
+- Collection is independent of website login. Connect with Microsoft 365 or classic
+  Outlook, explicitly choose an Inbox, find the latest N matching messages, review
+  and download. No automatic polling or changes to read flags/messages. Counts include
+  duplicates and problematic matching emails; failures do not substitute older messages.
+- Read-only live diagnosis discovered two local Inbox choices. One had no inspected
+  items; the populated Inbox scanned 445 items over 30 days and found 10 generic
+  `Excel export ... successfully created` subjects. Outlook blocked Body, HTMLBody
+  and sender on all 332 recent mail items, so none had a readable link. Version 0.4.1
+  now returns those 10 as `content blocked` problem rows instead of falsely showing
+  zero. It does not read around the guard; Graph sign-in or saved import is required.
 - The four supplied saved emails (two forwarded examples in EML and MSG) matched
   two unique exports. The actual production pipeline followed their Safe Links,
   smaXtec API and exact storage-bucket redirects, downloaded two original XLSX files,
@@ -40,8 +47,10 @@ Do not begin calculations or workbook restructuring before their later milestone
   references. The reader now resolves these inside the package while rejecting
   above-root escapes; ZIP member traversal and external/active content remain rejected.
 - No original direct email was supplied: direct-mail recognition is synthetically
-  verified only. Attached-message forwards/RTF-only MSG are unsupported; use a saved
-  standalone message/EML. Forwarded arrival time does not renew the stated 24-hour link.
+  verified only. Inline forwards of forwards are recognized by a fully validated
+  smaXtec link even when outer sender/subject wording changes. Attached-message
+  forwards/RTF-only MSG are unsupported; use a saved standalone message/EML.
+  Forwarded arrival time does not renew the stated 24-hour link.
 - Output defaults to OS Documents/SmaxTec Workbench/Collections, with Browse and a
   unique folder per collection. SQLite lives in Qt AppLocalDataLocation. Durable state
   stores source hashes, status, B3 and file hashes, never bodies, URLs or remote export
@@ -52,10 +61,11 @@ Do not begin calculations or workbook restructuring before their later milestone
   capability is mandatory. Protected or unsupported workbooks fail visibly.
 - B3 is an animal name, not independently verified Animal number/farm/date correlation.
   This milestone does not confirm website date semantics or perform calculations.
-- Runtime dependencies added: defusedxml, olefile, Windows-only pywin32; hash lock
-  updated. A full MSG parser was considered but not retained due to distribution
-  licensing/dependency scope. New dependency metadata/license notices ship in the bundle.
-- Read `EMAIL_COLLECTION.md` and architecture Decisions 009–011 before extending this.
+- Runtime dependencies include defusedxml, olefile, Windows-only pywin32 and MSAL
+  plus its HTTP/crypto transitives; the hash lock and packaging metadata list are
+  updated. A full MSG parser was not retained due to distribution licensing/dependency
+  scope. The complete production license review remains a release gate.
+- Read `EMAIL_COLLECTION.md` and architecture Decisions 009–012 before extending this.
 
 ## Repository
 
@@ -71,9 +81,10 @@ Do not begin calculations or workbook restructuring before their later milestone
   verifies the identity origin/form destination, fills credentials, submits once,
   verifies authenticated navigation markers, and uses an isolated browser for
   serialized farm discovery and an export batch. Subsequent batches reconnect as below.
-- Website credentials are in memory only. Export requests, read-only classic Outlook
-  selection, saved-email import and validated downloads are implemented. Website-session
-  persistence, workbook calculations, graphs and anomaly detection remain later work.
+- Website credentials are in memory only. Export requests, read-only Microsoft 365/
+  classic Outlook selection, saved-email import and validated downloads are implemented.
+  Graph deployment configuration, workbook calculations, graphs and anomaly detection
+  remain later work.
 - `Start SmaxTec.cmd` in the repository root opens the GUI with the existing local
   `.venv` so the user can test by double-clicking. It installs nothing and applies
   only to a prepared developer working folder, not fresh end-user installations.
@@ -103,11 +114,24 @@ Do not begin calculations or workbook restructuring before their later milestone
   the complete frozen batch; `ui/widgets.py` shares plain-text and strict date fields.
 - Collection module map: `ui/collection_panel.py` and `collection_worker.py` own the
   independent review/worker lifecycle; `application/collection*.py` own contracts,
-  orchestration and SQLite state; `adapters/mail/` owns Outlook helper, message parsing
-  and bounded downloads; `adapters/workbooks.py` owns read-only ZIP/XML B3 validation.
+  orchestration and SQLite state; `adapters/mail/graph.py` owns Microsoft sign-in and
+  Graph paging, while the same folder owns the Outlook helper, message parsing and
+  bounded downloads; `adapters/workbooks.py` owns read-only ZIP/XML B3 validation.
 
 ## Verification and packaging evidence
 
+- 0.4.1: **384 tests passed** locally (119 seconds), with dependency integrity,
+  lint, formatting and source smoke passing. Coverage includes
+  system-browser MSAL parameters, memory-only token representation, exact Graph
+  endpoint/paging validation, curated HTTP failures, cancellation/disconnect, nested
+  inline forwards and protected classic messages. The
+  populated classic Inbox was rescanned read-only after the fix: 445 inspected,
+  10 recognizable/problem rows, zero ready links because Outlook blocks content.
+  No messages were changed and no links/downloads were emitted. A 0.4.1 Windows
+  directory bundle and approximately 288 MB archive built locally with MSAL included,
+  but this machine again denied execution of the unsigned EXE both in the workspace
+  and a fresh temporary folder. Packaged smoke/CI and live Graph sign-in remain
+  pending; do not call this a released build.
 - 0.4.0: **366 tests passed** locally (116 seconds), with lint, formatting,
   dependency checks and source smoke passing. Coverage includes direct/forwarded
   parsing, Safe Links, bounds/cancellation, exact newest-N selection, per-file B3,
@@ -226,9 +250,10 @@ Do not begin calculations or workbook restructuring before their later milestone
 1. Confirm deployment OS coverage, distribution audience, branding, and signing.
 2. Confirm individual-period 0.3.0 requests, compact/expanded editing and consecutive
    batches without credential re-entry; check email counts and inclusive date semantics.
-3. Client-test configured classic Outlook on both organisations' computers, explicit
-   Inbox choice and direct/forwarded newest-N results. Confirm new-Outlook-only coverage,
-   shared stores, enterprise proxies and any mandatory classification requirements.
+3. Obtain owner/IT approval for a public-client Entra application ID with localhost
+   redirect and delegated `Mail.Read` in both organisations. Embed that non-secret ID,
+   then client-test Microsoft browser/MFA sign-in and newest-N direct/forwarded results.
+   Also confirm enterprise proxies, shared-mailbox needs and classification requirements.
 4. Representative sanitized Excel files: schema, units, timezones, missing values.
 5. Exact calculations, workbook layout, graph types, and configuration controls.
 6. Versioned anomaly rules, validation cases, execution schedule and review policy.
@@ -239,9 +264,9 @@ Do not begin calculations or workbook restructuring before their later milestone
 2. Record the client's per-cow-date result: individually reviewed periods, folded
    row editing, automatic reconnection, workbook boundaries and email timing without
    committing credentials, message links, personal data or source workbooks.
-3. Read `EMAIL_COLLECTION.md`, test live Inbox collection without modifying messages,
-   and verify failed/cancelled collection recovery using the same reviewed selection.
-   No polling, Graph setup or Public assignment is implemented or implied.
+3. Read `EMAIL_COLLECTION.md`. Configure the approved Graph application ID and consent,
+   test live Inbox collection without modifying messages, and verify failed/cancelled
+   recovery using the same reviewed selection. No polling or Public assignment is implied.
 4. For M4 obtain reviewed workbook metadata/schema, units, timezone, exact formulas
    and desired master layout. Reconcile farm/Animal number/periods before analysis;
    never infer verified request matches from B3 or email arrival order.

@@ -82,11 +82,17 @@ class CollectionPanel(QFrame):
         parent: QWidget | None = None,
         *,
         mailbox: Mailbox | None = None,
+        microsoft_mailbox: Mailbox | None = None,
+        outlook_mailbox: Mailbox | None = None,
         service: Downloader | None = None,
         importer: Importer | None = None,
     ) -> None:
         super().__init__(parent)
-        self._mailbox = mailbox
+        self._injected_mailbox = mailbox
+        self._microsoft_mailbox = microsoft_mailbox
+        self._outlook_mailbox = outlook_mailbox
+        self._mailbox: Mailbox | None = None
+        self._active_source = ""
         self._service = service
         self._importer = importer
         self._worker: CollectionWorker | None = None
@@ -114,26 +120,33 @@ class CollectionPanel(QFrame):
         source.setContentsMargins(0, 0, 0, 0)
         source.setSpacing(9)
         account_row = QHBoxLayout()
-        self.connect_button = self._button("Connect classic Outlook", self._connect)
+        self.connect_button = self._button(
+            "Sign in with Microsoft 365", self._connect_microsoft, primary=True
+        )
+        self.classic_connect_button = self._button("Connect classic Outlook", self._connect_outlook)
         self.disconnect_button = self._button("Disconnect", self._disconnect)
         self.import_button = self._button("Import saved emails…", self._choose_emails)
-        account_row.addWidget(self.connect_button)
-        account_row.addWidget(self.disconnect_button)
-        account_row.addStretch()
-        account_row.addWidget(self.import_button)
+        account_row.addWidget(self.connect_button, 1)
+        account_row.addWidget(self.classic_connect_button, 1)
         source.addLayout(account_row)
+        fallback_row = QHBoxLayout()
+        fallback_row.addWidget(self.disconnect_button)
+        fallback_row.addStretch()
+        fallback_row.addWidget(self.import_button)
+        source.addLayout(fallback_row)
         source.addWidget(
             label(
-                "Uses an account already signed in to classic Outlook. New Outlook only? "
-                "Save the selected messages as .eml or .msg and import them here. "
-                "Workbench never asks for your email password.",
+                "Microsoft 365 sign-in works with mailboxes used in new Outlook, Outlook on "
+                "the web and classic Outlook, using your browser and normal MFA. The classic "
+                "connector remains available as a fallback. Workbench never asks for your "
+                "email password.",
                 "privacy",
             )
         )
-        source.addWidget(label("Outlook Inbox", "fieldLabel"))
+        source.addWidget(label("Inbox", "fieldLabel"))
         self.inbox = QComboBox()
-        self.inbox.setAccessibleName("Collection Outlook Inbox")
-        self.inbox.addItem("Connect Outlook to choose an Inbox")
+        self.inbox.setAccessibleName("Collection mailbox Inbox")
+        self.inbox.addItem("Connect a mailbox to choose an Inbox")
         self.inbox.currentIndexChanged.connect(self._invalidate_review)
         source.addWidget(self.inbox)
         filters = QHBoxLayout()
@@ -259,10 +272,29 @@ class CollectionPanel(QFrame):
 
     def _provider(self) -> Mailbox:
         if self._mailbox is None:
-            from smaxtec.adapters.mail.outlook import OutlookMailbox
-
-            self._mailbox = OutlookMailbox()
+            raise CollectionError(
+                "mailbox_disconnected", "Connect a mailbox before searching its Inbox."
+            )
         return self._mailbox
+
+    def _choose_provider(self, source: str) -> Mailbox:
+        if self._injected_mailbox is not None:
+            provider = self._injected_mailbox
+        elif source == "microsoft":
+            if self._microsoft_mailbox is None:
+                from smaxtec.adapters.mail.graph import GraphMailbox
+
+                self._microsoft_mailbox = GraphMailbox()
+            provider = self._microsoft_mailbox
+        else:
+            if self._outlook_mailbox is None:
+                from smaxtec.adapters.mail.outlook import OutlookMailbox
+
+                self._outlook_mailbox = OutlookMailbox()
+            provider = self._outlook_mailbox
+        self._mailbox = provider
+        self._active_source = source
+        return provider
 
     def _downloader(self) -> Downloader:
         if self._service is None:
@@ -280,19 +312,36 @@ class CollectionPanel(QFrame):
             self._service = CollectionService(Path(local_data) / "collections.sqlite")
         return self._service
 
-    def _connect(self) -> None:
+    def _connect_microsoft(self) -> None:
+        self._connect("microsoft")
+
+    def _connect_outlook(self) -> None:
+        self._connect("outlook")
+
+    def _connect(self, source: str = "microsoft") -> None:
         if self.is_busy:
             return
         self._invalidate_review()
-        self._start("connect", lambda stop, _progress: self._provider().list_inboxes(stop))
+        provider = self._choose_provider(source)
+        operation = "connect_microsoft" if source == "microsoft" else "connect_outlook"
+        self._start(operation, lambda stop, _progress: provider.list_inboxes(stop))
 
     def _disconnect(self) -> None:
         if self.is_busy:
             return
+        provider = self._mailbox
+        disconnect = getattr(provider, "disconnect", None)
+        if callable(disconnect):
+            disconnect()
+        self._mailbox = None
+        self._active_source = ""
         self.inbox.clear()
-        self.inbox.addItem("Connect Outlook to choose an Inbox")
+        self.inbox.addItem("Connect a mailbox to choose an Inbox")
         self._invalidate_review()
-        self.status.setText("Outlook disconnected. Your Outlook application stays open.")
+        self.status.setText(
+            "Mailbox disconnected. Microsoft tokens were cleared from Workbench memory; "
+            "Outlook applications stay open."
+        )
 
     def _scan(self) -> None:
         folder = self.inbox.currentData()
@@ -418,7 +467,8 @@ class CollectionPanel(QFrame):
         worker.finished.connect(self._on_finished)
         self.status.setText(
             {
-                "connect": "Looking for signed-in classic Outlook mailboxes…",
+                "connect_microsoft": "Opening secure Microsoft sign-in in your browser…",
+                "connect_outlook": "Looking for signed-in classic Outlook mailboxes…",
                 "scan": "Finding matching emails, newest first…",
                 "import": "Reading the saved emails you selected…",
                 "download": "Downloading this reviewed selection…",
@@ -437,7 +487,7 @@ class CollectionPanel(QFrame):
         self.progress.setValue(progress.current)
 
     def _on_success(self, result: object) -> None:
-        if self._operation == "connect" and isinstance(result, tuple):
+        if self._operation.startswith("connect_") and isinstance(result, tuple):
             self.inbox.clear()
             self.inbox.addItem("Choose an Inbox…")
             for folder in result:
@@ -445,9 +495,7 @@ class CollectionPanel(QFrame):
                     self.inbox.addItem(_display(folder.label), folder)
             self.status.setText("Choose the Inbox to search. No emails have been read yet.")
             if self.inbox.count() == 1:
-                self.status.setText(
-                    "No usable Inbox found. Open classic Outlook or import saved emails."
-                )
+                self.status.setText("No usable Inbox was found. Reconnect or import saved emails.")
         elif isinstance(result, MailScan):
             self._candidates = tuple(result.candidates)
             self._show_review(result)
@@ -504,7 +552,11 @@ class CollectionPanel(QFrame):
         source = (
             "Manually selected saved emails"
             if self._operation == "import"
-            else "Newest Inbox matches"
+            else (
+                "Newest Inbox matches - Microsoft 365"
+                if self._active_source == "microsoft"
+                else "Newest Inbox matches - classic Outlook"
+            )
         )
         self.review_title.setText(f"{source} · {len(self._candidates)} reviewed")
         self.review_note.setText(
@@ -546,6 +598,7 @@ class CollectionPanel(QFrame):
         )
         self.source_controls.setEnabled(not busy)
         self.connect_button.setEnabled(not busy and not connected)
+        self.classic_connect_button.setEnabled(not busy and not connected)
         self.disconnect_button.setEnabled(not busy and (connected or bool(self._candidates)))
         self.inbox.setEnabled(not busy and connected)
         self.scan_button.setEnabled(not busy and isinstance(self.inbox.currentData(), MailFolder))

@@ -198,6 +198,46 @@ def test_oversized_body_is_not_parsed_and_warned(parser, monkeypatch):
     assert not parser
 
 
+def test_protected_body_for_recognizable_export_is_visible_as_problem_candidate(parser):
+    class ProtectedMail:
+        Class = 43
+        EntryID = "protected-export"
+        ReceivedTime = NOW - timedelta(minutes=1)
+        Subject = "Fw: Fw: Excel export file successfully created"
+
+        def __getattr__(self, name):
+            raise RuntimeError("Outlook programmatic-access protection")
+
+    store = FakeStore("first", "Test account", [ProtectedMail()])
+    result = outlook_helper.perform_request(
+        namespace(store), request(limit=1), lambda _: None, now=NOW
+    )
+    assert len(result["candidates"]) == 1
+    assert result["candidates"][0]["kind"] == "content blocked"
+    assert result["candidates"][0]["download_url"] == ""
+    assert "Microsoft 365" in result["candidates"][0]["issue"]
+    assert not parser
+
+
+def test_protected_body_for_unrelated_mail_remains_unreadable(parser):
+    class ProtectedMail:
+        Class = 43
+        EntryID = "protected-noise"
+        ReceivedTime = NOW - timedelta(minutes=1)
+        Subject = "Unrelated meeting"
+
+        def __getattr__(self, name):
+            raise RuntimeError("Outlook programmatic-access protection")
+
+    store = FakeStore("first", "Test account", [ProtectedMail()])
+    result = outlook_helper.perform_request(
+        namespace(store), request(limit=1), lambda _: None, now=NOW
+    )
+    assert not result["candidates"]
+    assert "could not be read" in result["warning"]
+    assert not parser
+
+
 def test_item_limit_warns_instead_of_unbounded_scan(parser, monkeypatch):
     monkeypatch.setattr(outlook_helper, "MAX_SCANNED", 3)
     store = FakeStore(

@@ -14,7 +14,7 @@ and automation browser and provide a polished installer and GUI onboarding.
 flowchart TD
     UI[Desktop UI: inputs, progress, results] --> APP[Application workflows]
     APP --> WEB[smaXtec browser adapter]
-    APP --> MAIL[Classic Outlook / saved-email adapters]
+    APP --> MAIL[Microsoft 365 / classic Outlook / saved-email adapters]
     APP --> JOBS[Local collection journal + manifest]
     APP --> DOMAIN[Pure validation, calculations, heuristics — planned]
     DOMAIN --> REPORTS[Workbook and graph generation — planned]
@@ -26,11 +26,13 @@ flowchart TD
 The automated anomaly path produces the same export-request inputs as manual cow
 selection. There must be one collection/normalization/reporting pipeline.
 
-M3 is implemented in 0.4.0 with a classic-Outlook connector and saved-email fallback.
-Its confirmed provider boundaries, manual newest-N contract and remaining acceptance
-gates are recorded in [Email collection](EMAIL_COLLECTION.md). Mailbox connection
-is independent of the website session. Do not treat receipt order or workbook B3
-animal name as verified website-request correlation.
+M3 began in 0.4.0 with classic Outlook and saved-email import. Version 0.4.1 adds a
+Microsoft Graph connector for new Outlook, Outlook on the web and classic Outlook;
+deployment still needs an approved application registration and tenant consent.
+Provider boundaries, newest-N semantics and remaining gates are recorded in
+[Email collection](EMAIL_COLLECTION.md). Mailbox connection is independent of the
+website session. Do not treat receipt order or workbook B3 animal name as verified
+website-request correlation.
 
 | Location | Responsibility | Must not own |
 | --- | --- | --- |
@@ -221,10 +223,11 @@ licensing constraints of the initially considered GPL full-MSG dependency. Depen
 inventory/notice verification remains a release requirement, not legal clearance.
 Nested attached messages must be extracted/saved explicitly before import.
 
-Graph delegated authentication remains the cross-edition future option, requiring
-an application registration and applicable tenant approval. Password capture,
-token copying, or mailbox scraping through the personal browser are not substitutes
-for that authorization. Revisit when new-Outlook-only users require inbox scanning.
+Live inspection later proved that this machine's corporate Outlook policy allows
+folder/subject access but blocks every mail item's body, HTML and sender fields.
+Recognizable export subjects now remain visible as non-downloadable problem rows
+instead of disappearing into an unreadable count. This is diagnosis, not a bypass;
+Microsoft 365 sign-in or saved-message import is required to read their links.
 
 ## Decision 010: Frozen selections, constrained downloads and original bytes
 
@@ -271,6 +274,40 @@ the same messages/files and explicitly choose their original collection folder; 
 service checks selection identity/order and existing file hashes using that user and
 computer's journal. Changed/missing completed files fail instead of being overwritten.
 Portable journal migration and automatic mailbox re-query are not implemented.
+
+## Decision 012: Microsoft Graph delegated sign-in for cross-edition Inbox access
+
+Status: implemented in 0.4.1 source and synthetic tests; app registration, tenant
+consent, live acceptance and packaged evidence remain pending.
+
+New Outlook intentionally lacks the classic Outlook Object Model/MAPI integration,
+so automating either the new client or Outlook Web would couple the product to a UI
+and borrow a personal browser session. Use Microsoft Graph instead. `GraphMailbox`
+implements the existing provider-independent `Mailbox` contract and calls only the
+signed-in user's Inbox with delegated `Mail.Read`. It does not request application
+permissions, write mail, mark it read, or assume mailbox authorization grants website
+authorization.
+
+MSAL uses a public-client authorization-code flow in the system browser with PKCE,
+the work-account `organizations` authority and localhost redirect. Passwords are
+entered only on Microsoft's page. Token cache and access token remain in process
+memory and are released on Disconnect; no client secret is valid in a desktop binary.
+Interactive auth runs behind the collection worker with a finite MSAL timeout and a
+cancellable waiting boundary. A cancelled late auth result is discarded.
+
+Graph paging begins at the fixed HTTPS `/v1.0/me/mailFolders/inbox/messages` endpoint.
+The adapter selects only ID, subject, sender, received time and body, requests HTML,
+and restricts every opaque `@odata.nextLink` to that same scheme/host/port/path before
+attaching the bearer token. Responses, bodies, pages, item counts, time and individual
+network waits are bounded. Raw Graph IDs become one-way local keys; access tokens,
+message bodies, pagination links and Graph errors never cross into UI or storage.
+There are no automatic network retries or fallback account guesses.
+
+An Entra public-client application ID is mandatory even though it is not a secret.
+The release owner must embed an approved registration configured for localhost and
+delegated `Mail.Read`; tenant policy may require admin consent. The source-only
+environment override is for controlled development trials, not end-user setup.
+Never reuse an unrelated internal app registration without owner approval.
 
 ## Data and workflow design to preserve
 

@@ -43,9 +43,10 @@ the packaged browser smoke test whenever Playwright changes. Build backend and
 lock must agree on the setuptools version.
 
 M3 uses `olefile` for a deliberately narrow MSG root-stream reader, `defusedxml`
-for XLSX XML and Windows-only `pywin32` for classic Outlook. No full MSG/RTF parser,
-Excel installation, Graph app or mailbox password is needed for saved-email import.
-Keep third-party notices in the bundle when changing these dependencies.
+for XLSX XML, Windows-only `pywin32` for classic Outlook, and Microsoft's `msal`
+plus HTTP/crypto transitives for delegated Graph sign-in. No full MSG/RTF parser,
+Excel installation, mailbox password or desktop client secret is used. Keep exact
+third-party metadata/notices in the bundle and complete the release license review.
 
 ```powershell
 .\.venv\Scripts\python.exe -m piptools compile --extra dev --generate-hashes --strip-extras --allow-unsafe --output-file requirements-dev.lock pyproject.toml
@@ -65,6 +66,14 @@ It verifies the login, prints stage identifiers only, and closes the session.
 It does not select farms/cows, request exports, or access a mailbox. Never run it
 in CI or loop failed authentication attempts. Do not enable Playwright debug
 traces while handling real credentials.
+
+For an owner-approved Microsoft 365 development trial only, set
+`SMAXTEC_MICROSOFT_CLIENT_ID` to the approved Entra public-client application ID
+before launching. The registration must allow the `http://localhost` mobile/desktop
+redirect and delegated `Mail.Read`; tenant policy may require admin consent. This ID
+is not a secret, but production builds must embed the approved registration so end
+users never configure environment variables. Never put access tokens, client secrets,
+mail data or authentication traces in the repository or command line.
 
 ## Handover discipline
 

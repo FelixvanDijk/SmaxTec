@@ -5,12 +5,15 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.4.0 adds collection of emailed exports to the existing farm/cow/date
-request workflow. Use a configured classic Outlook profile or import saved email
-files, review the selection, then collect original workbooks named from each file's
-B3 cow identifier. Consolidation, calculations and analysis remain later work.
+Version 0.4.1 adds browser-based Microsoft 365 mailbox sign-in for new Outlook,
+Outlook on the web and classic Outlook, and improves nested-forward handling. A
+classic-Outlook connector and saved-email import remain fallbacks. Review the frozen
+selection, then collect original workbooks named from each file's B3 cow identifier.
+Consolidation, calculations and analysis remain later work.
 See [current status](docs/PROJECT_STATE.md) for verified evidence and remaining gates;
 implementation is not a claim that client acceptance or a production release is complete.
+The Microsoft button currently gives a setup message until the application owner/IT
+provides and approves the Entra app registration; ordinary end users will not configure it.
 
 ## Test on the current development computer
 
@@ -49,13 +52,16 @@ distribution for other computers; a fresh source checkout needs developer setup.
 Collection works independently of website sign-in. When the emails have arrived,
 use **Go to collection** or scroll to **3. Collect your emailed exports**.
 
-1. Select **Connect classic Outlook**, then explicitly choose the correct Inbox.
-   Outlook must already be installed, configured and signed in; Workbench never
-   asks for an email password or an authentication token. Corporate policies still apply.
+1. Select **Sign in with Microsoft 365**. Your browser opens Microsoft's normal
+   work-account sign-in and MFA, then Workbench offers that account's Inbox. This
+   route works regardless of whether you use new Outlook, Outlook on the web or
+   classic Outlook. Workbench never asks for your email password or a copied token.
+   Your organisation may need to approve this app's delegated `Mail.Read` permission.
+   **Connect classic Outlook** remains a local fallback where company policy permits it.
 2. Choose **Latest** matching email count and the received-time lookback in days,
    then **Find export emails**. This counts matching exports, not arbitrary inbox mail.
-   For new-Outlook-only users, save the desired emails as `.eml` or `.msg` and use
-   **Import saved emails** instead; that imports the chosen files, not the latest N.
+   **Import saved emails** remains available for selected `.eml` or `.msg` files;
+   that imports the chosen files, not the latest N.
 3. Review the full list, including duplicates and warnings. Change the output root
    with **Browse** if needed, then **Download reviewed emails**. New arrivals and
    failures cannot silently replace items in this reviewed selection.
@@ -87,11 +93,11 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; prior versions
-passed independent Windows CI smoke tests. Consult current status for 0.4.0 build
+passed independent Windows CI smoke tests. Consult current status for 0.4.1 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
-installer remain release work. Classic Outlook connection requires classic Outlook;
-having only new Outlook installed does not add that automation interface.
+installer remain release work. The Microsoft 365 application registration and tenant
+consent gate must be completed before its sign-in button can be live-tested.
 
 ## Project memory
 
@@ -100,6 +106,7 @@ having only new Outlook installed does not add that automation interface.
 - [Current state and next session](docs/PROJECT_STATE.md)
 - [Milestones and acceptance criteria](docs/ROADMAP.md)
 - [Email collection design and prerequisites](docs/EMAIL_COLLECTION.md)
+- [Microsoft 365 one-time IT setup](docs/MICROSOFT_365_SETUP.md)
 - [Developer setup](docs/DEVELOPMENT.md)
 - [Packaging and release requirements](docs/RELEASING.md)
 - [Change history](CHANGELOG.md)

@@ -105,11 +105,6 @@ def candidate_from_message(message: MailMessage) -> MailCandidate | None:
     parser.close()
     sender = parseaddr(message.sender)[1].casefold()
     text = " ".join((message.subject, message.text_body, *parser.words)).casefold()
-    relevant = "excel export file" in text and (
-        "smaxtec" in text or sender == "noreply@smaxtec.com"
-    )
-    if not relevant:
-        return None
     # Prefer HTML hrefs: plain-text alternatives may expose the unwrapped destination.
     links = (
         parser.links
@@ -129,6 +124,21 @@ def candidate_from_message(message: MailMessage) -> MailCandidate | None:
         # history. Never choose the direct version just because it appeared first.
         if previous is None or _wrapper_depth(url) > _wrapper_depth(previous):
             found[target.fingerprint] = url
+    # Inline forwarding can rewrite the subject and visible wording repeatedly. A
+    # fully validated smaXtec export target is therefore stronger evidence than
+    # brittle forward prefixes or prose. Linkless messages still need the known
+    # wording plus either the product name or the exact original sender.
+    relevant = (
+        bool(found)
+        or unverified_protection
+        or (
+            "excel export" in text
+            and ("successfully created" in text or "export file" in text)
+            and ("smaxtec" in text or sender == "noreply@smaxtec.com")
+        )
+    )
+    if not relevant:
+        return None
     issue = ""
     fingerprint = url = ""
     if unverified_protection:

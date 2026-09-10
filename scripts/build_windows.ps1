@@ -31,7 +31,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $taskRoot 'packaging\START_HERE.txt') -Destination $taskBundle
     & (Join-Path $PSScriptRoot 'smoke_windows.ps1')
     if (-not $SkipArchive) {
-        $taskArchive = Join-Path $taskRoot 'dist\SmaxTec-Workbench-0.4.0-windows-x64.zip'
+        $taskArchive = Join-Path $taskRoot 'dist\SmaxTec-Workbench-0.4.1-windows-x64.zip'
         Compress-Archive -LiteralPath $taskBundle -DestinationPath $taskArchive -Force
         Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256
     }

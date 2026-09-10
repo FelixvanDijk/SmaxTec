@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.4.0
+SmaxTec Workbench — desktop preview 0.4.1
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
@@ -20,11 +20,14 @@ Your website password is used for the current session and is not saved by the ap
 COLLECT THE EMAILED FILES — independent of website sign-in
 
 1. Wait until your emails have arrived, then choose Go to collection or scroll down.
-2. Choose Connect classic Outlook and select the right Inbox. Outlook must already
-   be signed in. Workbench does not ask for an email password or token.
+2. Choose Sign in with Microsoft 365. Your normal Microsoft browser sign-in and MFA
+   connect the chosen work mailbox; this works whether you use new Outlook, Outlook
+   on the web or classic Outlook. Workbench never asks for your email password.
+   Your organisation may need to approve this app's read-only Mail.Read permission.
+   Connect classic Outlook remains a local fallback where company policy permits it.
 3. Set Latest matching email count and the received-time lookback, then Find export emails.
-   If you only have new Outlook, save your chosen emails as .eml or .msg and use
-   Import saved emails instead. Imports use the files you chose, not the latest inbox count.
+   Saved .eml/.msg import remains available. Imports use the files you chose, not
+   the latest Inbox count.
 4. Review the list and any warnings. Use Browse to choose where collections are saved.
 5. Choose Download reviewed emails, then Open collection folder.
    Each file uses its OWN B3 cow number: 203 (new girl) becomes cow-203.xlsx;

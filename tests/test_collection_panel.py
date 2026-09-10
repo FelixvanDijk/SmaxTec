@@ -129,6 +129,25 @@ def test_outlook_requires_explicit_inbox_and_passes_latest_n_and_days(setup_pane
     assert panel.download_button.isEnabled()
 
 
+def test_user_can_choose_microsoft_365_or_classic_outlook_connector(qtbot):
+    microsoft, classic = FakeMailbox(), FakeMailbox()
+    microsoft.disconnected = classic.disconnected = False
+    microsoft.disconnect = lambda: setattr(microsoft, "disconnected", True)
+    classic.disconnect = lambda: setattr(classic, "disconnected", True)
+    panel = CollectionPanel(microsoft_mailbox=microsoft, outlook_mailbox=classic)
+    qtbot.addWidget(panel)
+    qtbot.mouseClick(panel.classic_connect_button, Qt.MouseButton.LeftButton)
+    finish(qtbot, panel)
+    assert classic.calls and not microsoft.calls
+    assert "classic Outlook" in panel.classic_connect_button.text()
+    qtbot.mouseClick(panel.disconnect_button, Qt.MouseButton.LeftButton)
+    assert classic.disconnected
+    qtbot.mouseClick(panel.connect_button, Qt.MouseButton.LeftButton)
+    finish(qtbot, panel)
+    assert microsoft.calls
+    assert "Microsoft 365" in panel.connect_button.text()
+
+
 def test_review_frozen_no_topups_and_filenames_differ_for_each_workbook(setup_panel, qtbot):
     panel, mailbox, service = setup_panel
     scan(qtbot, panel)

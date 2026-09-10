@@ -12,6 +12,7 @@ from smaxtec.main import create_window
 
 def _check_collection_runtime() -> None:
     """Exercise bundled parser imports and private helper pipes without opening Outlook."""
+    import msal
     import olefile
     from defusedxml import ElementTree
 
@@ -20,6 +21,7 @@ def _check_collection_runtime() -> None:
     from smaxtec.application.collection import MailMessage
 
     assert callable(olefile.isOleFile)
+    assert callable(msal.PublicClientApplication)
     assert ElementTree.fromstring("<smoke>ready</smoke>").text == "ready"
     if os.name == "nt":
         # Verify bundled COM DLL/module availability without creating Outlook or

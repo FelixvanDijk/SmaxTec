@@ -1,8 +1,9 @@
 # M3: Email collection — implementation and acceptance boundaries
 
-Status: implemented for development preview **0.4.0**. Full regression, packaged CI
-and client/live acceptance are recorded in `PROJECT_STATE.md`, not implied by this
-design record. The earlier 2026-09-09 proposal is superseded by the decisions below.
+Status: classic/import collection shipped in preview **0.4.0**. Preview **0.4.1**
+implements the Microsoft 365 connector and nested-forward/classic-protection fixes;
+an approved Entra application ID, tenant consent, packaged CI and live Graph acceptance
+are still pending. Evidence belongs in `PROJECT_STATE.md`, not implied by this record.
 
 ## Implemented outcome
 
@@ -20,18 +21,21 @@ No calculations, combined workbook, graphs or verified request correlation exist
 The screenshot says export links last **24 hours**. Forwarding the message does not
 renew that lifetime, and arrival order does not establish which request a file belongs to.
 
-## Connection decision: existing classic Outlook, with saved-email fallback
+## Connection decision: Microsoft 365 first, with two explicit fallbacks
 
 | Route | Implemented user experience | Boundary |
 | --- | --- | --- |
-| Classic Outlook for Windows | Connect classic Outlook, then explicitly select one available Inbox | Requires an installed/configured signed-in classic profile and permitted programmatic access |
+| Microsoft Graph delegated sign-in | Sign in with Microsoft 365 in the system browser, using normal organisational MFA | Implemented but not deployable until an approved public-client app ID and delegated `Mail.Read` consent are supplied |
+| Classic Outlook for Windows | Connect classic Outlook, then explicitly select one available Inbox | Requires an installed/configured signed-in classic profile and permitted programmatic access; protected bodies may be unavailable |
 | Saved `.eml` / `.msg` | Import saved emails selected by the user | Works independently of desktop Outlook; manual selection, not a newest-N inbox scan |
-| Microsoft Graph delegated sign-in | Not implemented | Future cross-edition connector requiring an app registration and applicable tenant approval |
 
-A read-only local profile check confirmed **one account and two stores**. This proves
-a configured local classic profile is available, not that all target computers have
-classic Outlook or that both organisations permit every programmatic mailbox operation.
-No account names, store identities or mailbox contents belong in this document.
+A read-only local profile check confirmed **two Inbox choices**. A later 30-day scan
+inspected 445 items and found 10 recognizable export subjects, but corporate Outlook
+blocked Body, HTMLBody and sender access for every mail item. Preview 0.4.0 silently
+reduced that result to zero. Version 0.4.1 instead retains each recognizable subject
+as a problem row explaining that its link could not be read; it never disables or
+bypasses Outlook protection. No account names, store identities, message text beyond
+the generic subject pattern, or links belong in this document.
 
 Only a separate, bounded helper process imports COM and reads the user's Outlook
 profile. Selecting an Inbox is mandatory; Workbench does not silently choose the
@@ -40,28 +44,42 @@ and never calls Quit on the user's Outlook. Cancellation/deadline cleanup ends o
 Workbench's helper. Outlook security prompts are not dismissed or disabled.
 [Outlook protected properties](https://learn.microsoft.com/en-us/office/vba/outlook/how-to/security/protected-properties-and-methods).
 
-New Outlook does not expose the classic Object Model/MAPI interface; merely having
-Outlook downloaded does not establish COM support. Its users can save their chosen
-messages and use import. [Microsoft's feature comparison](https://support.microsoft.com/en-us/outlook/getstarted/feature-comparison-between-new-outlook-and-classic-outlook).
+New Outlook does not expose the classic Object Model/MAPI interface. The Microsoft
+365 connector therefore calls the mailbox service through Graph and works independently
+of the installed Outlook edition. Saved-email import remains the no-Graph fallback.
+[Microsoft's feature comparison](https://support.microsoft.com/en-us/outlook/getstarted/feature-comparison-between-new-outlook-and-classic-outlook).
 
 Workbench does not collect an email password, ask users to copy authentication tokens,
-or borrow their personal browser session. It relies on the sign-in already configured
-in classic Outlook. This avoids provisioning a separate Graph application for this
-connector, but is **not a guarantee that IT involvement is unnecessary**: corporate
-programmatic-access, device and link-protection policies still apply. Never bypass them.
+or borrow Outlook Web cookies. Microsoft authentication uses MSAL's public-desktop
+system-browser flow, the `organizations` authority, PKCE and `http://localhost`; the
+access token and MSAL cache are memory-only and cleared on disconnect. Only delegated
+`Mail.Read` is requested because message bodies are needed to recover export links;
+`Mail.ReadBasic` is insufficient. No client secret belongs in a desktop app.
 
-If automatic inbox access is required for new-Outlook-only users, revisit Graph using
-a registered public-client app and minimum delegated read permission. Microsoft sign-in/
-MFA does not remove app registration or tenant consent prerequisites. The development
-team/IT owns that setup, not ordinary users; no client secret belongs in a desktop app.
-[Public client authentication](https://learn.microsoft.com/en-us/entra/msal/python/getting-started/client-applications),
+Every desktop OAuth application still needs an Entra application registration.
+The application owner/IT must provide an approved public-client application ID,
+enable the localhost mobile/desktop redirect, and grant/consent delegated `Mail.Read`
+in each intended tenant. Ordinary users must not edit configuration or register apps.
+Some tenant consent policies require administrator approval. The 0.4.1 source accepts
+a development-only `SMAXTEC_MICROSOFT_CLIENT_ID` override; production distribution
+must embed its approved non-secret app ID. Do not reuse an unrelated registration
+without its owner's explicit approval and correct permission/redirect configuration.
+[One-time IT setup checklist](MICROSOFT_365_SETUP.md),
+[MSAL interactive sign-in](https://learn.microsoft.com/en-us/entra/msal/python/getting-started/acquiring-tokens),
+[Graph Mail.Read](https://learn.microsoft.com/en-us/graph/permissions-reference#mailread),
 [consent policies](https://learn.microsoft.com/en-gb/entra/identity/enterprise-apps/manage-app-consent-policies).
+
+Graph reads `/me/mailFolders/inbox/messages` newest-first in pages of 25, selecting
+only ID, subject, sender, received time and HTML body. Every pagination URL is restricted
+to the exact HTTPS Graph host/path before the bearer token is sent. Requests, response
+size, page size, message/body size, total items and total time are bounded. Mail stays
+read-only; tokens, Graph IDs and pagination URLs are never logged or persisted.
 
 ## Exact selection semantics
 
 - **Latest** accepts 1–1000 matching emails, default 10; received-time lookback is
-  1–30 days, default 1. The helper scans descending outer ReceivedTime, checks ordering,
-  inspects at most 10,000 items and has a 120-second overall helper deadline.
+  1–30 days, default 1. Both connectors scan descending outer received time, check
+  ordering, inspect at most 10,000 items and use bounded network/helper deadlines.
 - N counts qualifying export messages, not arbitrary Inbox mail or guaranteed files.
   Duplicate links and problematic matches stay in the selection. A message with
   multiple different valid export links is an issue, not a guessed choice.
@@ -77,9 +95,11 @@ team/IT owns that setup, not ordinary users; no client secret belongs in a deskt
   fingerprint and is treated as a duplicate within the resulting collection.
 
 Direct recognition uses the actual SMTP sender `noreply@smaxtec.com` and known export
-content. Inline forwarded mail needs recognizable export content and a verified
-download-link pattern. A display name or quoted From text is not authentication by
-itself; the downloader's constrained origin/path policy remains mandatory.
+content. Inline forwarding may add any number of `Fw:` layers and rewrite prose; a
+fully validated smaXtec export link is sufficient to classify it as a candidate.
+A display name or quoted From text is not authentication by itself; the downloader's
+constrained origin/path policy remains mandatory. Forward-as-attachment is still not
+recursed automatically: save/extract the attached message and import it explicitly.
 
 Saved MIME messages use Python's email parser; MSG uses a bounded `olefile` reader
 for known root message properties and HTML/plain-text body streams. RTF and attached
@@ -206,8 +226,9 @@ Before calling M3 accepted:
    path where links remain usable; retain only sanitized outcome evidence in Git.
 2. Obtain an original direct email and verify it live; direct fixtures alone cannot
    establish real-world coverage. Verify forwarding in both organisations.
-3. Confirm Outlook editions/profiles, programmatic-access prompts, Safe Links and
-   enterprise proxies on client computers. Do not promise no IT involvement.
+3. Obtain and embed an approved Microsoft public-client app ID, consent `Mail.Read`,
+   then verify browser/MFA sign-in, Graph pagination and sign-out behavior in both
+   organisations. Also confirm classic Outlook protection and enterprise proxies.
 4. Confirm preserving labels is acceptable; Public assignment requires separate
    approval/configuration and implementation if mandatory.
 5. Pass full regression and packaged smoke; review locked dependency notices,

@@ -71,6 +71,21 @@ def test_forwarded_html_link_recognized_without_trusting_outer_sender():
     assert candidate.download_url == LINK
 
 
+def test_nested_forward_with_rewritten_wording_is_recognized_by_validated_link():
+    email = MailMessage(
+        "nested-forward",
+        "Fwd: Fw: requested information",
+        "second.forwarder@example.test",
+        TIME,
+        f'<p>Earlier messages follow</p><blockquote><a href="{protected()}">'
+        "Open file</a></blockquote>",
+    )
+    candidate = candidate_from_message(email)
+    assert candidate is not None
+    assert candidate.kind == "forwarded"
+    assert candidate.download_url == protected()
+
+
 def test_sender_must_match_exactly_to_claim_direct():
     candidate = candidate_from_message(message(LINK, sender="noreply@smaxtec.com.attacker.test"))
     assert candidate.kind == "forwarded"
