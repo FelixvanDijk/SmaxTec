@@ -11,6 +11,8 @@
 - Confirm against the live smaXtec authentication endpoint, using a nonexistent
   diagnostic identity and retaining no response body, that JSON authentication requests
   are still accepted and rejected normally with JSON `401` for invalid credentials.
+- Pass clean GitHub Windows packaging and packaged executable smoke and publish the
+  corrected approximately 288 MiB 0.6.1 preview artifact.
 
 ## 0.6.0 — 2026-09-11 (development preview)
 

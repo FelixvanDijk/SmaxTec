@@ -145,7 +145,10 @@ Inbox access, signing and clean-client-machine acceptance remain separate gates.
 Version 0.6.1 fixes connection failures being overwritten by a successful Disconnect
 message. Its focused lifecycle regression and a status-only live JSON-auth route probe
 pass. All 409 tests, dependency, lint, format and source smoke checks pass locally;
-packaged CI is pending.
+GitHub Windows CI passed the clean build and packaged executable smoke for
+[`4237d12`](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34605927646). The
+approximately 288 MiB [0.6.1 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34605927646/artifacts/10266586824)
+is retained through 2026-09-25.
 
 Version 0.6.0 passes 408 offline tests plus dependency, lint, format and source smoke
 checks. Its queue-first multi-selection and metric-assignment UI has synthetic short-
