@@ -16,6 +16,8 @@
   readable collection-settings card without removing any existing download capability.
 - Add synthetic regressions for click-friendly multi-selection, common-metric intersection,
   selected-row-only application, collapsed account state and short-window layout.
+- Pass clean GitHub Windows packaging and executable smoke and publish the approximately
+  288 MiB 0.6.0 preview artifact.
 
 ## 0.5.1 — 2026-09-11 (development preview)
 

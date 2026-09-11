@@ -110,14 +110,15 @@ or requested date period. Check these before later analysis.
 ## Download the packaged desktop preview
 
 Download the `SmaxTec-Workbench-windows-preview` artifact from the latest successful
-[latest successful Windows build](https://github.com/FelixvanDijk/SmaxTec/actions), extract both the
-artifact wrapper and the included application ZIP, and open `SmaxTec Workbench.exe`.
+[0.6.0 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34559455530),
+extract both the artifact wrapper and the included application ZIP, and open
+`SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
 CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
-executable was denied execution on the current development computer; prior versions
-passed independent Windows CI smoke tests. Consult current status for 0.6.0 build
+executable was denied execution on the current development computer; 0.6.0 passed
+independent Windows CI smoke tests. Consult current status for 0.6.0 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
 installer remain release work. If the legacy Microsoft 365 route is retained, its

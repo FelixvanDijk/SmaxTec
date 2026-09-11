@@ -5,10 +5,10 @@ spacious herd browser and queue-first measurement workflow.** The default worksp
 signs in, discovers farms/cows/groups/devices/metrics, queues individual periods, reviews
 them, and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
 browser exports or email. Read-only auth/catalog/metric discovery was live-verified;
-401 offline tests pass. Representative direct downloads, client date/unit/UI acceptance,
-and a signed clean-machine release remain pending. The 0.6.0 packaged CI run is pending;
-the prior 0.5.1 packaged CI passes. The website/email workflow remains available in a
-legacy tab and its Graph deployment work is paused.
+408 offline tests pass. Representative direct downloads, client date/unit/UI acceptance,
+and a signed clean-machine release remain pending. Packaged 0.6.0 CI passes. The
+website/email workflow remains available in a legacy tab and its Graph deployment work
+is paused.
 
 ## User intent and scope
 
@@ -175,8 +175,13 @@ Do not invent calculations or clinical meanings in M4.
   row-only assignment, collapsed connected-account controls and short-window scrolling.
   Dependency integrity, Ruff, formatting and source smoke pass. Synthetic themed Browse
   and Queue renders were inspected at the user's short-screen content dimensions; the
-  inventory/adaptive queue spacing and independent scrolling no longer overlap controls. Windows
-  packaged CI and client usability acceptance are pending.
+  inventory/adaptive queue spacing and independent scrolling no longer overlap controls.
+  **GitHub Windows CI passed** for `660f094`: clean locked install, all 408 tests/checks,
+  bundle build, packaged Qt/Chromium/API/XLSX/timezone/MSAL/Outlook-helper smoke and
+  artifact upload. [Verified 0.6.0 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34559455530).
+  The [0.6.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34559455530/artifacts/10183887532)
+  is approximately 288 MiB and retained through 2026-09-25. Client usability acceptance
+  and representative direct downloads remain pending.
 - 0.5.1 source: **404 tests pass** locally. A constrained 760×560 API panel proves
   Browse and Queue become vertically scrollable before styled controls are compressed,
   and asserts the table/action/exact-cow/date/measurement/output rows do not overlap.

@@ -144,8 +144,11 @@ Inbox access, signing and clean-client-machine acceptance remain separate gates.
 
 Version 0.6.0 passes 408 offline tests plus dependency, lint, format and source smoke
 checks. Its queue-first multi-selection and metric-assignment UI has synthetic short-
-window and state regressions plus themed visual inspection. Windows packaged CI and
-client usability acceptance are pending.
+window and state regressions plus themed visual inspection. GitHub Windows CI passed
+the clean locked install, tests/checks, bundled executable smoke and artifact upload for
+[`660f094`](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34559455530). The
+approximately 288 MiB [0.6.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34559455530/artifacts/10183887532)
+is retained through 2026-09-25. Client usability acceptance remains pending.
 
 Version 0.5.1 passes 404 offline tests plus dependency, lint, format and source smoke
 checks. An authorized read-only live check confirmed direct authentication, membership,
