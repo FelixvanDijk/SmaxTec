@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1 — 2026-09-11 (development preview)
+
+- Fix unusable overlap and vertically clipped controls in the Direct data API Browse
+  and Download queue tabs on short laptop/window layouts.
+- Give Browse, Queue and Results independent vertical scroll surfaces, preserve full
+  Qt control size hints, and add deliberate spacing within queue actions and option cards.
+- Add a constrained 760×560 GUI regression proving scrolling activates and the table,
+  action, exact-number, date, measurement and output rows remain separated. A themed
+  render was also inspected at the user's short-screen content dimensions. All 404
+  tests plus dependency, lint, formatting and source-smoke checks pass locally.
+
 ## 0.5.0 — 2026-09-11 (development preview)
 
 - Make the official smaXtec Public API v2 the default collection workspace. Sign in

@@ -25,11 +25,14 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
+    QLayout,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
     QProgressBar,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
@@ -291,9 +294,18 @@ class ApiPanel(QWidget):
         self.browse_page = self._build_browse()
         self.queue_page = self._build_queue()
         self.results_page = self._build_results()
-        self.steps.addTab(self.browse_page, "1  Browse herd")
-        self.steps.addTab(self.queue_page, "2  Download queue (0)")
-        self.steps.addTab(self.results_page, "3  Results")
+        self.browse_scroll = self._scrollable_page(
+            self.browse_page, "Scrollable farm and target browser"
+        )
+        self.queue_scroll = self._scrollable_page(
+            self.queue_page, "Scrollable direct data download queue"
+        )
+        self.results_scroll = self._scrollable_page(
+            self.results_page, "Scrollable direct data results"
+        )
+        self.steps.addTab(self.browse_scroll, "1  Browse herd")
+        self.steps.addTab(self.queue_scroll, "2  Download queue (0)")
+        self.steps.addTab(self.results_scroll, "3  Results")
         layout.addWidget(self.steps, 1)
         self.progress = QProgressBar()
         self.progress.setFixedHeight(5)
@@ -318,6 +330,23 @@ class ApiPanel(QWidget):
         return button
 
     @staticmethod
+    def _scrollable_page(page: QWidget, accessible_name: str) -> QScrollArea:
+        """Keep styled controls at usable heights on short laptop displays."""
+        page.setObjectName("apiStepPage")
+        page.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        page_layout = page.layout()
+        if page_layout is not None:
+            page_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        scroll = QScrollArea()
+        scroll.setObjectName("apiPageScroll")
+        scroll.setAccessibleName(accessible_name)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(page)
+        return scroll
+
+    @staticmethod
     def _table(columns: list[str], accessible_name: str) -> QTableWidget:
         table = QTableWidget(0, len(columns))
         table.setHorizontalHeaderLabels(columns)
@@ -335,6 +364,7 @@ class ApiPanel(QWidget):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 14, 0, 0)
+        layout.setSpacing(10)
         filters = QHBoxLayout()
         self.farm = QComboBox()
         self.farm.setAccessibleName("API farm")
@@ -409,6 +439,7 @@ class ApiPanel(QWidget):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 14, 0, 0)
+        layout.setSpacing(10)
         self.queue_note = label(
             "Add cows, groups or devices from Browse herd. Double-click any date to edit it.",
             "muted",
@@ -423,6 +454,7 @@ class ApiPanel(QWidget):
         self.queue.itemChanged.connect(self._queue_changed)
         layout.addWidget(self.queue, 1)
         queue_actions = QHBoxLayout()
+        queue_actions.setSpacing(10)
         self.remove_button = self._button("Remove selected", self._remove_selected)
         self.clear_queue_button = self._button("Clear queue", self._clear_queue)
         self.apply_dates_button = self._button("Apply Browse dates to all", self._apply_dates)
@@ -432,9 +464,12 @@ class ApiPanel(QWidget):
         queue_actions.addWidget(self.apply_dates_button)
         layout.addLayout(queue_actions)
         options = QHBoxLayout()
+        options.setSpacing(12)
         measurements = QFrame()
         measurements.setObjectName("card")
         metric_layout = QVBoxLayout(measurements)
+        metric_layout.setContentsMargins(16, 14, 16, 14)
+        metric_layout.setSpacing(8)
         metric_layout.addWidget(label("Measurements", "statusTitle"))
         self.all_metrics = QCheckBox("All available measurements for each target")
         self.all_metrics.setChecked(True)
@@ -455,6 +490,8 @@ class ApiPanel(QWidget):
         extras = QFrame()
         extras.setObjectName("card")
         extra_layout = QVBoxLayout(extras)
+        extra_layout.setContentsMargins(16, 14, 16, 14)
+        extra_layout.setSpacing(8)
         extra_layout.addWidget(label("Resolution & farm datasets", "statusTitle"))
         self.resolution = QComboBox()
         self.resolution.setAccessibleName("API measurement resolution")
@@ -514,6 +551,7 @@ class ApiPanel(QWidget):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 14, 0, 0)
+        layout.setSpacing(10)
         self.result_summary = label("Your collections will appear here", "cardTitle")
         layout.addWidget(self.result_summary)
         self.result_note = label(

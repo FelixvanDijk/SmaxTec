@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtWidgets import QLineEdit
 
 from smaxtec.application.api_data import (
@@ -142,3 +142,45 @@ def test_future_date_in_farm_timezone_is_rejected(qtbot, tmp_path):
     panel._add_selected()
     assert panel.queue.rowCount() == 0
     assert "future" in panel.status.text()
+
+
+def test_short_window_scrolls_workflow_pages_without_compressing_or_overlapping(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.resize(760, 560)
+    panel.show()
+    qtbot.waitUntil(lambda: panel.browse_scroll.verticalScrollBar().maximum() > 0)
+
+    def rectangle(widget, page):
+        return QRect(widget.mapTo(page, QPoint(0, 0)), widget.size())
+
+    def assert_below(upper, lower, page):
+        assert rectangle(upper, page).bottom() < rectangle(lower, page).top()
+
+    assert_below(panel.search, panel.inventory, panel.browse_page)
+    assert_below(panel.inventory, panel.select_shown_button, panel.browse_page)
+    assert_below(panel.select_shown_button, panel.cow_numbers, panel.browse_page)
+    assert_below(panel.cow_numbers, panel.shared_from, panel.browse_page)
+    for control in (
+        panel.farm,
+        panel.search,
+        panel.cow_numbers,
+        panel.shared_from,
+        panel.add_button,
+    ):
+        assert control.height() >= control.sizeHint().height()
+
+    panel.steps.setCurrentIndex(1)
+    qtbot.waitUntil(lambda: panel.queue_scroll.verticalScrollBar().maximum() > 0)
+    assert_below(panel.queue, panel.remove_button, panel.queue_page)
+    assert_below(panel.remove_button, panel.metrics, panel.queue_page)
+    assert_below(panel.metrics, panel.destination, panel.queue_page)
+    assert_below(panel.destination, panel.collection_name, panel.queue_page)
+    for control in (
+        panel.queue,
+        panel.remove_button,
+        panel.metrics,
+        panel.destination,
+        panel.collection_name,
+        panel.download_button,
+    ):
+        assert control.height() >= control.minimumSizeHint().height()

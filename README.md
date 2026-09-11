@@ -5,7 +5,7 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.5.0 makes the official smaXtec Public API the primary workflow. Users can
+Version 0.5.1 makes the official smaXtec Public API the primary workflow. Users can
 discover their farms, cows, groups, devices and available measurements; assign an
 individual period to every target; review the full queue; and save direct raw JSON,
 CSV and optional Excel data without waiting for email. The earlier browser/email
@@ -113,7 +113,7 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; prior versions
-passed independent Windows CI smoke tests. Consult current status for 0.5.0 build
+passed independent Windows CI smoke tests. Consult current status for 0.5.1 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
 installer remain release work. If the legacy Microsoft 365 route is retained, its

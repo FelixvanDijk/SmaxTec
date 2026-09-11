@@ -131,6 +131,14 @@ QTabWidget#apiSteps > QTabBar::tab:selected {
     border-bottom-color: #ffffff;
 }
 QWidget#apiPanel { background: #f5f7f4; }
+QScrollArea#apiPageScroll {
+    background: #ffffff;
+    border: none;
+}
+QScrollArea#apiPageScroll QWidget#qt_scrollarea_viewport,
+QWidget#apiStepPage {
+    background: #ffffff;
+}
 QListWidget {
     background: #fbfcfa;
     border: 1px solid #d3dfcd;
