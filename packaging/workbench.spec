@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from uuid import UUID
 
-from PyInstaller.utils.hooks import copy_metadata
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
 
 root = Path(SPECPATH).parent
 generated = root / "build" / "generated"
@@ -30,7 +30,7 @@ a = Analysis(
         (str(root / "src" / "smaxtec" / "ui" / "theme.qss"), "smaxtec/ui"),
         (str(root / "packaging" / "START_HERE.txt"), "."),
         (str(config_path), "smaxtec"),
-    ] + sum(
+    ] + collect_data_files("tzdata") + sum(
         (
             copy_metadata(package)
             for package in (
@@ -47,11 +47,12 @@ a = Analysis(
                 "urllib3",
                 "certifi",
                 "XlsxWriter",
+                "tzdata",
             )
         ),
         [],
     ),
-    hiddenimports=[],
+    hiddenimports=collect_submodules("tzdata"),
     hookspath=[],
     excludes=["tkinter", "pytest", "ruff"],
     noarchive=False,

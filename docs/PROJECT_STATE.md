@@ -169,7 +169,9 @@ Do not invent calculations or clinical meanings in M4.
   Live read-only auth/catalog/metrics evidence is recorded above. PyInstaller assembled
   the API-first bundle from clean temporary staging, but local unsigned EXE launch was
   denied by the existing machine policy, so packaged smoke/archive are not claimed.
-  GitHub Windows CI is pending.
+  The first GitHub Windows run exposed a missing clean-Windows IANA timezone database;
+  `tzdata` is now an explicit locked/bundled runtime dependency and packaged smoke checks
+  UK and New Zealand zones. Replacement GitHub Windows CI is pending.
 - 0.4.1: **384 tests passed** locally (119 seconds), with dependency integrity,
   lint, formatting and source smoke passing. Coverage includes
   system-browser MSAL parameters, memory-only token representation, exact Graph

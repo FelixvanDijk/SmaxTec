@@ -26,6 +26,8 @@
 - Stage every Windows build in a fresh validated system-temporary directory before smoke
   and ZIP publication, avoiding stale/ACL-protected OneDrive bundle directories. Local
   assembly succeeds; this machine still blocks unsigned EXE execution, so CI smoke is pending.
+- Bundle the IANA `tzdata` database explicitly so farm-local date handling works on clean
+  Windows computers, which do not provide this database through the operating system.
 
 - Make Microsoft 365 deployment plug-and-play after central approval: validate and
   embed the approved Entra public-client ID during Windows packaging, support a GitHub

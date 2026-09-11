@@ -7,6 +7,7 @@ import sys
 from datetime import UTC, datetime
 from importlib import resources
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from PySide6.QtWidgets import QApplication
 
@@ -29,6 +30,10 @@ def _check_collection_runtime() -> None:
     assert callable(msal.PublicClientApplication)
     assert callable(xlsxwriter.Workbook)
     assert ElementTree.fromstring("<smoke>ready</smoke>").text == "ready"
+    # Windows has no system IANA database. API date bounds need the bundled
+    # tzdata package for every farm timezone used by the signed-in account.
+    for timezone in ("Europe/London", "Pacific/Auckland"):
+        assert ZoneInfo(timezone).key == timezone
     if getattr(sys, "frozen", False):
         config_file = resources.files("smaxtec").joinpath(MICROSOFT_CONFIG_RESOURCE)
         assert config_file.is_file()
