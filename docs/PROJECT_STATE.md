@@ -6,7 +6,7 @@ discovers farms/cows/groups/devices/metrics, queues individual periods, reviews 
 and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
 browser exports or email. Read-only auth/catalog/metric discovery was live-verified;
 401 offline tests pass. Representative direct downloads, client date/unit acceptance,
-and a signed clean-machine release remain pending. Packaged 0.5.1 CI is pending. The
+and a signed clean-machine release remain pending. Packaged 0.5.1 CI passes. The
 website/email workflow remains available in a legacy tab and its Graph deployment work
 is paused.
 
@@ -166,7 +166,12 @@ Do not invent calculations or clinical meanings in M4.
   Browse and Queue become vertically scrollable before styled controls are compressed,
   and asserts the table/action/exact-cow/date/measurement/output rows do not overlap.
   Themed Browse and Queue renders were inspected at the user's short-screen content
-  dimensions. Dependency integrity, Ruff and source smoke pass; packaged CI is pending.
+  dimensions. Dependency integrity, Ruff and source smoke pass. **GitHub Windows CI
+  passed** for `99dfd76`: clean locked install, all 404 tests/checks, bundle build,
+  packaged Qt/Chromium/API/XLSX/timezone/MSAL/Outlook-helper smoke and artifact upload.
+  [Verified 0.5.1 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34555178268).
+  The [corrected Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34555178268/artifacts/10182379206)
+  is approximately 288 MiB and retained through 2026-09-25.
 - 0.5.0 source: **403 tests passed** locally, including API JSON-body
   authentication/redaction, fixed route/query shapes, exact identity, target-specific
   failures, independent dates, DST conversion, bounded chunking, raw-point lineage,

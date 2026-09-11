@@ -10,6 +10,8 @@
   action, exact-number, date, measurement and output rows remain separated. A themed
   render was also inspected at the user's short-screen content dimensions. All 404
   tests plus dependency, lint, formatting and source-smoke checks pass locally.
+- Pass clean GitHub Windows packaging and executable smoke and publish the corrected
+  approximately 288 MiB 0.5.1 preview artifact.
 
 ## 0.5.0 — 2026-09-11 (development preview)
 

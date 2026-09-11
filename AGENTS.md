@@ -106,8 +106,8 @@ server-side background download jobs remain withheld until their semantics/lifec
 are confirmed. Each API workflow page must scroll vertically before Qt compresses
 styled controls below their size hints; short displays must never overlap or clip input,
 table, action or option rows. Source 0.5.1 has synthetic verification and read-only live auth/catalog/
-metric-discovery evidence; representative direct downloads and packaged/client
-acceptance remain pending. The next milestone is canonical normalization/calculations,
+metric-discovery evidence and packaged Windows CI proof; representative direct downloads
+and client acceptance remain pending. The next milestone is canonical normalization/calculations,
 then graphs, using these preserved raw collections.
 
 The previous website and email implementation remains under **Legacy website + email**

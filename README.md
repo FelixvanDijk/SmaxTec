@@ -106,7 +106,7 @@ or requested date period. Check these before later analysis.
 ## Download the packaged desktop preview
 
 Download the `SmaxTec-Workbench-windows-preview` artifact from the latest successful
-[Windows build](https://github.com/FelixvanDijk/SmaxTec/actions), extract both the
+[0.5.1 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34555178268), extract both the
 artifact wrapper and the included application ZIP, and open `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
 CI artifacts expire after 14 days; these are development previews, not releases.

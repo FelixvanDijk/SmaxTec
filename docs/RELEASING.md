@@ -142,12 +142,15 @@ Inbox access, signing and clean-client-machine acceptance remain separate gates.
 
 ## M4 direct API evidence
 
-Version 0.5.0 passes 403 offline tests plus dependency, lint, format and source smoke
+Version 0.5.1 passes 404 offline tests plus dependency, lint, format and source smoke
 checks. An authorized read-only live check confirmed direct authentication, membership,
 farm catalogue and metric discovery; no data mutation or emailed export was requested.
 PyInstaller assembled the API-first bundle, including XlsxWriter and its metadata, in
 fresh temporary staging. This development machine again denied execution of the unsigned
 EXE with `Access is denied`, so local packaged smoke/archive publication is not claimed.
-GitHub Windows build/smoke and artifact evidence will be linked after CI succeeds.
+GitHub Windows CI passed the clean locked install, tests/checks, bundled executable smoke
+and artifact upload for [`99dfd76`](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34555178268).
+The approximately 288 MiB [0.5.1 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34555178268/artifacts/10182379206)
+is retained through 2026-09-25. This proves packaging, not client-machine acceptance.
 Representative direct measurement downloads, client boundary/unit review, code signing,
 installer and clean standard-user-machine acceptance remain pending.
