@@ -27,8 +27,9 @@ Build on Windows; PyInstaller does not make another platform's binaries from a
 single build host. Only full Chromium is shipped; its headless mode runs the
 offline smoke test. Browser updates require rebuilding the application.
 
-The 0.5.0 smoke imports the direct XLSX writer plus email/XML/MSAL parsers and Windows COM runtime modules without
-creating Outlook. It checks private helper IPC with an invalid action rejected before
+The 0.5.0 smoke resolves representative IANA farm timezones and imports the direct XLSX
+writer plus email/XML/MSAL parsers and Windows COM runtime modules without creating
+Outlook. It checks private helper IPC with an invalid action rejected before
 the helper imports COM or accesses Outlook. It does not prove a
 configured Graph registration/consent, permitted COM access or live downloads. The helper uses
 the same bundled executable via `--outlook-helper`; users do not install Python or pywin32.
@@ -52,7 +53,7 @@ programmatic-access or link-protection policies.
   the owner's instruction.
 - Include `olefile` (BSD), `defusedxml` (PSF), `pywin32` (PSF), MSAL (MIT), requests,
   PyJWT, cryptography, cffi, charset-normalizer, idna, urllib3, certifi and XlsxWriter
-  (BSD-2-Clause) alongside
+  (BSD-2-Clause), plus `tzdata` (Apache-2.0), alongside
   Qt, Playwright and Chromium in that inventory, checking exact locked versions and
   bundled transitive notices. A minimal OLE MSG reader replaced the initially
   considered GPL full-MSG dependency; verify removed packages do not remain in the

@@ -22,10 +22,11 @@
 - Add XlsxWriter to the locked/bundled runtime and cover the API client, downloader,
   queue/review, exact identity, date/DST, partial failure and output behavior synthetically.
   All 403 offline tests pass; read-only authentication/catalog/metric discovery was also
-  live-verified. Representative download/client and packaged CI acceptance remain pending.
+  live-verified. Representative download/client acceptance remains pending.
 - Stage every Windows build in a fresh validated system-temporary directory before smoke
   and ZIP publication, avoiding stale/ACL-protected OneDrive bundle directories. Local
-  assembly succeeds; this machine still blocks unsigned EXE execution, so CI smoke is pending.
+  assembly succeeds; this machine still blocks unsigned EXE execution. GitHub's clean
+  Windows runner passed packaged smoke and uploaded the approximately 288 MiB preview ZIP.
 - Bundle the IANA `tzdata` database explicitly so farm-local date handling works on clean
   Windows computers, which do not provide this database through the operating system.
 

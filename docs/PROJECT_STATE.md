@@ -6,8 +6,9 @@ discovers farms/cows/groups/devices/metrics, queues individual periods, reviews 
 and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
 browser exports or email. Read-only auth/catalog/metric discovery was live-verified;
 401 offline tests pass. Representative direct downloads, client date/unit acceptance,
-packaged 0.5.0 CI and a signed clean-machine release remain pending. The website/email
-workflow remains available in a legacy tab and its Graph deployment work is paused.
+and a signed clean-machine release remain pending. Packaged 0.5.0 CI passes. The
+website/email workflow remains available in a legacy tab and its Graph deployment work
+is paused.
 
 ## User intent and scope
 
@@ -171,7 +172,13 @@ Do not invent calculations or clinical meanings in M4.
   denied by the existing machine policy, so packaged smoke/archive are not claimed.
   The first GitHub Windows run exposed a missing clean-Windows IANA timezone database;
   `tzdata` is now an explicit locked/bundled runtime dependency and packaged smoke checks
-  UK and New Zealand zones. Replacement GitHub Windows CI is pending.
+  UK and New Zealand zones. **Replacement GitHub Windows CI passed** for `2bd0edd`:
+  locked clean install, all 403 tests/checks, temporary-stage bundle build, packaged
+  Qt/Chromium/API/XLSX/timezone/MSAL/Outlook-helper smoke and artifact upload.
+  [Verified 0.5.0 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34553441787).
+  The [0.5.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34553441787/artifacts/10181765281)
+  is approximately 288 MiB and retained for 14 days. It remains unsigned and is not a
+  production release; representative API downloads and client acceptance remain pending.
 - 0.4.1: **384 tests passed** locally (119 seconds), with dependency integrity,
   lint, formatting and source smoke passing. Coverage includes
   system-browser MSAL parameters, memory-only token representation, exact Graph

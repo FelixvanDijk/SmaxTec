@@ -321,8 +321,8 @@ Never reuse an unrelated internal app registration without owner approval.
 
 ## Decision 013: Official Public API is the primary data path
 
-Status: implemented and live read-only discovery verified in 0.5.0; representative
-download and packaged/client acceptance remain pending.
+Status: implemented, live read-only discovery verified and packaged Windows CI passed
+in 0.5.0; representative direct downloads and client acceptance remain pending.
 
 Use the current Public API v2 Swagger as the data contract and keep the vendor beta
 SDK as research material rather than a runtime dependency. The SDK currently sends
