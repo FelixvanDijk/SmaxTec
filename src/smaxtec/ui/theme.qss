@@ -94,3 +94,46 @@ QTableWidget {
 }
 QHeaderView::section { background: #e9f0e3; color: #35553c; padding: 10px; border: none; }
 QDialog { background: #f7f9f4; }
+QTabWidget#workspaceTabs::pane {
+    border: none;
+    background: #f5f7f4;
+}
+QTabWidget#workspaceTabs > QTabBar::tab {
+    background: #dfe8df;
+    color: #52685d;
+    border: none;
+    padding: 13px 24px;
+    min-width: 175px;
+    font-weight: 600;
+}
+QTabWidget#workspaceTabs > QTabBar::tab:selected {
+    background: #f5f7f4;
+    color: #1d5940;
+    border-bottom: 3px solid #4f8c5b;
+}
+QTabWidget#apiSteps::pane {
+    background: #ffffff;
+    border: 1px solid #d7e2d6;
+    border-radius: 10px;
+    top: -1px;
+}
+QTabWidget#apiSteps > QTabBar::tab {
+    background: #e8eee6;
+    color: #5d7066;
+    border: 1px solid #d7e2d6;
+    padding: 10px 18px;
+    min-width: 145px;
+    font-weight: 600;
+}
+QTabWidget#apiSteps > QTabBar::tab:selected {
+    background: #ffffff;
+    color: #205a40;
+    border-bottom-color: #ffffff;
+}
+QWidget#apiPanel { background: #f5f7f4; }
+QListWidget {
+    background: #fbfcfa;
+    border: 1px solid #d3dfcd;
+    border-radius: 7px;
+    padding: 5px;
+}

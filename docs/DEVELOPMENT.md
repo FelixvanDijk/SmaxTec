@@ -30,7 +30,7 @@ Run module entry points through the environment's Python; activation is optional
 
 Tests run an HTTP site on an ephemeral loopback port with synthetic credentials.
 They do not call smaXtec, Outlook or request emails. Collection tests use synthetic
-COM objects, mail messages, network responses and workbook packages. Qt tests run
+COM objects, mail messages, API/network responses and workbook packages. Qt tests run
 offscreen. The smoke test opens the application and bundled Chromium against
 in-memory content, verifies XML/OLE/Windows COM imports, and exercises private helper
 IPC with an invalid action rejected before mailbox access. Live checks stay opt-in.
@@ -47,6 +47,8 @@ for XLSX XML, Windows-only `pywin32` for classic Outlook, and Microsoft's `msal`
 plus HTTP/crypto transitives for delegated Graph sign-in. No full MSG/RTF parser,
 Excel installation, mailbox password or desktop client secret is used. Keep exact
 third-party metadata/notices in the bundle and complete the release license review.
+M4 adds `XlsxWriter` for direct collection workbooks. API HTTP uses the standard
+library and does not install the beta vendor SDK; rationale is in `API_DATA.md`.
 
 ```powershell
 .\.venv\Scripts\python.exe -m piptools compile --extra dev --generate-hashes --strip-extras --allow-unsafe --output-file requirements-dev.lock pyproject.toml

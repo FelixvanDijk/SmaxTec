@@ -1,53 +1,34 @@
-SmaxTec Workbench — desktop preview 0.4.1
+SmaxTec Workbench — desktop preview 0.5.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
-3. Enter your smaXtec account details and choose Connect to smaXtec.
-4. A browser opens and signs in. Complete any extra verification in that window.
-5. Choose a farm. Enter a cow number with its own From and To dates (DD/MM/YYYY).
-6. Use Add cow for another row with independent dates. Remove a row with its x button.
-7. After five rows, the middle folds away. Expand all lets you edit the whole list;
-   Compact view shows the first and latest two rows. Folded rows are still included.
-8. Optionally open Use the same dates for all, enter From/To and click Apply to all.
-   Undo date change restores the previous dates until you next edit, add or remove a row.
-9. Review the full table, then confirm. Each cow and period gets its own export.
-10. After a batch, its browser closes. A later confirmed batch reconnects automatically.
-11. Choose Disconnect or close the app to end the in-memory account session.
+3. In Direct data API, enter your smaXtec email/password and choose Connect.
+4. Choose a farm. Browse cows, groups or devices, or enter exact cow numbers.
+5. Enter From and To as DD/MM/YYYY and add selected targets to the queue.
+6. Repeat for other farms, targets or periods. Every queue row keeps its own dates.
+7. Open Download queue. Edit individual dates; choose measurements/resolution,
+   optional weekly farm health index, output folder/name and optional Excel.
+8. Choose Review & download. Inspect every target/date/measurement row, then confirm.
+9. Results shows each saved, partial, failed or cancelled target. Open its folder.
+10. Choose Disconnect or close the app to release the in-memory API session.
 
-No Python, editor, browser driver, or package installation is required.
-Your website password is used for the current session and is not saved by the app.
+Each run makes a unique folder with raw API JSON, measurements.csv, optional XLSX and
+a hashed collection.json manifest. Earlier collections are never overwritten.
+Credentials and bearer token stay in memory and are not written to that folder.
 
-COLLECT THE EMAILED FILES — independent of website sign-in
+No Python, editor, browser driver or package installation is required.
 
-1. Wait until your emails have arrived, then choose Go to collection or scroll down.
-2. Choose Sign in with Microsoft 365. Your normal Microsoft browser sign-in and MFA
-   connect the chosen work mailbox; this works whether you use new Outlook, Outlook
-   on the web or classic Outlook. Workbench never asks for your email password.
-   Your organisation may need to approve this app's read-only Mail.Read permission.
-   Connect classic Outlook remains a local fallback where company policy permits it.
-3. Set Latest matching email count and the received-time lookback, then Find export emails.
-   Saved .eml/.msg import remains available. Imports use the files you chose, not
-   the latest Inbox count.
-4. Review the list and any warnings. Use Browse to choose where collections are saved.
-5. Choose Download reviewed emails, then Open collection folder.
-   Each file uses its OWN B3 cow number: 203 (new girl) becomes cow-203.xlsx;
-   another cow gets its own number. Repeated cows receive numbered filenames.
-6. Retry incomplete downloads reuses this collection. After restarting Workbench
-   on this computer as the same user, re-select the same emails and choose
-   Resume existing collection to select their original collection folder.
+LEGACY WEBSITE & EMAIL
 
-The default root is Documents / SmaxTec Workbench / Collections, resolved for your user.
-Each collection has a separate folder and a collection.json status/identity record.
-Existing workbooks are never overwritten. New collections are independent.
-Emails are not marked read, moved or deleted. Save attached forwarded messages as
-their own .eml/.msg before importing. Corporate access and link-protection policies apply.
+The Legacy website + email tab retains the earlier browser export and mailbox routes
+while direct API client acceptance is completed. Use it only when direct API data cannot
+supply the required result. Microsoft 365 mailbox sign-in may require an organization-
+approved app registration; classic Outlook and saved .eml/.msg import remain fallbacks.
+Emails are not marked read, moved or deleted. Existing labels remain unchanged.
 
-Excel is not opened. File sensitivity labels stay unchanged; Public is not applied.
-B3 naming does not verify the website farm, Animal number or export dates.
-Excel consolidation, calculations and graphs are not included yet.
-
-This is an unsigned development preview. The production release will have an
-installer and will be verified on a computer without developer tools installed.
-Do not move the executable out of its extracted folder.
+This is an unsigned development preview. Direct downloads, date boundaries, units and
+output still require representative client acceptance. The production release will have
+an installer and clean standard-user-machine verification. Do not move the executable
+out of its extracted folder.
 
 This application is an independent integration project, not an official smaXtec app.

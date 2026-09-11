@@ -13,6 +13,7 @@ and automation browser and provide a polished installer and GUI onboarding.
 ```mermaid
 flowchart TD
     UI[Desktop UI: inputs, progress, results] --> APP[Application workflows]
+    APP --> API[smaXtec Public API adapter - primary]
     APP --> WEB[smaXtec browser adapter]
     APP --> MAIL[Microsoft 365 / classic Outlook / saved-email adapters]
     APP --> JOBS[Local collection journal + manifest]
@@ -23,8 +24,12 @@ flowchart TD
     AUTO[Anomaly selection — planned] --> APP
 ```
 
-The automated anomaly path produces the same export-request inputs as manual cow
+The automated anomaly path will produce the same direct-data target inputs as manual
 selection. There must be one collection/normalization/reporting pipeline.
+
+Version 0.5.0 makes the official Public API the primary collection path. Its research,
+route and output contract is in [Direct API data](API_DATA.md). The browser/email path
+remains a compatibility tab during API acceptance; it is not the basis for new analysis.
 
 M3 began in 0.4.0 with classic Outlook and saved-email import. Version 0.4.1 adds a
 Microsoft Graph connector for new Outlook, Outlook on the web and classic Outlook;
@@ -38,7 +43,7 @@ website-request correlation.
 | --- | --- | --- |
 | `src/smaxtec/ui/` | Widgets, styling, worker lifecycle, user feedback | Selectors, formulas, provider logic |
 | `src/smaxtec/application/` | Workflow contracts, credentials in memory, progress/errors | Qt widgets, Playwright implementation |
-| `src/smaxtec/adapters/smaxtec/` | Browser ownership, login page and verified transitions | Report calculations or email behavior |
+| `src/smaxtec/adapters/smaxtec/` | Bounded Public API reads plus legacy browser ownership/login transitions | Report calculations or email behavior |
 | `src/smaxtec/adapters/mail/` | Read-only Outlook/helper, bounded email parsing and trusted-link downloads | Qt widgets, report formulas or mailbox mutations |
 | `src/smaxtec/adapters/workbooks.py` | Bounded XLSX/ZIP/XML inspection and B3 identity | Excel automation, label assignment or workbook rewriting |
 | `src/smaxtec/main.py` | Compose the app and concrete adapters | Business workflows |
@@ -52,8 +57,11 @@ The request editor is in `ui/cow_editor.py`, scrollable immutable review in
 `ui/export_review.py`, and shared plain-text/date widgets in `ui/widgets.py`.
 `ui/window.py` composes those controls and owns connection and batch lifecycle feedback.
 `ui/collection_panel.py` owns the independent email workspace and immutable review;
-`ui/collection_worker.py` runs its short-lived cancellable jobs. The window waits
-for both website and collection workers before closing. Concrete mailbox/service
+`ui/collection_worker.py` runs its short-lived cancellable jobs. `ui/api_panel.py`
+owns API discovery, immutable queue/review and its serialized cancellable worker;
+`application/api_data.py` defines its contracts, `application/api_downloads.py`
+writes collections, and `adapters/smaxtec/api.py` owns HTTP/token/catalog validation.
+The window waits for API, website and collection workers before closing. Concrete service
 objects are lazy: opening the GUI does not read mail or create collection folders.
 
 ## Runtime model
@@ -304,17 +312,53 @@ message bodies, pagination links and Graph errors never cross into UI or storage
 There are no automatic network retries or fallback account guesses.
 
 An Entra public-client application ID is mandatory even though it is not a secret.
-The release owner must embed an approved registration configured for localhost and
-delegated `Mail.Read`; tenant policy may require admin consent. The source-only
-environment override is for controlled development trials, not end-user setup.
+The release owner supplies an approved registration configured for localhost and
+delegated `Mail.Read` through a controlled build variable; the packaging step validates
+and embeds it as generated package data. Frozen applications ignore runtime overrides.
+Tenant policy may require admin consent. The source-mode environment override is for
+controlled development trials, not end-user setup.
 Never reuse an unrelated internal app registration without owner approval.
+
+## Decision 013: Official Public API is the primary data path
+
+Status: implemented and live read-only discovery verified in 0.5.0; representative
+download and packaged/client acceptance remain pending.
+
+Use the current Public API v2 Swagger as the data contract and keep the vendor beta
+SDK as research material rather than a runtime dependency. The SDK currently sends
+JSON bodies with data GETs while Swagger declares query parameters, and its generic
+transport lacks the timeout, response-bound and cooperative-cancellation controls
+required by this desktop product. Revisit when a stable vendor SDK closes those gaps.
+
+`SmaxtecApiClient` is a narrow read adapter with a fixed HTTPS origin, rejected redirects,
+bounded JSON responses and memory-only bearer session. Sign-in uses a live-verified
+JSON credential body so secrets never enter URLs. A discovered farm/entity must belong
+to the current session before metric or data reads. The adapter does not expose mutation,
+emailed-report, transformation or background-job operations.
+
+Every `ApiTarget` binds a discovered entity, farm/timezone, individual local From/To
+dates and optional metric codes. Whole farm-local dates become one half-open UTC range
+with DST-aware conversion. The service chunks that range conservatively and records
+each exact chunk in both raw JSON and CSV lineage. It does not assume undocumented
+API To-date inclusivity or data-point shape.
+
+Every confirmed queue produces a unique folder containing immutable raw response chunks,
+a staging CSV, optional Excel representation and a SHA-256 manifest. Cancellation and
+per-target availability errors retain completed chunks with explicit statuses. This is
+the input boundary for the next canonical normalization layer; calculations and graphs
+must never parse the GUI or re-query data independently. See `API_DATA.md` for the
+detailed route, output and acceptance contract.
+
+Keep the existing website/email implementation labelled as legacy until client API
+acceptance. It remains a separate adapter and cannot be silently mixed with API data:
+future normalization must identify source kind and reconcile identity/date semantics.
 
 ## Data and workflow design to preserve
 
-- A future export job records a stable job ID, website farm ID + display name,
-  individual cow/start/end targets and farm timezone, and report settings.
-- Clarify inclusive/exclusive boundaries, daylight-saving time, cow number versus
-  tag identity, available measurements and units using real samples before coding.
+- A direct collection records stable farm/target IDs + display identity, individual
+  start/end periods, farm timezone, metrics, chunk bounds and output hashes.
+- Validate inclusive/exclusive response behavior, cow number versus tag identity,
+  measurements and units using representative client-accepted samples before analysis.
 - Each requested cow export gets a tracked state and correlation metadata.
   Emails can arrive out of order, be duplicated, or never arrive. A timeout must
   preserve resumable state. Retrying must not blindly request duplicate exports.

@@ -1,4 +1,4 @@
-"""Desktop website request and independent email collection workspace."""
+"""Desktop direct-API studio plus the website/email compatibility workspace."""
 
 from collections.abc import Callable
 
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -35,6 +36,7 @@ from smaxtec.application.login import (
     LoginSession,
     LoginStage,
 )
+from smaxtec.ui.api_panel import ApiPanel
 from smaxtec.ui.collection_panel import CollectionPanel
 from smaxtec.ui.cow_editor import CowRequestsEditor
 from smaxtec.ui.export_review import ExportReviewDialog
@@ -48,6 +50,7 @@ class MainWindow(QMainWindow):
         session_factory: Callable[[], LoginSession],
         *,
         collection_panel: CollectionPanel | None = None,
+        api_panel: ApiPanel | None = None,
     ) -> None:
         super().__init__()
         self._session_factory = session_factory
@@ -69,6 +72,13 @@ class MainWindow(QMainWindow):
         layout.setSpacing(0)
         layout.addWidget(self._sidebar())
 
+        self.workspace_tabs = QTabWidget()
+        self.workspace_tabs.setObjectName("workspaceTabs")
+        self.workspace_tabs.setDocumentMode(True)
+        self.api = api_panel if api_panel is not None else ApiPanel()
+        self.api.idle.connect(self._on_subsystem_idle)
+        self.workspace_tabs.addTab(self.api, "Direct data API")
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -81,7 +91,7 @@ class MainWindow(QMainWindow):
         top = QHBoxLayout()
         top.addWidget(label("WORKSPACE  /  DATA COLLECTION", "eyebrow"))
         top.addStretch()
-        top.addWidget(label("MILESTONE 3", "badge", wrap=False))
+        top.addWidget(label("LEGACY WORKFLOW", "badge", wrap=False))
         body.addLayout(top)
         body.addSpacing(8)
         body.addWidget(label("Choose the herd data you need.", "heading"))
@@ -115,9 +125,10 @@ class MainWindow(QMainWindow):
             )
         )
         scroll.setWidget(content)
-        layout.addWidget(scroll, 1)
+        self.workspace_tabs.addTab(scroll, "Legacy website + email")
+        layout.addWidget(self.workspace_tabs, 1)
         self.setCentralWidget(root)
-        self.username.setFocus()
+        self.api.username.setFocus()
 
     def _sidebar(self) -> QWidget:
         side = QFrame()
@@ -131,12 +142,14 @@ class MainWindow(QMainWindow):
         column.addSpacing(24)
         column.addWidget(label("FROM HERD DATA\nTO A CLEARER VIEW.", "sideCaption"))
         column.addSpacing(12)
-        self.connect_step = label("01   Connect account", "activeStep")
-        self.select_step = label("02   Select herd & cows", "futureStep")
+        self.connect_step = label("01   Connect direct API", "activeStep")
+        self.select_step = label("02   Build data queue", "futureStep")
         column.addWidget(self.connect_step)
         column.addWidget(self.select_step)
-        column.addWidget(label("03   Collect email data", "futureStep"))
+        column.addWidget(label("03   Download collection", "futureStep"))
         column.addWidget(label("04   Explore & report", "futureStep"))
+        column.addSpacing(10)
+        column.addWidget(label("LEGACY WEBSITE & EMAIL", "sideCaption"))
         column.addStretch()
         column.addWidget(label("One workspace.\nEvery cow in context.", "sideNote"))
         column.addWidget(label(f"DESKTOP PREVIEW   /   {__version__}", "sideVersion"))
@@ -473,20 +486,32 @@ class MainWindow(QMainWindow):
         if not self._failed:
             self._status("Connection closed", "Enter your password to start a new session.")
         if self._closing:
-            self.close()
+            self._maybe_finish_close()
         else:
             self.password.setFocus()
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if self._worker is not None or self.collection.is_busy:
+        if self._worker is not None or self.collection.is_busy or self.api.is_busy:
             self._closing = True
             self.centralWidget().setEnabled(False)
             self._stop()
             self.collection.cancel()
+            self.api.shutdown()
             event.ignore()
         else:
             event.accept()
 
     def _on_collection_idle(self) -> None:
-        if self._closing:
+        self._maybe_finish_close()
+
+    def _on_subsystem_idle(self) -> None:
+        self._maybe_finish_close()
+
+    def _maybe_finish_close(self) -> None:
+        if (
+            self._closing
+            and self._worker is None
+            and not self.collection.is_busy
+            and not self.api.is_busy
+        ):
             self.close()

@@ -10,7 +10,7 @@ files are the persistent project memory across sessions and agents.
 
 Deliver a polished, intuitive, plug-and-play desktop application for nontechnical
 users. A user downloads/installs the application, opens it, connects their
-authorized website and email accounts, and works entirely through the GUI.
+authorized smaXtec account, and works entirely through the GUI.
 They must never need VS Code, Python, a terminal, package installation, browser
 driver installation, configuration-file editing, or developer knowledge.
 Runtime dependencies and the automation browser belong in the distribution.
@@ -20,18 +20,18 @@ platform-specific code so other desktop targets remain possible.
 
 ## Full intended workflow
 
-1. The GUI collects farm, one or many cow identifiers each with its own From/To period, output
-   location, and user-defined calculation/report settings.
-2. Sign into smaXtec and navigate the authorized farm/cow/export workflow.
-3. Request exports, which produce emails containing Excel download links.
-4. Match incoming emails to the correct request, securely download individual
-   workbooks, and handle delayed, duplicated, missing, or expired messages.
-5. Validate and normalize the data, apply specified calculations, and combine
+1. The GUI collects farm, one or many target identifiers each with its own From/To
+   period, measurements, output location, and calculation/report settings.
+2. Sign into the official smaXtec Public API, discover authorized farms/cows/groups/
+   devices and download selected data directly. Keep website/email collection as a
+   compatibility path while direct API acceptance is pending.
+3. Preserve raw API responses and provenance, then normalize the data, apply specified
+   calculations, and combine
    all selected cows into one master Excel workbook with traceable provenance.
-6. Produce the requested complex graphs and analyses from that same normalized
+4. Produce the requested complex graphs and analyses from that same normalized
    dataset and configuration, so charts and workbook agree.
-7. Later, evaluate website data using agreed, versioned anomaly heuristics;
-   automatically select/request relevant exports and reuse the SAME download,
+5. Later, evaluate API data using agreed, versioned anomaly heuristics;
+   automatically select/request relevant data and reuse the SAME download,
    processing, workbook, and analysis pipeline.
 
 Do not invent calculation formulas, thresholds, schemas, email providers,
@@ -88,6 +88,29 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
+Version 0.5.0 makes the official smaXtec Public API v2 the primary workspace. Read
+`docs/API_DATA.md` before changing it. The UI dynamically discovers authorized farms,
+cows, groups, devices and per-target metrics; queues immutable target/From/To/metric
+combinations; explicitly reviews them; and downloads bounded JSON chunks into one
+unique collection with CSV, optional XLSX, SHA-256 provenance and optional documented
+farm health index. Credentials/tokens remain in memory. Only the fixed API origin and
+read endpoints are allowed; redirects, raw errors and mutation/emailed-report routes
+are excluded. A 400 while discovering one target's metrics is a target availability
+failure, not an automatic account failure. Preserve Animal numbers as strings and use
+exact equality. Convert whole farm-local reviewed days once into auditable half-open UTC
+bounds, including DST, and retain both local dates and every API chunk boundary. Do not
+silently deduplicate boundary points: API To-date inclusivity is not documented.
+Raw response shapes win over guessed schemas. Do not invent metric meanings, preferred
+units, transformations, event timestamp units or clinical interpretations. Events and
+server-side background download jobs remain withheld until their semantics/lifecycle
+are confirmed. Source 0.5.0 has synthetic verification and read-only live auth/catalog/
+metric-discovery evidence; representative direct downloads and packaged/client
+acceptance remain pending. The next milestone is canonical normalization/calculations,
+then graphs, using these preserved raw collections.
+
+The previous website and email implementation remains under **Legacy website + email**
+as a compatibility path; email work is paused, not deleted. Its constraints follow.
+
 Milestones 1 and 2 implement login plus farm/cow/date selection and measured-data
 export requests. Version 0.3.0 adds individual dates per cow; client acceptance of
 this editor and live export dates remains pending. Each
@@ -113,6 +136,11 @@ consent are deployment prerequisites, not ordinary user configuration. Never add
 mailbox password, client secret, copied-token prompt, Outlook Web scraping or consent
 bypass. Classic Outlook remains a bounded-helper fallback and may surface protected
 messages without readable links; saved `.eml`/`.msg` import remains available.
+Treat an Inbox scan whose relevant messages are all `content blocked` as a failed
+acceptance route, not partial success. Persistently prioritize activating the centrally
+approved Graph registration and consent in that environment; administrative controls
+are deployment constraints to resolve with the application owner, never controls to
+disable, evade, or conceal from the client.
 Keep inboxes read-only; freeze the newest-N matching selection including duplicates
 and problematic messages, without topping up. Preserve accepted workbook bytes.
 Validate every redirect through the confirmed Safe Links/smaXtec/exact-bucket route.

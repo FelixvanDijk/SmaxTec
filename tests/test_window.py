@@ -80,6 +80,14 @@ def test_fields_are_required_and_password_is_masked(qtbot):
     assert window.status_title.text() == "Add your sign-in details"
 
 
+def test_direct_api_is_the_primary_workspace_and_legacy_tools_remain_available(qtbot):
+    window = MainWindow(FakeSession)
+    qtbot.addWidget(window)
+    assert window.workspace_tabs.currentWidget() is window.api
+    assert window.workspace_tabs.tabText(0) == "Direct data API"
+    assert window.workspace_tabs.tabText(1) == "Legacy website + email"
+
+
 def test_connect_is_responsive_and_disconnect_cleans_worker(qtbot):
     session = FakeSession()
     window = MainWindow(lambda: session)

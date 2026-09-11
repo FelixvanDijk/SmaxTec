@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.5.0 — 2026-09-11 (development preview)
+
+- Make the official smaXtec Public API v2 the default collection workspace. Sign in
+  directly, discover authorized farms/cows/groups/devices, inspect metric codes/units,
+  select exact Animal numbers and build a multi-farm queue with individual dates.
+- Add an explicit full-queue review, native/10-minute/hourly/daily resolution, optional
+  documented weekly farm health index, output folder/name and optional Excel controls.
+  Keep the previous website/email workflow available under a labelled legacy tab.
+- Add a fixed-origin, redirect-rejecting API adapter with live-verified JSON-body sign-in,
+  memory-only bearer token, catalog identity checks, 45-second network waits, overall
+  response/size bounds, cooperative cancellation and curated target-specific errors.
+- Preserve every direct response as bounded raw JSON chunks and metadata. Build a staging
+  CSV plus optional multi-sheet XLSX and SHA-256 `collection.json`; retain completed/
+  partial targets on cancellation and never overwrite an earlier collection.
+- Convert each reviewed whole farm-local From/To period to explicit half-open UTC bounds
+  with DST support. Record local dates, chunk numbers and UTC boundaries without silently
+  assuming API To-date inclusivity or undocumented point semantics.
+- Withhold events, transformations and server-side background jobs until their missing
+  date/lifecycle semantics are confirmed. No API mutations or emailed reports are called.
+- Add XlsxWriter to the locked/bundled runtime and cover the API client, downloader,
+  queue/review, exact identity, date/DST, partial failure and output behavior synthetically.
+  All 403 offline tests pass; read-only authentication/catalog/metric discovery was also
+  live-verified. Representative download/client and packaged CI acceptance remain pending.
+- Stage every Windows build in a fresh validated system-temporary directory before smoke
+  and ZIP publication, avoiding stale/ACL-protected OneDrive bundle directories. Local
+  assembly succeeds; this machine still blocks unsigned EXE execution, so CI smoke is pending.
+
+- Make Microsoft 365 deployment plug-and-play after central approval: validate and
+  embed the approved Entra public-client ID during Windows packaging, support a GitHub
+  Actions repository variable, and prevent frozen end-user builds from accepting a
+  substituted runtime client ID. No approved ID is committed or included yet.
+- Record that a classic-Outlook scan containing only `content blocked` messages fails
+  M3 acceptance and must be resolved through approved Graph access, not by disabling
+  enterprise controls.
+
 ## 0.4.1 — 2026-09-10 (development preview)
 
 - Add a preferred **Sign in with Microsoft 365** route using delegated Graph access,

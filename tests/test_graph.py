@@ -79,6 +79,7 @@ def mailbox(*responses):
 
 
 def test_missing_or_invalid_app_registration_is_a_curated_setup_error(monkeypatch):
+    monkeypatch.delattr(sys, "frozen", raising=False)
     monkeypatch.delenv("SMAXTEC_MICROSOFT_CLIENT_ID", raising=False)
     monkeypatch.setattr(graph, "EMBEDDED_MICROSOFT_CLIENT_ID", "")
     for value in (None, "not-a-client-id"):
@@ -86,6 +87,23 @@ def test_missing_or_invalid_app_registration_is_a_curated_setup_error(monkeypatc
             graph.GraphMailbox(value).list_inboxes(Event())
         assert error.value.code == "graph_config"
         assert "application registration" in str(error.value)
+
+
+def test_packaged_build_uses_only_its_build_time_registration(monkeypatch):
+    approved = "00000000-0000-4000-8000-000000000001"
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setenv("SMAXTEC_MICROSOFT_CLIENT_ID", "00000000-0000-4000-8000-000000000002")
+    monkeypatch.setattr(graph, "packaged_client_id", lambda: approved)
+    assert graph.configured_client_id() == approved
+
+
+def test_unconfigured_packaged_build_does_not_accept_environment_override(monkeypatch):
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setenv("SMAXTEC_MICROSOFT_CLIENT_ID", "00000000-0000-4000-8000-000000000002")
+    monkeypatch.setattr(graph, "packaged_client_id", lambda: "")
+    with pytest.raises(CollectionError) as error:
+        graph.configured_client_id()
+    assert error.value.code == "graph_config"
 
 
 def test_microsoft_sign_in_exposes_one_opaque_inbox_and_keeps_token_out_of_repr():

@@ -5,15 +5,13 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.4.1 adds browser-based Microsoft 365 mailbox sign-in for new Outlook,
-Outlook on the web and classic Outlook, and improves nested-forward handling. A
-classic-Outlook connector and saved-email import remain fallbacks. Review the frozen
-selection, then collect original workbooks named from each file's B3 cow identifier.
-Consolidation, calculations and analysis remain later work.
+Version 0.5.0 makes the official smaXtec Public API the primary workflow. Users can
+discover their farms, cows, groups, devices and available measurements; assign an
+individual period to every target; review the full queue; and save direct raw JSON,
+CSV and optional Excel data without waiting for email. The earlier browser/email
+workflow remains in a labelled legacy tab. Canonical calculations and analysis are next.
 See [current status](docs/PROJECT_STATE.md) for verified evidence and remaining gates;
 implementation is not a claim that client acceptance or a production release is complete.
-The Microsoft button currently gives a setup message until the application owner/IT
-provides and approves the Entra app registration; ordinary end users will not configure it.
 
 ## Test on the current development computer
 
@@ -21,7 +19,29 @@ Double-click **Start SmaxTec.cmd** in the project folder. It opens the GUI using
 the local environment already prepared for this project; no terminal commands or
 additional installation are needed on this computer.
 
-Connect with your smaXtec email and password and choose a farm. Enter a cow number
+The app opens on **Direct data API**:
+
+1. Enter your smaXtec email/password and choose **Connect**. The fields are masked;
+   credentials and API session are not saved.
+2. Choose a farm and browse **Cows**, **Animal groups** or **Devices**. Filter the
+   table, select visible rows, or enter exact cow numbers such as `57, 203`.
+3. Choose From/To as `DD/MM/YYYY`, optionally use **Explore measurements**, and add
+   the selected targets to the queue. Repeat for other farms or periods.
+4. In **Download queue**, edit any row's dates independently. Choose resolution,
+   optional farm health index, destination, collection name and whether to create XLSX.
+5. Choose **Review & download**, inspect every target/date/metric row, and confirm.
+   **Results** shows saved, partial, failed or cancelled targets and opens the folder.
+
+Each run creates a unique folder. It contains the original API response chunks,
+`measurements.csv`, optional `<collection>.xlsx`, and a hashed `collection.json`
+manifest. Raw data and UTC chunk boundaries are retained for the next normalization/
+graph milestone. See [Direct API data](docs/API_DATA.md) for the exact contract and
+known API ambiguities.
+
+## Legacy website export requests
+
+Open **Legacy website + email** only when the direct API cannot supply the required
+data. Connect with your smaXtec email and password and choose a farm. Enter a cow number
 with its own From and To dates, then **Add cow** for each additional entry.
 Choose **Review and request exports** and check the full table to submit one measured-
 data export per exact cow and period. Complete any extra verification in the browser
@@ -47,9 +67,9 @@ memory until you disconnect or close Workbench.
 The launcher is for this prepared working folder. It does not replace the bundled
 distribution for other computers; a fresh source checkout needs developer setup.
 
-## Collect the emailed Excel files
+## Legacy emailed Excel collection
 
-Collection works independently of website sign-in. When the emails have arrived,
+This compatibility path works independently of website sign-in. When the emails have arrived,
 use **Go to collection** or scroll to **3. Collect your emailed exports**.
 
 1. Select **Sign in with Microsoft 365**. Your browser opens Microsoft's normal
@@ -93,11 +113,11 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; prior versions
-passed independent Windows CI smoke tests. Consult current status for 0.4.1 build
+passed independent Windows CI smoke tests. Consult current status for 0.5.0 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
-installer remain release work. The Microsoft 365 application registration and tenant
-consent gate must be completed before its sign-in button can be live-tested.
+installer remain release work. If the legacy Microsoft 365 route is retained, its
+application registration and tenant-consent gate still need completion.
 
 ## Project memory
 
@@ -106,6 +126,7 @@ consent gate must be completed before its sign-in button can be live-tested.
 - [Current state and next session](docs/PROJECT_STATE.md)
 - [Milestones and acceptance criteria](docs/ROADMAP.md)
 - [Email collection design and prerequisites](docs/EMAIL_COLLECTION.md)
+- [Direct API research and data contract](docs/API_DATA.md)
 - [Microsoft 365 one-time IT setup](docs/MICROSOFT_365_SETUP.md)
 - [Developer setup](docs/DEVELOPMENT.md)
 - [Packaging and release requirements](docs/RELEASING.md)

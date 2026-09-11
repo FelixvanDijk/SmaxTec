@@ -1,23 +1,53 @@
 # Project state — start here each session
 
-Last updated: 2026-09-10. **Runtime 0.4.1 source adds Microsoft 365 Inbox access and
-fixes protected/nested-forward discovery.** Classic live diagnosis now shows the 10
-recognizable messages that 0.4.0 hid, but their protected bodies remain unreadable.
-Next: obtain the approved Entra public-client application ID and `Mail.Read` consent,
-then live-test Microsoft sign-in before beginning M4. Packaged CI now passes.
+Last updated: 2026-09-11. **Source preview 0.5.0 pivots primary collection to the
+official smaXtec Public API v2.** The default Direct data API workspace now signs in,
+discovers farms/cows/groups/devices/metrics, queues individual periods, reviews them,
+and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
+browser exports or email. Read-only auth/catalog/metric discovery was live-verified;
+401 offline tests pass. Representative direct downloads, client date/unit acceptance,
+packaged 0.5.0 CI and a signed clean-machine release remain pending. The website/email
+workflow remains available in a legacy tab and its Graph deployment work is paused.
 
 ## User intent and scope
 
-Build a beautifully packaged, plug-and-play desktop product for nontechnical
-users. Full workflow: GUI farm/cow/time/report inputs → smaXtec exports → email
-links → individual Excel downloads → one calculated/formatted master workbook →
-graphs/analysis. Later, agreed anomaly heuristics select cows/periods and feed the
-same pipeline automatically. Modularity and documentation across sessions matter.
+Build a beautifully packaged, plug-and-play desktop product for nontechnical users.
+Primary workflow: GUI farm/target/time/metric/report inputs → direct smaXtec API raw
+collection → canonical normalized data → one calculated/formatted master workbook →
+graphs/analysis. Later, agreed anomaly heuristics select cows/periods and feed the same
+pipeline automatically. Modularity and documentation across sessions matter.
 
 The user explicitly wants incremental delivery and authorizes GitHub pushes after
-substantial milestones. M1 was login; M2 is farm/cow/date selection and export
-requests. The user has now authorized M3 email collection and B3-based file naming.
-Do not begin calculations or workbook restructuring before their later milestone.
+substantial milestones. M1/M2 were browser login/export requests. M3 implemented
+email collection but is now a compatibility path. M4 is the direct API vertical slice.
+Do not invent calculations or clinical meanings in M4.
+
+## M4 direct API implementation and acceptance boundaries
+
+- The **Direct data API** tab is the default workspace. Credentials are masked and
+  cleared from the GUI; credentials/token remain in memory only until Disconnect/close.
+- Farms, current/archived cows, groups, devices, metric codes and available units come
+  from the signed-in account dynamically. Cow number selection uses exact equality.
+- One queue may contain multiple farms/types and repeated targets with different dates.
+  Every row owns its From/To/metrics and appears in an explicit immutable review.
+- Whole farm-local dates are converted to half-open UTC instants with DST support. The
+  API is asked for ISO UTC values. Native/10-minute reads use 31-day chunks, hourly 180
+  and daily 730; raw response shape and every chunk boundary are preserved.
+- Each unique output folder contains raw per-target chunks and metadata, a staging CSV,
+  optional XlsxWriter workbook and `collection.json` with SHA-256 hashes/status. Output
+  never includes credentials/tokens. Cancellation retains partial/completed work.
+- Optional weekly farm health-index data is implemented from its documented route.
+  Events are withheld because Swagger does not define its integer date unit. Preferred-
+  unit conversion, transformations, background jobs and emailed reports are not exposed.
+- The current synchronous API has fixed origin, rejected redirects, 45-second socket/
+  90-second response bounds and 32 MiB response limits. It never automatically retries.
+- An authorized read-only probe confirmed JSON-body sign-in, user/farm discovery,
+  organization catalogues and metric discovery for an active animal. No account/farm/
+  animal identifiers, token or response data are retained in Git. One unavailable-sensor
+  case returned 400 and is handled as a target failure. No live write was performed.
+- `docs/API_DATA.md` is the detailed research, implementation and output contract.
+- Acceptance still requires representative live downloads across target types/periods,
+  explicit boundary/units/output review, corporate proxy testing and packaged CI proof.
 
 ## M3 implementation and acceptance boundaries
 
@@ -26,6 +56,10 @@ Do not begin calculations or workbook restructuring before their later milestone
   Outlook on the web or classic Outlook. The code and synthetic tests are complete;
   an approved Entra public-client ID, localhost redirect and tenant `Mail.Read`
   consent are still required before live use. No email password/client secret is used.
+- Release packaging now validates `SMAXTEC_MICROSOFT_CLIENT_ID` at build time and
+  embeds it as generated package data. Frozen applications ignore runtime overrides;
+  ordinary users never configure the ID. No approved ID exists in this workspace or
+  its environment yet, so the existing preview cannot perform live Graph sign-in.
 - Classic Outlook and manual `.eml`/`.msg` import remain explicit fallbacks. Corporate
   programmatic-access policies are never disabled or bypassed.
 - Collection is independent of website login. Connect with Microsoft 365 or classic
@@ -75,6 +109,13 @@ Do not begin calculations or workbook restructuring before their later milestone
 
 ## Current implementation
 
+- Version 0.5.0 adds a primary top-level **Direct data API** tab and preserves the
+  earlier website/email UI as **Legacy website + email**. API, browser and email
+  workers are independent; close waits for cancellation/session cleanup across all.
+- API module map: `ui/api_panel.py` owns account/discovery/queue/review/results;
+  `application/api_data.py` owns immutable contracts and DST-safe dates;
+  `application/api_downloads.py` owns raw/CSV/XLSX/manifest output; and
+  `adapters/smaxtec/api.py` owns fixed-origin bounded HTTP and memory-only token state.
 - Implemented a Python/Qt desktop workspace with masked credentials, farm/cow/date
   request controls, progress, cancellation, disconnect, and orderly application close.
 - The Playwright adapter opens the supplied entry route, presses `Go to log in`,
@@ -83,8 +124,8 @@ Do not begin calculations or workbook restructuring before their later milestone
   serialized farm discovery and an export batch. Subsequent batches reconnect as below.
 - Website credentials are in memory only. Export requests, read-only Microsoft 365/
   classic Outlook selection, saved-email import and validated downloads are implemented.
-  Graph deployment configuration, workbook calculations, graphs and anomaly detection
-  remain later work.
+  Graph deployment configuration, canonical API normalization/calculations, graphs and
+  anomaly detection remain later work.
 - `Start SmaxTec.cmd` in the repository root opens the GUI with the existing local
   `.venv` so the user can test by double-clicking. It installs nothing and applies
   only to a prepared developer working folder, not fresh end-user installations.
@@ -120,6 +161,15 @@ Do not begin calculations or workbook restructuring before their later milestone
 
 ## Verification and packaging evidence
 
+- 0.5.0 source: **403 tests passed** locally, including API JSON-body
+  authentication/redaction, fixed route/query shapes, exact identity, target-specific
+  failures, independent dates, DST conversion, bounded chunking, raw-point lineage,
+  cancellation/partial retention, hashed manifests, CSV/XLSX output, GUI review and
+  primary/legacy tab composition. Dependency integrity, Ruff and source smoke pass.
+  Live read-only auth/catalog/metrics evidence is recorded above. PyInstaller assembled
+  the API-first bundle from clean temporary staging, but local unsigned EXE launch was
+  denied by the existing machine policy, so packaged smoke/archive are not claimed.
+  GitHub Windows CI is pending.
 - 0.4.1: **384 tests passed** locally (119 seconds), with dependency integrity,
   lint, formatting and source smoke passing. Coverage includes
   system-browser MSAL parameters, memory-only token representation, exact Graph
@@ -252,29 +302,32 @@ Do not begin calculations or workbook restructuring before their later milestone
 ## Open questions for later milestones
 
 1. Confirm deployment OS coverage, distribution audience, branding, and signing.
-2. Confirm individual-period 0.3.0 requests, compact/expanded editing and consecutive
-   batches without credential re-entry; check email counts and inclusive date semantics.
+2. Client-test direct API data for representative cows, groups and devices: date boundary
+   behavior, units, native/aggregated volume, unavailable sensors and output usability.
 3. Obtain owner/IT approval for a public-client Entra application ID with localhost
    redirect and delegated `Mail.Read` in both organisations. Embed that non-secret ID,
-   then client-test Microsoft browser/MFA sign-in and newest-N direct/forwarded results.
+   then client-test the legacy Microsoft browser/MFA and newest-N path if it is retained.
    Also confirm enterprise proxies, shared-mailbox needs and classification requirements.
-4. Representative sanitized Excel files: schema, units, timezones, missing values.
-5. Exact calculations, workbook layout, graph types, and configuration controls.
+4. Representative sanitized API collections: point shapes, units, timestamps, missing
+   intervals, duplicate chunk-boundary behavior and identity reconciliation.
+5. Exact calculations, canonical schema, master layout, graph types and controls.
 6. Versioned anomaly rules, validation cases, execution schedule and review policy.
 
 ## Next-session handover
 
-1. Check current Git/CI state and the packaged launch limitation above.
-2. Record the client's per-cow-date result: individually reviewed periods, folded
-   row editing, automatic reconnection, workbook boundaries and email timing without
-   committing credentials, message links, personal data or source workbooks.
-3. Read `EMAIL_COLLECTION.md`. Configure the approved Graph application ID and consent,
-   test live Inbox collection without modifying messages, and verify failed/cancelled
-   recovery using the same reviewed selection. No polling or Public assignment is implied.
-4. For M4 obtain reviewed workbook metadata/schema, units, timezone, exact formulas
-   and desired master layout. Reconcile farm/Animal number/periods before analysis;
-   never infer verified request matches from B3 or email arrival order.
-5. Before distribution beyond development, resolve signing/installation on the
+1. Check the 0.5.0 Git/CI state and packaged launch limitation above; do not confuse
+   source/offline proof with client or released status.
+2. Read `API_DATA.md`, then have the client exercise one small direct collection with
+   an active cow and known period. Record expected/actual boundaries, codes, units and
+   output usability without committing credentials, tokens, IDs or raw farm data.
+3. Exercise a multi-target/farm collection, unavailable-sensor failure, cancellation,
+   a longer chunked period and health KPI. Confirm corporate proxy behavior.
+4. For M5 obtain a sanitized representative API collection and reviewed definitions for
+   the canonical schema, duplicate policy, calculations and master workbook layout.
+   Only then implement normalization; graphs follow from that same dataset.
+5. Return to `EMAIL_COLLECTION.md`/Graph deployment only if the legacy route remains
+   required after direct API acceptance. No polling or Public assignment is implied.
+6. Before distribution beyond development, resolve signing/installation on the
    target computers and pass the gates in `RELEASING.md`.
 
 Always consult the latest Git history and working tree before starting; do not

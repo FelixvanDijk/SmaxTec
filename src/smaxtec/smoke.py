@@ -3,7 +3,10 @@
 import json
 import os
 import subprocess
+import sys
 from datetime import UTC, datetime
+from importlib import resources
+from uuid import UUID
 
 from PySide6.QtWidgets import QApplication
 
@@ -14,15 +17,24 @@ def _check_collection_runtime() -> None:
     """Exercise bundled parser imports and private helper pipes without opening Outlook."""
     import msal
     import olefile
+    import xlsxwriter
     from defusedxml import ElementTree
 
+    from smaxtec.adapters.mail.graph import MICROSOFT_CONFIG_RESOURCE
     from smaxtec.adapters.mail.messages import candidate_from_message
     from smaxtec.adapters.mail.outlook import helper_command
     from smaxtec.application.collection import MailMessage
 
     assert callable(olefile.isOleFile)
     assert callable(msal.PublicClientApplication)
+    assert callable(xlsxwriter.Workbook)
     assert ElementTree.fromstring("<smoke>ready</smoke>").text == "ready"
+    if getattr(sys, "frozen", False):
+        config_file = resources.files("smaxtec").joinpath(MICROSOFT_CONFIG_RESOURCE)
+        assert config_file.is_file()
+        config = json.loads(config_file.read_text("utf-8"))
+        client_id = config["microsoft_client_id"]
+        assert client_id == "" or str(UUID(client_id)) == client_id
     if os.name == "nt":
         # Verify bundled COM DLL/module availability without creating Outlook or
         # explicitly initializing a COM session in this smoke path.
@@ -61,6 +73,9 @@ def run_smoke_test(app: QApplication) -> int:
         window.show()
         app.processEvents()
         assert window.isVisible() and window.connect_button.isEnabled()
+        assert window.workspace_tabs.currentWidget() is window.api
+        assert window.api.connect_button.isEnabled()
+        assert window.api.password.echoMode().name == "Password"
         assert window.collection.import_button.isEnabled() and not window.collection.is_busy
         _check_collection_runtime()
         with sync_playwright() as playwright:

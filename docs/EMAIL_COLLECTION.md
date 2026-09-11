@@ -61,9 +61,13 @@ The application owner/IT must provide an approved public-client application ID,
 enable the localhost mobile/desktop redirect, and grant/consent delegated `Mail.Read`
 in each intended tenant. Ordinary users must not edit configuration or register apps.
 Some tenant consent policies require administrator approval. The 0.4.1 source accepts
-a development-only `SMAXTEC_MICROSOFT_CLIENT_ID` override; production distribution
-must embed its approved non-secret app ID. Do not reuse an unrelated registration
-without its owner's explicit approval and correct permission/redirect configuration.
+a development-only `SMAXTEC_MICROSOFT_CLIENT_ID` override; production packaging reads
+the same release-controlled build variable and embeds the approved non-secret ID into
+the bundle. Frozen applications ignore runtime overrides. Do not reuse an unrelated
+registration without its owner's explicit approval and correct permission/redirect
+configuration. A classic-Outlook result containing only `content blocked` messages is
+diagnostic evidence, not an accepted collection route; Graph activation is a release
+blocker in that environment.
 [One-time IT setup checklist](MICROSOFT_365_SETUP.md),
 [MSAL interactive sign-in](https://learn.microsoft.com/en-us/entra/msal/python/getting-started/acquiring-tokens),
 [Graph Mail.Read](https://learn.microsoft.com/en-us/graph/permissions-reference#mailread),

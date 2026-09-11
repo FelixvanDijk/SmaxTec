@@ -1,6 +1,14 @@
+param(
+    [string]$ExecutablePath = ''
+)
+
 $ErrorActionPreference = 'Stop'
 $taskRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$taskExecutable = Join-Path $taskRoot 'dist\SmaxTec Workbench\SmaxTec Workbench.exe'
+$taskExecutable = if ($ExecutablePath) {
+    [System.IO.Path]::GetFullPath($ExecutablePath)
+} else {
+    Join-Path $taskRoot 'dist\SmaxTec Workbench\SmaxTec Workbench.exe'
+}
 if (-not (Test-Path -LiteralPath $taskExecutable)) { throw 'Build the application first.' }
 $taskOldPath = $env:PATH
 $taskOldPythonPath = $env:PYTHONPATH

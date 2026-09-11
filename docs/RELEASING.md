@@ -8,7 +8,10 @@
 
 The build runs checks, bundles the application with Chromium, starts the executable
 with Python removed from PATH and an unavailable external browser cache, and
-produces `dist/SmaxTec-Workbench-0.4.1-windows-x64.zip`.
+produces `dist/SmaxTec-Workbench-0.5.0-windows-x64.zip`.
+Assembly uses a fresh validated system-temporary staging directory, smoke-tests that
+exact bundle, then publishes only the versioned ZIP. This avoids stale files and does
+not require replacing an older OneDrive-synchronized `dist/SmaxTec Workbench` folder.
 The spec includes distribution metadata/license notices for olefile, defusedxml,
 pywin32, MSAL and its direct/transitive runtime dependencies. This does not replace
 the product-wide license inventory/release review.
@@ -24,7 +27,7 @@ Build on Windows; PyInstaller does not make another platform's binaries from a
 single build host. Only full Chromium is shipped; its headless mode runs the
 offline smoke test. Browser updates require rebuilding the application.
 
-The 0.4.1 smoke imports the email/XML/MSAL parsers and Windows COM runtime modules without
+The 0.5.0 smoke imports the direct XLSX writer plus email/XML/MSAL parsers and Windows COM runtime modules without
 creating Outlook. It checks private helper IPC with an invalid action rejected before
 the helper imports COM or accesses Outlook. It does not prove a
 configured Graph registration/consent, permitted COM access or live downloads. The helper uses
@@ -48,7 +51,8 @@ programmatic-access or link-protection policies.
   not assign an open-source license to this contracted project's code without
   the owner's instruction.
 - Include `olefile` (BSD), `defusedxml` (PSF), `pywin32` (PSF), MSAL (MIT), requests,
-  PyJWT, cryptography, cffi, charset-normalizer, idna, urllib3 and certifi alongside
+  PyJWT, cryptography, cffi, charset-normalizer, idna, urllib3, certifi and XlsxWriter
+  (BSD-2-Clause) alongside
   Qt, Playwright and Chromium in that inventory, checking exact locked versions and
   bundled transitive notices. A minimal OLE MSG reader replaced the initially
   considered GPL full-MSG dependency; verify removed packages do not remain in the
@@ -57,6 +61,9 @@ programmatic-access or link-protection policies.
   comprehension with nontechnical users; provide support and recovery instructions.
 - Validate account onboarding, mailbox authorization, enterprise proxy behavior,
   offline/errors, cancellation, shutdown, and upgrade behavior on actual targets.
+- Exercise direct API sign-in, farm/target/metric discovery, representative native and
+  aggregated periods, DST/date boundaries, large queues, partial failure and output on
+  a standard-user client. Confirm data retention and classification expectations.
 - Register/approve the production public-client Entra application, localhost redirect
   and delegated `Mail.Read` in every supported tenant. Embed its non-secret app ID,
   verify publisher/consent presentation and confirm disconnect/upgrade token handling.
@@ -131,3 +138,15 @@ B3 naming, duplicate detection and hash-verified resume. No Outlook/Excel instal
 was used by CI to open an actual mailbox or workbook: COM-module import and private
 helper IPC were tested without creating Outlook. Configured profile, corporate policy,
 Inbox access, signing and clean-client-machine acceptance remain separate gates.
+
+## M4 direct API evidence
+
+Version 0.5.0 passes 403 offline tests plus dependency, lint, format and source smoke
+checks. An authorized read-only live check confirmed direct authentication, membership,
+farm catalogue and metric discovery; no data mutation or emailed export was requested.
+PyInstaller assembled the API-first bundle, including XlsxWriter and its metadata, in
+fresh temporary staging. This development machine again denied execution of the unsigned
+EXE with `Access is denied`, so local packaged smoke/archive publication is not claimed.
+GitHub Windows build/smoke and artifact evidence will be linked after CI succeeds.
+Representative direct measurement downloads, client boundary/unit review, code signing,
+installer and clean standard-user-machine acceptance remain pending.

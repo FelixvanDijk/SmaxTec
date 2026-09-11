@@ -10,6 +10,15 @@ if (-not (Test-Path -LiteralPath $taskPython)) {
     throw 'Create the developer environment first; see docs/DEVELOPMENT.md.'
 }
 $taskPreviousBrowserPath = $env:PLAYWRIGHT_BROWSERS_PATH
+$taskTempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+$taskStage = Join-Path $taskTempRoot ('smaxtec-build-' + [guid]::NewGuid().ToString('N'))
+$taskStage = [System.IO.Path]::GetFullPath($taskStage)
+if (-not $taskStage.StartsWith($taskTempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Refusing to create build staging outside the system temporary directory.'
+}
+$taskStageDist = Join-Path $taskStage 'dist'
+$taskStageWork = Join-Path $taskStage 'work'
+New-Item -ItemType Directory -Path $taskStageDist -Force | Out-Null
 Push-Location -LiteralPath $taskRoot
 try {
     $env:PLAYWRIGHT_BROWSERS_PATH = '0'
@@ -25,13 +34,17 @@ try {
         & $taskPython -m pytest -q
         if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
     }
-    & $taskPython -m PyInstaller --noconfirm packaging/workbench.spec
+    & $taskPython -m PyInstaller --noconfirm --distpath $taskStageDist `
+        --workpath $taskStageWork packaging/workbench.spec
     if ($LASTEXITCODE -ne 0) { throw 'Executable build failed.' }
-    $taskBundle = Join-Path $taskRoot 'dist\SmaxTec Workbench'
+    $taskBundle = Join-Path $taskStageDist 'SmaxTec Workbench'
     Copy-Item -LiteralPath (Join-Path $taskRoot 'packaging\START_HERE.txt') -Destination $taskBundle
-    & (Join-Path $PSScriptRoot 'smoke_windows.ps1')
+    & (Join-Path $PSScriptRoot 'smoke_windows.ps1') `
+        -ExecutablePath (Join-Path $taskBundle 'SmaxTec Workbench.exe')
     if (-not $SkipArchive) {
-        $taskArchive = Join-Path $taskRoot 'dist\SmaxTec-Workbench-0.4.1-windows-x64.zip'
+        $taskPublishedDist = Join-Path $taskRoot 'dist'
+        New-Item -ItemType Directory -Path $taskPublishedDist -Force | Out-Null
+        $taskArchive = Join-Path $taskRoot 'dist\SmaxTec-Workbench-0.5.0-windows-x64.zip'
         Compress-Archive -LiteralPath $taskBundle -DestinationPath $taskArchive -Force
         Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256
     }
@@ -39,4 +52,10 @@ try {
 } finally {
     $env:PLAYWRIGHT_BROWSERS_PATH = $taskPreviousBrowserPath
     Pop-Location
+    if (
+        (Test-Path -LiteralPath $taskStage) -and
+        $taskStage.StartsWith($taskTempRoot, [System.StringComparison]::OrdinalIgnoreCase)
+    ) {
+        Remove-Item -LiteralPath $taskStage -Recurse -Force
+    }
 }

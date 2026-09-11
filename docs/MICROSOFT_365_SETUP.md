@@ -34,10 +34,15 @@ Microsoft references:
 
 For an explicitly approved source-mode trial, a developer can set
 `SMAXTEC_MICROSOFT_CLIENT_ID` to that application ID before starting Workbench. Do
-not instruct an end user to do this. Before producing the distributable installer,
-the release owner places the approved ID in `EMBEDDED_MICROSOFT_CLIENT_ID` in
-`src/smaxtec/adapters/mail/graph.py`, rebuilds from the locked dependencies, and
-repeats all package/release checks. The desktop application contains no secret.
+not instruct an end user to do this. For GitHub Windows builds, the release owner sets
+the repository Actions variable `SMAXTEC_MICROSOFT_CLIENT_ID`; local release builds
+receive the same variable in their build environment. The build validates the UUID
+and embeds it as a generated package resource. End-user bundles ignore runtime
+environment overrides, so another local process cannot silently substitute a different
+OAuth application. The desktop application contains no secret.
+
+If the build variable is absent, the package intentionally remains unconfigured and
+shows a curated setup error. Never distribute that preview as Microsoft-365-ready.
 
 ## Acceptance check
 

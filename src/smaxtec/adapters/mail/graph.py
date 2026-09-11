@@ -7,9 +7,11 @@ message bodies are memory-only and are deliberately excluded from repr output.
 import hashlib
 import json
 import os
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from importlib import resources
 from queue import Empty, Queue
 from threading import Event, Thread
 from time import monotonic
@@ -39,10 +41,11 @@ MAX_BODY_CHARS = 4 * 1024 * 1024
 MAX_SCANNED = 10000
 PAGE_SIZE = 25
 
-# A Microsoft Entra public-client application ID is not a password or client
-# secret. The approved production registration will be embedded here by the
-# release owner. The environment override exists for development/tenant trials.
+# Backward-compatible source fallback. Production builds instead receive their
+# approved non-secret application ID through the generated package resource.
+# The environment override exists only for source-mode development/tenant trials.
 EMBEDDED_MICROSOFT_CLIENT_ID = ""
+MICROSOFT_CONFIG_RESOURCE = "microsoft365.json"
 
 
 ERROR_MESSAGES = {
@@ -81,8 +84,28 @@ def _error(code: str) -> CollectionError:
     return CollectionError(code, ERROR_MESSAGES[code])
 
 
+def packaged_client_id() -> str:
+    """Read the build-generated public-client ID without exposing its contents."""
+    if not getattr(sys, "frozen", False):
+        return ""
+    try:
+        raw = resources.files("smaxtec").joinpath(MICROSOFT_CONFIG_RESOURCE).read_text("utf-8")
+        payload = json.loads(raw)
+        value = payload.get("microsoft_client_id", "") if isinstance(payload, dict) else ""
+        return value if isinstance(value, str) else ""
+    except (FileNotFoundError, ModuleNotFoundError, OSError, TypeError, json.JSONDecodeError):
+        return ""
+
+
 def configured_client_id(explicit: str | None = None) -> str:
-    value = explicit or EMBEDDED_MICROSOFT_CLIENT_ID or os.getenv("SMAXTEC_MICROSOFT_CLIENT_ID", "")
+    if getattr(sys, "frozen", False):
+        # End-user bundles use only their build-time registration. A process
+        # environment variable must not silently substitute a different OAuth app.
+        value = explicit or packaged_client_id()
+    else:
+        value = (
+            explicit or EMBEDDED_MICROSOFT_CLIENT_ID or os.getenv("SMAXTEC_MICROSOFT_CLIENT_ID", "")
+        )
     try:
         return str(UUID(value.strip()))
     except (AttributeError, ValueError):
