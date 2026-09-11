@@ -353,6 +353,28 @@ Keep the existing website/email implementation labelled as legacy until client A
 acceptance. It remains a separate adapter and cannot be silently mixed with API data:
 future normalization must identify source kind and reconcile identity/date semantics.
 
+## Decision 014: Target browsing is separate from queue measurement assignment
+
+Status: implemented in 0.6.0; client usability acceptance pending.
+
+Keep Browse focused on discovering identities, selecting one or many targets and attaching
+their initial dates. Give users three selection paths: ordinary click-to-toggle rows,
+select-all over the current filter, and pasted exact Animal numbers. These paths converge
+on the same exact discovered `ApiEntity` objects; text filtering must never weaken exact
+Animal-number matching.
+
+Assign measurements in Download queue because metrics are part of each immutable request,
+not a property of the transient Browse selection. Users may select one, several or every
+queue row and either apply “all available” per target or discover the intersection of
+metric codes supported by those selected targets. Discovery is bound to that ordered,
+unique entity selection and becomes stale immediately when selection changes. Applying a
+choice updates selected rows only. Units shown during discovery are descriptive source
+units; do not choose, convert or merge their meanings here.
+
+The account editor collapses after successful sign-in. Browse and Queue retain tall data
+tables, deliberate section cards and independent vertical scrolling. Visibility changes
+must never change queue membership, dates or metrics.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

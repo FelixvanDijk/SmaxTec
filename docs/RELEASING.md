@@ -8,7 +8,7 @@
 
 The build runs checks, bundles the application with Chromium, starts the executable
 with Python removed from PATH and an unavailable external browser cache, and
-produces `dist/SmaxTec-Workbench-0.5.1-windows-x64.zip`.
+produces `dist/SmaxTec-Workbench-0.6.0-windows-x64.zip`.
 Assembly uses a fresh validated system-temporary staging directory, smoke-tests that
 exact bundle, then publishes only the versioned ZIP. This avoids stale files and does
 not require replacing an older OneDrive-synchronized `dist/SmaxTec Workbench` folder.
@@ -27,7 +27,7 @@ Build on Windows; PyInstaller does not make another platform's binaries from a
 single build host. Only full Chromium is shipped; its headless mode runs the
 offline smoke test. Browser updates require rebuilding the application.
 
-The 0.5.1 smoke resolves representative IANA farm timezones and imports the direct XLSX
+The 0.6.0 smoke resolves representative IANA farm timezones and imports the direct XLSX
 writer plus email/XML/MSAL parsers and Windows COM runtime modules without creating
 Outlook. It checks private helper IPC with an invalid action rejected before
 the helper imports COM or accesses Outlook. It does not prove a
@@ -141,6 +141,11 @@ helper IPC were tested without creating Outlook. Configured profile, corporate p
 Inbox access, signing and clean-client-machine acceptance remain separate gates.
 
 ## M4 direct API evidence
+
+Version 0.6.0 passes 408 offline tests plus dependency, lint, format and source smoke
+checks. Its queue-first multi-selection and metric-assignment UI has synthetic short-
+window and state regressions plus themed visual inspection. Windows packaged CI and
+client usability acceptance are pending.
 
 Version 0.5.1 passes 404 offline tests plus dependency, lint, format and source smoke
 checks. An authorized read-only live check confirmed direct authentication, membership,

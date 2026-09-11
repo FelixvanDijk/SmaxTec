@@ -1,14 +1,14 @@
 # Project state — start here each session
 
-Last updated: 2026-09-11. **Source preview 0.5.1 fixes the API dashboard's short-screen
-overlap while retaining the 0.5.0 direct API workflow.** The default workspace signs in,
-discovers farms/cows/groups/devices/metrics, queues individual periods, reviews them,
-and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
+Last updated: 2026-09-11. **Source preview 0.6.0 redesigns the API dashboard around a
+spacious herd browser and queue-first measurement workflow.** The default workspace
+signs in, discovers farms/cows/groups/devices/metrics, queues individual periods, reviews
+them, and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
 browser exports or email. Read-only auth/catalog/metric discovery was live-verified;
-401 offline tests pass. Representative direct downloads, client date/unit acceptance,
-and a signed clean-machine release remain pending. Packaged 0.5.1 CI passes. The
-website/email workflow remains available in a legacy tab and its Graph deployment work
-is paused.
+401 offline tests pass. Representative direct downloads, client date/unit/UI acceptance,
+and a signed clean-machine release remain pending. The 0.6.0 packaged CI run is pending;
+the prior 0.5.1 packaged CI passes. The website/email workflow remains available in a
+legacy tab and its Graph deployment work is paused.
 
 ## User intent and scope
 
@@ -29,8 +29,16 @@ Do not invent calculations or clinical meanings in M4.
   cleared from the GUI; credentials/token remain in memory only until Disconnect/close.
 - Farms, current/archived cows, groups, devices, metric codes and available units come
   from the signed-in account dynamically. Cow number selection uses exact equality.
+- Browse offers ordinary click-to-toggle rows without Ctrl, select-all over the current
+  filter, and pasted comma/space/newline-separated exact cow numbers. The credential
+  form collapses after successful connection and the inventory remains the dominant,
+  tall scroll surface.
 - One queue may contain multiple farms/types and repeated targets with different dates.
   Every row owns its From/To/metrics and appears in an explicit immutable review.
+- Measurements are assigned in Download queue to one, several or every selected row.
+  Discovery shows only codes common to the frozen selected targets; changing selection
+  invalidates stale discovery. Applying all available remains per target, while checked
+  common codes change only selected rows.
 - Whole farm-local dates are converted to half-open UTC instants with DST support. The
   API is asked for ISO UTC values. Native/10-minute reads use 31-day chunks, hourly 180
   and daily 730; raw response shape and every chunk boundary are preserved.
@@ -110,7 +118,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Current implementation
 
-- Version 0.5.1 has a primary top-level **Direct data API** tab and preserves the
+- Version 0.6.0 has a primary top-level **Direct data API** tab and preserves the
   earlier website/email UI as **Legacy website + email**. API, browser and email
   workers are independent; close waits for cancellation/session cleanup across all.
 - API module map: `ui/api_panel.py` owns account/discovery/queue/review/results;
@@ -162,6 +170,13 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Verification and packaging evidence
 
+- 0.6.0 source: **408 tests pass** locally. New API UI regressions cover ordinary-click
+  multi-selection, filtered/exact selection paths, common-metric intersection, selected-
+  row-only assignment, collapsed connected-account controls and short-window scrolling.
+  Dependency integrity, Ruff, formatting and source smoke pass. Synthetic themed Browse
+  and Queue renders were inspected at the user's short-screen content dimensions; the
+  inventory/adaptive queue spacing and independent scrolling no longer overlap controls. Windows
+  packaged CI and client usability acceptance are pending.
 - 0.5.1 source: **404 tests pass** locally. A constrained 760×560 API panel proves
   Browse and Queue become vertically scrollable before styled controls are compressed,
   and asserts the table/action/exact-cow/date/measurement/output rows do not overlap.
@@ -334,7 +349,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.5.1 Git/CI state and packaged launch limitation above; do not confuse
+1. Check the 0.6.0 Git/CI state and packaged launch limitation above; do not confuse
    source/offline proof with client or released status.
 2. Read `API_DATA.md`, then have the client exercise one small direct collection with
    an active cow and known period. Record expected/actual boundaries, codes, units and

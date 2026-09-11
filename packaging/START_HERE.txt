@@ -1,16 +1,20 @@
-SmaxTec Workbench — desktop preview 0.5.1
+SmaxTec Workbench — desktop preview 0.6.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
 3. In Direct data API, enter your smaXtec email/password and choose Connect.
-4. Choose a farm. Browse cows, groups or devices, or enter exact cow numbers.
-5. Enter From and To as DD/MM/YYYY and add selected targets to the queue.
+4. Choose a farm. Click rows to toggle cows without holding Ctrl, select every filtered
+   row, or paste exact cow numbers separated by commas, spaces or new lines.
+5. Enter From and To as DD/MM/YYYY and add the selected targets to the queue.
 6. Repeat for other farms, targets or periods. Every queue row keeps its own dates.
-7. Open Download queue. Edit individual dates; choose measurements/resolution,
-   optional weekly farm health index, output folder/name and optional Excel.
-8. Choose Review & download. Inspect every target/date/measurement row, then confirm.
-9. Results shows each saved, partial, failed or cancelled target. Open its folder.
-10. Choose Disconnect or close the app to release the in-memory API session.
+7. Open Download queue and select one, several or every queued row. Use all available
+   measurements, or find the codes common to the selected targets, check the ones you
+   need and apply them only to those selected rows.
+8. Edit individual dates and choose resolution, optional weekly farm health index,
+   output folder/name and optional Excel.
+9. Choose Review & download. Inspect every target/date/measurement row, then confirm.
+10. Results shows each saved, partial, failed or cancelled target. Open its folder.
+11. Choose Disconnect or close the app to release the in-memory API session.
 
 Each run makes a unique folder with raw API JSON, measurements.csv, optional XLSX and
 a hashed collection.json manifest. Earlier collections are never overwritten.

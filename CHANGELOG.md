@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.0 — 2026-09-11 (development preview)
+
+- Redesign Direct data API around a spacious target browser and queue-first measurement
+  workflow. Successful sign-in collapses the credential form, cow rows are taller, and
+  the herd inventory receives substantially more scrollable space while the queue grows
+  from a compact small-job view into a taller large-batch viewport.
+- Make multiple selection work with ordinary row clicks—no Ctrl required—and add both
+  **Select all filtered** and pasted exact-number selection for large cow lists.
+- Move metric assignment out of Browse. In Download queue, select one, several or every
+  row, discover measurement codes common to those targets, and apply checked codes or
+  per-target **all available** only to the selected rows.
+- Split queue operations into clearly labelled **Selected rows** and **Whole queue**
+  controls, expand the measurement chooser, and consolidate output options into one
+  readable collection-settings card without removing any existing download capability.
+- Add synthetic regressions for click-friendly multi-selection, common-metric intersection,
+  selected-row-only application, collapsed account state and short-window layout.
+
 ## 0.5.1 — 2026-09-11 (development preview)
 
 - Fix unusable overlap and vertically clipped controls in the Direct data API Browse

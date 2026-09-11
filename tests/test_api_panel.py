@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 
 from PySide6.QtCore import QPoint, QRect, Qt
-from PySide6.QtWidgets import QLineEdit
+from PySide6.QtWidgets import QAbstractItemView, QLineEdit
 
 from smaxtec.application.api_data import (
     ApiCatalog,
@@ -33,6 +33,8 @@ class Client:
         return ApiCatalog(farm, self.entities, (), ())
 
     def metrics(self, entity, stop):
+        if entity.number == "657":
+            return (ApiMetric("temp", ("celsius",)), ApiMetric("rumination", ("minutes",)))
         return (ApiMetric("temp", ("celsius",)), ApiMetric("act", ("index",)))
 
     def disconnect(self):
@@ -68,7 +70,7 @@ def test_password_is_masked_cleared_and_exact_cow_selection_never_matches_657(qt
     panel, _client, _service = connected_panel(qtbot, tmp_path)
     assert panel.password.echoMode() == QLineEdit.EchoMode.Password
     assert panel.password.text() == ""
-    panel.cow_numbers.setText("57")
+    panel.cow_numbers.setPlainText("57")
     panel._select_exact()
     selected = panel._selected_entities()
     assert [entity.number for entity in selected] == ["57"]
@@ -79,7 +81,7 @@ def test_password_is_masked_cleared_and_exact_cow_selection_never_matches_657(qt
 
 def test_queue_keeps_individual_dates_and_same_cow_different_periods(qtbot, tmp_path):
     panel, _client, _service = connected_panel(qtbot, tmp_path)
-    panel.cow_numbers.setText("57")
+    panel.cow_numbers.setPlainText("57")
     panel._select_exact()
     panel.shared_from.setText("01/09/2026")
     panel.shared_to.setText("02/09/2026")
@@ -98,12 +100,67 @@ def test_queue_keeps_individual_dates_and_same_cow_different_periods(qtbot, tmp_
 def test_discovered_measurements_can_be_frozen_into_queue(qtbot, tmp_path):
     panel, _client, _service = connected_panel(qtbot, tmp_path)
     panel.inventory.selectRow(0)
+    panel._add_selected()
+    panel.queue.selectRow(0)
     panel._load_metrics()
     qtbot.waitUntil(lambda: panel.metrics.count() == 2)
-    panel.all_metrics.setChecked(False)
+    assert not panel.all_metrics.isChecked()
     panel.metrics.item(1).setCheckState(Qt.CheckState.Unchecked)
-    panel._add_selected()
+    panel._apply_metrics()
     assert panel.build_request().targets[0].metrics == ("temp",)
+
+
+def test_queue_discovers_common_metrics_and_applies_only_to_selected_rows(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.inventory.selectAll()
+    panel._add_selected()
+    assert panel.queue.rowCount() == 2
+
+    panel.queue.selectAll()
+    panel._load_metrics()
+    qtbot.waitUntil(lambda: not panel.is_busy)
+    assert panel.metrics.count() == 1
+    assert panel.metrics.item(0).data(Qt.ItemDataRole.UserRole) == "temp"
+    assert "every one of the 2 selected targets" in panel.metric_note.text()
+    panel._apply_metrics()
+    assert [target.metrics for target in panel.build_request().targets] == [("temp",), ("temp",)]
+
+    panel.queue.clearSelection()
+    panel.queue.selectRow(0)
+    panel.all_metrics.setChecked(True)
+    panel._apply_metrics()
+    assert [target.metrics for target in panel.build_request().targets] == [(), ("temp",)]
+
+
+def test_inventory_and_queue_use_ordinary_click_multi_selection(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    assert panel.inventory.selectionMode() == QAbstractItemView.SelectionMode.MultiSelection
+    assert panel.queue.selectionMode() == QAbstractItemView.SelectionMode.MultiSelection
+    assert panel.inventory.minimumHeight() == 340
+    assert panel.account_fields.isHidden()
+    assert not panel.disconnect_button.isHidden()
+
+
+def test_bulk_cow_paste_and_filtered_selection_are_exact_alternatives(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.cow_numbers.setPlainText("57\n657, 57")
+    panel._select_exact()
+    assert [entity.number for entity in panel._selected_entities()] == ["57", "657"]
+
+    panel.search.setText("65")
+    panel._select_shown()
+    assert [entity.number for entity in panel._selected_entities()] == ["657"]
+
+
+def test_queue_viewport_expands_for_large_batches(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.inventory.selectAll()
+    panel._add_selected()
+    assert panel.queue.minimumHeight() == 220
+    for _ in range(4):
+        panel._add_selected()
+    assert panel.queue.rowCount() == 10
+    assert panel.queue.minimumHeight() == 380
 
 
 def test_panel_disconnect_releases_client_and_queue(qtbot, tmp_path):
@@ -163,11 +220,11 @@ def test_short_window_scrolls_workflow_pages_without_compressing_or_overlapping(
     for control in (
         panel.farm,
         panel.search,
-        panel.cow_numbers,
         panel.shared_from,
         panel.add_button,
     ):
         assert control.height() >= control.sizeHint().height()
+    assert panel.cow_numbers.height() >= panel.cow_numbers.minimumHeight()
 
     panel.steps.setCurrentIndex(1)
     qtbot.waitUntil(lambda: panel.queue_scroll.verticalScrollBar().maximum() > 0)

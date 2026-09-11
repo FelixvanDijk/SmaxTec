@@ -7,6 +7,7 @@ which animal owns a date range.
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 from threading import Event
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -83,6 +85,14 @@ EXTRAS_NOTE = (
     "Optional farm datasets cover the entire farm, from its earliest queued From date "
     "through its latest To date. They are not limited to the selected cows."
 )
+
+
+@dataclass(frozen=True)
+class _MetricDiscovery:
+    """Measurements supported by every entity in one frozen queue selection."""
+
+    entities: tuple[ApiEntity, ...]
+    metrics: tuple[ApiMetric, ...]
 
 
 def _text(value: str) -> str:
@@ -241,7 +251,7 @@ class ApiPanel(QWidget):
         self._shutting_down = False
         self._catalog: ApiCatalog | None = None
         self._entities: tuple[ApiEntity, ...] = ()
-        self._metrics_entity: ApiEntity | None = None
+        self._metrics_entities: tuple[ApiEntity, ...] = ()
         self._last_folder: Path | None = None
         self._reviewing = False
         self.setObjectName("apiPanel")
@@ -261,10 +271,19 @@ class ApiPanel(QWidget):
         )
         self.account = QFrame()
         self.account.setObjectName("card")
-        account = QGridLayout(self.account)
+        account = QVBoxLayout(self.account)
         account.setContentsMargins(18, 12, 18, 12)
+        account.setSpacing(8)
+        account_heading = QHBoxLayout()
         self.account_status = label("Connect your smaXtec account", "statusTitle")
-        account.addWidget(self.account_status, 0, 0, 1, 4)
+        account_heading.addWidget(self.account_status, 1)
+        self.disconnect_button = self._button("Disconnect", self.disconnect)
+        account_heading.addWidget(self.disconnect_button)
+        account.addLayout(account_heading)
+        self.account_fields = QWidget()
+        account_fields = QHBoxLayout(self.account_fields)
+        account_fields.setContentsMargins(0, 0, 0, 0)
+        account_fields.setSpacing(10)
         self.username = QLineEdit()
         self.username.setPlaceholderText("smaXtec email address")
         self.username.setAccessibleName("API smaXtec email address")
@@ -273,19 +292,12 @@ class ApiPanel(QWidget):
         self.password.setPlaceholderText("smaXtec password")
         self.password.setAccessibleName("API smaXtec password")
         self.connect_button = self._button("Connect", self._connect, primary=True)
-        self.disconnect_button = self._button("Disconnect", self.disconnect)
-        account.addWidget(self.username, 1, 0)
-        account.addWidget(self.password, 1, 1)
-        account.addWidget(self.connect_button, 1, 2)
-        account.addWidget(self.disconnect_button, 1, 3)
-        account.setColumnStretch(0, 1)
-        account.setColumnStretch(1, 1)
+        account_fields.addWidget(self.username, 1)
+        account_fields.addWidget(self.password, 1)
+        account_fields.addWidget(self.connect_button)
+        account.addWidget(self.account_fields)
         account.addWidget(
-            label("Credentials and API session stay in memory until you disconnect.", "privacy"),
-            2,
-            0,
-            1,
-            4,
+            label("Credentials and API session stay in memory until you disconnect.", "privacy")
         )
         layout.addWidget(self.account)
         self.steps = QTabWidget()
@@ -354,8 +366,11 @@ class ApiPanel(QWidget):
         table.setAlternatingRowColors(True)
         table.setWordWrap(False)
         table.verticalHeader().hide()
+        table.verticalHeader().setDefaultSectionSize(38)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        # MultiSelection lets nontechnical users toggle several rows with ordinary
+        # clicks; Ctrl/Command knowledge is not required.
+        table.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table.setMinimumHeight(150)
         return table
@@ -395,27 +410,42 @@ class ApiPanel(QWidget):
         self.inventory = self._table(
             ["Number / serial", "Name", "Ear tag", "Group", "Status"], "API farm inventory"
         )
+        self.inventory.setMinimumHeight(340)
         self.inventory.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.inventory.itemSelectionChanged.connect(self._selection_changed)
         layout.addWidget(self.inventory, 1)
+
+        selection_card = QFrame()
+        selection_card.setObjectName("card")
+        selection_layout = QVBoxLayout(selection_card)
+        selection_layout.setContentsMargins(16, 14, 16, 14)
+        selection_layout.setSpacing(10)
         selection = QHBoxLayout()
-        self.select_shown_button = self._button("Select shown", self._select_shown)
-        self.clear_selection_button = self._button("Clear selection", self.inventory.clearSelection)
-        self.selection_note = label("0 selected", "muted")
+        self.selection_note = label("0 targets selected", "statusTitle")
+        selection.addWidget(self.selection_note, 1)
+        self.select_shown_button = self._button("Select all filtered", self._select_shown)
+        self.clear_selection_button = self._button("Clear selected", self.inventory.clearSelection)
         selection.addWidget(self.select_shown_button)
         selection.addWidget(self.clear_selection_button)
-        selection.addWidget(self.selection_note, 1)
-        self.load_metrics_button = self._button("Explore measurements", self._load_metrics)
-        selection.addWidget(self.load_metrics_button)
-        layout.addLayout(selection)
+        selection_layout.addLayout(selection)
+        selection_layout.addWidget(
+            label(
+                "Click any cow row to add or remove it from the selection—Ctrl is not required.",
+                "privacy",
+            )
+        )
         exact = QHBoxLayout()
-        self.cow_numbers = QLineEdit()
-        self.cow_numbers.setPlaceholderText("Exact cow numbers, e.g. 57, 203, 657")
+        self.cow_numbers = QPlainTextEdit()
+        self.cow_numbers.setPlaceholderText(
+            "Paste exact cow numbers — one per line, or separated by commas or spaces"
+        )
         self.cow_numbers.setAccessibleName("Exact API cow numbers")
-        self.exact_button = self._button("Select cow numbers", self._select_exact)
+        self.cow_numbers.setMinimumHeight(82)
+        self.cow_numbers.setMaximumHeight(110)
+        self.exact_button = self._button("Select these cow numbers", self._select_exact)
         exact.addWidget(self.cow_numbers, 1)
-        exact.addWidget(self.exact_button)
-        layout.addLayout(exact)
+        exact.addWidget(self.exact_button, alignment=Qt.AlignmentFlag.AlignTop)
+        selection_layout.addLayout(exact)
         dates = QHBoxLayout()
         dates.addWidget(label("From", "fieldLabel", wrap=False))
         self.shared_from = date_entry(date.today() - timedelta(days=7), "API shared From date")
@@ -425,14 +455,15 @@ class ApiPanel(QWidget):
         dates.addWidget(self.shared_to)
         self.add_button = self._button("Add selected to queue", self._add_selected, primary=True)
         dates.addWidget(self.add_button, 1)
-        layout.addLayout(dates)
-        layout.addWidget(
+        selection_layout.addLayout(dates)
+        selection_layout.addWidget(
             label(
                 "Dates use DD/MM/YYYY and the farm's timezone. Each queued target keeps its "
-                "own dates. Add another period for the same cow whenever needed.",
+                "own dates. Choose measurements for one or many targets in Download queue.",
                 "privacy",
             )
         )
+        layout.addWidget(selection_card)
         return page
 
     def _build_queue(self) -> QWidget:
@@ -449,50 +480,78 @@ class ApiPanel(QWidget):
             ["Farm", "Type", "Target", "From · DD/MM/YYYY", "To · DD/MM/YYYY", "Measurements"],
             "API download queue with individual dates",
         )
+        self.queue.setMinimumHeight(220)
         self.queue.setItemDelegateForColumn(3, _DateDelegate(self.queue))
         self.queue.setItemDelegateForColumn(4, _DateDelegate(self.queue))
         self.queue.itemChanged.connect(self._queue_changed)
+        self.queue.itemSelectionChanged.connect(self._queue_selection_changed)
         layout.addWidget(self.queue, 1)
-        queue_actions = QHBoxLayout()
-        queue_actions.setSpacing(10)
-        self.remove_button = self._button("Remove selected", self._remove_selected)
-        self.clear_queue_button = self._button("Clear queue", self._clear_queue)
+        queue_tools = QFrame()
+        queue_tools.setObjectName("card")
+        queue_actions = QGridLayout(queue_tools)
+        queue_actions.setContentsMargins(18, 14, 18, 14)
+        queue_actions.setHorizontalSpacing(10)
+        queue_actions.setVerticalSpacing(8)
+        self.select_queue_button = self._button("Select every queued target", self._select_queue)
+        self.clear_queue_selection_button = self._button(
+            "Clear row selection", self.queue.clearSelection
+        )
+        self.remove_button = self._button("Remove selected rows", self._remove_selected)
+        self.clear_queue_button = self._button("Clear entire queue", self._clear_queue)
         self.apply_dates_button = self._button("Apply Browse dates to all", self._apply_dates)
-        queue_actions.addWidget(self.remove_button)
-        queue_actions.addWidget(self.clear_queue_button)
-        queue_actions.addStretch()
-        queue_actions.addWidget(self.apply_dates_button)
-        layout.addLayout(queue_actions)
-        options = QHBoxLayout()
-        options.setSpacing(12)
+        queue_actions.addWidget(label("Selected rows", "fieldLabel"), 0, 0, 1, 3)
+        queue_actions.addWidget(self.select_queue_button, 1, 0)
+        queue_actions.addWidget(self.clear_queue_selection_button, 1, 1)
+        queue_actions.addWidget(self.remove_button, 1, 2)
+        queue_actions.addWidget(label("Whole queue", "fieldLabel"), 2, 0, 1, 3)
+        queue_actions.addWidget(self.apply_dates_button, 3, 0)
+        queue_actions.addWidget(self.clear_queue_button, 3, 1)
+        queue_actions.setColumnStretch(0, 1)
+        queue_actions.setColumnStretch(1, 1)
+        queue_actions.setColumnStretch(2, 1)
+        layout.addWidget(queue_tools)
         measurements = QFrame()
         measurements.setObjectName("card")
         metric_layout = QVBoxLayout(measurements)
-        metric_layout.setContentsMargins(16, 14, 16, 14)
-        metric_layout.setSpacing(8)
-        metric_layout.addWidget(label("Measurements", "statusTitle"))
-        self.all_metrics = QCheckBox("All available measurements for each target")
+        metric_layout.setContentsMargins(18, 16, 18, 16)
+        metric_layout.setSpacing(10)
+        metric_heading = QHBoxLayout()
+        metric_heading.addWidget(label("Measurements for selected queue rows", "cardTitle"), 1)
+        self.metric_selection_note = label("No queue rows selected", "muted", wrap=False)
+        metric_heading.addWidget(self.metric_selection_note)
+        metric_layout.addLayout(metric_heading)
+        metric_actions = QHBoxLayout()
+        self.load_metrics_button = self._button("Find common measurements", self._load_metrics)
+        metric_actions.addWidget(self.load_metrics_button)
+        self.all_metrics = QCheckBox(
+            "Download every available measurement for each selected target"
+        )
         self.all_metrics.setChecked(True)
         self.all_metrics.toggled.connect(self._metric_controls)
-        metric_layout.addWidget(self.all_metrics)
+        metric_actions.addWidget(self.all_metrics, 1)
+        metric_layout.addLayout(metric_actions)
         self.metric_note = label(
-            "Select one item in Browse herd, then Explore measurements to choose specific data.",
+            "Select one or more rows above. Use all available data, or discover the "
+            "measurement codes supported by every selected target.",
             "privacy",
         )
         metric_layout.addWidget(self.metric_note)
         self.metrics = QListWidget()
         self.metrics.setAccessibleName("Available API measurement codes and units")
-        self.metrics.setFixedHeight(105)
+        self.metrics.setMinimumHeight(190)
         metric_layout.addWidget(self.metrics)
-        self.apply_metrics_button = self._button("Apply measurements to queue", self._apply_metrics)
-        metric_layout.addWidget(self.apply_metrics_button)
-        options.addWidget(measurements, 1)
-        extras = QFrame()
-        extras.setObjectName("card")
-        extra_layout = QVBoxLayout(extras)
-        extra_layout.setContentsMargins(16, 14, 16, 14)
-        extra_layout.setSpacing(8)
-        extra_layout.addWidget(label("Resolution & farm datasets", "statusTitle"))
+        self.apply_metrics_button = self._button(
+            "Apply measurements to selected rows", self._apply_metrics, primary=True
+        )
+        metric_layout.addWidget(self.apply_metrics_button, alignment=Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(measurements)
+        settings = QFrame()
+        settings.setObjectName("card")
+        settings_layout = QGridLayout(settings)
+        settings_layout.setContentsMargins(18, 16, 18, 16)
+        settings_layout.setHorizontalSpacing(12)
+        settings_layout.setVerticalSpacing(9)
+        settings_layout.addWidget(label("Collection settings", "cardTitle"), 0, 0, 1, 4)
         self.resolution = QComboBox()
         self.resolution.setAccessibleName("API measurement resolution")
         for name, value in (
@@ -502,14 +561,11 @@ class ApiPanel(QWidget):
             ("Daily aggregation", "daily"),
         ):
             self.resolution.addItem(name, value)
-        extra_layout.addWidget(self.resolution)
+        settings_layout.addWidget(label("Measurement resolution", "fieldLabel"), 1, 0, 1, 2)
+        settings_layout.addWidget(self.resolution, 2, 0, 1, 2)
         self.health_index = QCheckBox("Include farm health index")
-        extra_layout.addWidget(self.health_index)
-        extra_layout.addWidget(label(EXTRAS_NOTE, "privacy"))
-        extra_layout.addStretch()
-        options.addWidget(extras, 1)
-        layout.addLayout(options)
-        destination_row = QHBoxLayout()
+        settings_layout.addWidget(self.health_index, 2, 2, 1, 2)
+        settings_layout.addWidget(label(EXTRAS_NOTE, "privacy"), 3, 0, 1, 4)
         self.destination = QLineEdit()
         self.destination.setReadOnly(True)
         self.destination.setAccessibleName("API collection output folder")
@@ -520,10 +576,9 @@ class ApiPanel(QWidget):
         if documents and Path(documents).is_absolute():
             self.destination.setText(str(Path(documents) / "SmaxTec Workbench" / "API Collections"))
         self.browse_button = self._button("Browse…", self._browse)
-        destination_row.addWidget(self.destination, 1)
-        destination_row.addWidget(self.browse_button)
-        layout.addLayout(destination_row)
-        save_row = QHBoxLayout()
+        settings_layout.addWidget(label("Save collections inside", "fieldLabel"), 4, 0, 1, 4)
+        settings_layout.addWidget(self.destination, 5, 0, 1, 3)
+        settings_layout.addWidget(self.browse_button, 5, 3)
         self.collection_name = QLineEdit("Herd data")
         self.collection_name.setAccessibleName("API collection name")
         self.collection_name.setPlaceholderText("Collection name")
@@ -533,18 +588,27 @@ class ApiPanel(QWidget):
         self.download_button = self._button(
             "Review & download", self._review_download, primary=True
         )
-        save_row.addWidget(self.collection_name, 1)
-        save_row.addWidget(self.excel)
-        save_row.addWidget(self.download_button)
-        layout.addLayout(save_row)
-        layout.addWidget(
+        settings_layout.addWidget(label("Collection name", "fieldLabel"), 6, 0, 1, 2)
+        settings_layout.addWidget(self.collection_name, 7, 0, 1, 2)
+        settings_layout.addWidget(self.excel, 7, 2)
+        settings_layout.addWidget(self.download_button, 7, 3)
+        settings_layout.setColumnStretch(0, 2)
+        settings_layout.setColumnStretch(1, 2)
+        settings_layout.setColumnStretch(2, 1)
+        settings_layout.setColumnStretch(3, 1)
+        settings_layout.addWidget(
             label(
                 "Every collection includes original JSON, CSV measurements and a "
                 "provenance manifest. "
                 "Choose a name above; a unique folder prevents overwriting earlier work.",
                 "privacy",
-            )
+            ),
+            8,
+            0,
+            1,
+            4,
         )
+        layout.addWidget(settings)
         return page
 
     def _build_results(self) -> QWidget:
@@ -604,7 +668,7 @@ class ApiPanel(QWidget):
         self._connected = False
         self._catalog = None
         self._entities = ()
-        self._metrics_entity = None
+        self._metrics_entities = ()
         self.farm.blockSignals(True)
         self.farm.clear()
         self.farm.addItem("Connect to choose a farm")
@@ -615,7 +679,9 @@ class ApiPanel(QWidget):
         self._clear_queue()
         self.account_status.setText("Connect your smaXtec account")
         self.inventory_note.setText("Your connected farms will appear here.")
-        self.metric_note.setText("Explore a target's available measurements after connecting.")
+        self.metric_note.setText(
+            "Add targets to the queue, then select rows to assign measurements."
+        )
         if self._client is not None:
             client = self._client
             self._start(
@@ -639,7 +705,6 @@ class ApiPanel(QWidget):
         self._catalog = None
         self._entities = ()
         self.inventory.setRowCount(0)
-        self._reset_measurements()
         farm = self.farm.currentData()
         if not isinstance(farm, ApiFarm):
             self._update_controls()
@@ -720,7 +785,7 @@ class ApiPanel(QWidget):
         if self._catalog is None or self.is_busy:
             return
         try:
-            numbers = parse_cow_numbers(self.cow_numbers.text())
+            numbers = parse_cow_numbers(self.cow_numbers.toPlainText())
             by_number: dict[str, list[ApiEntity]] = {}
             for entity in self._catalog.animals:
                 by_number.setdefault(entity.number, []).append(entity)
@@ -753,30 +818,66 @@ class ApiPanel(QWidget):
         )
 
     def _reset_measurements(self) -> None:
-        self._metrics_entity = None
+        self._metrics_entities = ()
         self.metrics.clear()
         self.all_metrics.setChecked(True)
         self.metric_note.setText(
-            "Select one target and Explore measurements to choose specific data."
+            "Select one or more queue rows. Use all available data, or discover the "
+            "measurement codes supported by every selected target."
         )
 
     def _load_metrics(self) -> None:
-        selected = self._selected_entities()
-        if self.is_busy or len(selected) != 1:
+        entities = self._selected_queue_entities()
+        if self.is_busy or not entities:
             return
-        entity = selected[0]
         client = self._client
         assert client is not None
-        self._metrics_entity = entity
+
+        def discover_job(stop: Event, progress: Callable[[ApiProgress], None]):
+            discovered: list[tuple[ApiEntity, tuple[ApiMetric, ...]]] = []
+            for index, entity in enumerate(entities, 1):
+                if stop.is_set():
+                    raise ApiCancelled
+                progress(
+                    ApiProgress(
+                        f"Checking measurements for {entity.label}…",
+                        index - 1,
+                        len(entities),
+                    )
+                )
+                discovered.append((entity, client.metrics(entity, stop)))
+            first_metrics = discovered[0][1]
+            common_codes = {metric.code for metric in first_metrics}
+            for _entity, entity_metrics in discovered[1:]:
+                common_codes.intersection_update(metric.code for metric in entity_metrics)
+            metrics: list[ApiMetric] = []
+            for first_metric in first_metrics:
+                if first_metric.code not in common_codes:
+                    continue
+                units: list[str] = []
+                for _entity, entity_metrics in discovered:
+                    match = next(
+                        metric for metric in entity_metrics if metric.code == first_metric.code
+                    )
+                    units.extend(unit for unit in match.units if unit not in units)
+                metrics.append(ApiMetric(first_metric.code, tuple(units)))
+            return _MetricDiscovery(entities, tuple(metrics))
+
+        self._reset_measurements()
         self._start(
             "metrics",
-            lambda stop, _progress: client.metrics(entity, stop),
-            "Discovering measurement codes and units for this target…",
+            discover_job,
+            f"Finding measurements shared by {len(entities):,} selected targets…",
         )
 
     def _chosen_metrics(self) -> tuple[str, ...]:
         if self.all_metrics.isChecked():
             return ()
+        if self._metrics_entities != self._selected_queue_entities():
+            raise ValueError(
+                "Select queue rows and find their common measurements before "
+                "choosing specific data."
+            )
         codes = tuple(
             self.metrics.item(index).data(Qt.ItemDataRole.UserRole)
             for index in range(self.metrics.count())
@@ -787,7 +888,13 @@ class ApiPanel(QWidget):
         return codes
 
     def _metric_controls(self) -> None:
-        self.metrics.setEnabled(not self.all_metrics.isChecked() and not self.is_busy)
+        selection_matches = (
+            bool(self._metrics_entities)
+            and self._metrics_entities == self._selected_queue_entities()
+        )
+        self.metrics.setEnabled(
+            not self.all_metrics.isChecked() and selection_matches and not self.is_busy
+        )
 
     def _shared_dates(self) -> tuple[date, date]:
         return (
@@ -803,8 +910,7 @@ class ApiPanel(QWidget):
             return
         try:
             start, end = self._shared_dates()
-            metrics = self._chosen_metrics()
-            targets = tuple(ApiTarget(entity, start, end, metrics) for entity in selected)
+            targets = tuple(ApiTarget(entity, start, end) for entity in selected)
             if self.queue.rowCount() + len(targets) > 5000:
                 raise ValueError(
                     "A collection can contain at most 5,000 targets. Download this queue first."
@@ -833,18 +939,54 @@ class ApiPanel(QWidget):
         self._queue_changed()
         self.status.setText(
             f"Added {len(targets):,} targets. Open Download queue to edit individual "
-            "dates or review."
+            "dates and assign measurements."
         )
+
+    def _selected_queue_rows(self) -> tuple[int, ...]:
+        return tuple(
+            index.row()
+            for index in sorted(
+                self.queue.selectionModel().selectedRows(), key=lambda index: index.row()
+            )
+        )
+
+    def _selected_queue_entities(self) -> tuple[ApiEntity, ...]:
+        entities: list[ApiEntity] = []
+        for row in self._selected_queue_rows():
+            item = self.queue.item(row, 0)
+            entity = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+            if isinstance(entity, ApiEntity) and entity not in entities:
+                entities.append(entity)
+        return tuple(entities)
+
+    def _queue_selection_changed(self) -> None:
+        rows = self._selected_queue_rows()
+        entities = self._selected_queue_entities()
+        self.metric_selection_note.setText(
+            f"{len(rows):,} rows · {len(entities):,} unique targets selected"
+            if rows
+            else "No queue rows selected"
+        )
+        if self._metrics_entities and self._metrics_entities != entities:
+            self._reset_measurements()
+        self._update_controls()
+
+    def _select_queue(self) -> None:
+        self.queue.selectAll()
 
     def _queue_changed(self) -> None:
         count = self.queue.rowCount()
+        # Small jobs should reach measurement controls quickly; large jobs get a
+        # taller viewport for scanning many targets without crowding the rows.
+        self.queue.setMinimumHeight(220 if count <= 3 else 320 if count <= 8 else 380)
         self.steps.setTabText(1, f"2  Download queue ({count:,})")
         self.queue_note.setText(
-            f"{count:,} queued targets. Double-click a From or To date to edit that target only. "
-            "You can keep adding targets from other farms."
+            f"{count:,} queued targets. Click rows to select one or many without Ctrl. "
+            "Double-click a From or To date to edit that row only."
             if count
-            else "Add cows, groups or devices from Browse herd. Each target keeps its own dates."
+            else "Add cows, groups or devices from Browse herd, then assign measurements here."
         )
+        self._queue_selection_changed()
         self._update_controls()
 
     def _clear_queue(self) -> None:
@@ -852,10 +994,8 @@ class ApiPanel(QWidget):
         self._queue_changed()
 
     def _remove_selected(self) -> None:
-        for index in sorted(
-            self.queue.selectionModel().selectedRows(), key=lambda i: i.row(), reverse=True
-        ):
-            self.queue.removeRow(index.row())
+        for row in reversed(self._selected_queue_rows()):
+            self.queue.removeRow(row)
         self._queue_changed()
 
     def _apply_dates(self) -> None:
@@ -875,18 +1015,20 @@ class ApiPanel(QWidget):
         )
 
     def _apply_metrics(self) -> None:
+        rows = self._selected_queue_rows()
+        if not rows:
+            self.status.setText("Select one or more queue rows before applying measurements.")
+            return
         try:
             metrics = self._chosen_metrics()
         except ValueError as error:
             self.status.setText(str(error))
             return
-        for row in range(self.queue.rowCount()):
+        for row in rows:
             cell = self.queue.item(row, 5)
             cell.setText(", ".join(metrics) or "All available")
             cell.setData(Qt.ItemDataRole.UserRole, metrics)
-        self.status.setText(
-            "Measurements applied to every queued target; availability is checked per target."
-        )
+        self.status.setText(f"Measurements applied to {len(rows):,} selected queue rows.")
 
     def build_request(self) -> ApiDownloadRequest:
         """Read every row once, including off-screen rows; keep identities with dates."""
@@ -996,28 +1138,33 @@ class ApiPanel(QWidget):
             self._catalog = result
             self._show_inventory()
             self.status.setText("Farm loaded. Select targets and choose the dates you need.")
-        elif self._operation == "metrics" and isinstance(result, tuple):
+        elif self._operation == "metrics" and isinstance(result, _MetricDiscovery):
             self.metrics.clear()
-            for metric in result:
-                if isinstance(metric, ApiMetric):
-                    suffix = " · " + ", ".join(metric.units) if metric.units else ""
-                    item = QListWidgetItem(_text(metric.code + suffix))
-                    item.setData(Qt.ItemDataRole.UserRole, metric.code)
-                    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                    item.setCheckState(Qt.CheckState.Checked)
-                    self.metrics.addItem(item)
-            name = (
-                self._metrics_entity.label
-                if self._metrics_entity is not None
-                else "selected target"
-            )
-            self.metric_note.setText(
-                f"{self.metrics.count()} measurements available for {_text(name)}. "
-                "Other targets are checked individually during download."
-            )
+            self._metrics_entities = result.entities
+            for metric in result.metrics:
+                suffix = " · " + ", ".join(metric.units) if metric.units else ""
+                item = QListWidgetItem(_text(metric.code + suffix))
+                item.setData(Qt.ItemDataRole.UserRole, metric.code)
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Checked)
+                self.metrics.addItem(item)
+            if result.metrics:
+                self.all_metrics.setChecked(False)
+                self.metric_note.setText(
+                    f"{len(result.metrics):,} measurement codes are available on every one of "
+                    f"the {len(result.entities):,} selected targets. Uncheck anything "
+                    "you do not need."
+                )
+            else:
+                self.all_metrics.setChecked(True)
+                self.metric_note.setText(
+                    "The selected targets have no measurement code in common. Select fewer rows, "
+                    "or apply all available measurements so each target uses its own data."
+                )
             self.steps.setCurrentIndex(1)
             self.status.setText(
-                "Measurements discovered. Use All available or choose specific codes below."
+                "Common measurements discovered. Review the checked codes, then "
+                "apply to selected rows."
             )
         elif isinstance(result, ApiDownloadResult):
             self._show_result(result)
@@ -1082,20 +1229,32 @@ class ApiPanel(QWidget):
 
     def _update_controls(self) -> None:
         busy = self.is_busy or self._shutting_down
+        queue_rows = self._selected_queue_rows()
+        queue_entities = self._selected_queue_entities()
+        queue_count = self.queue.rowCount()
         self.account.setEnabled(not busy)
+        self.account_fields.setVisible(not self._connected)
         self.username.setEnabled(not busy and not self._connected)
         self.password.setEnabled(not busy and not self._connected)
         self.connect_button.setEnabled(not busy and not self._connected)
+        self.disconnect_button.setVisible(self._connected)
         self.disconnect_button.setEnabled(not busy and self._connected)
         self.browse_page.setEnabled(not busy and self._connected)
         self.queue_page.setEnabled(not busy and self._connected)
         self.farm.setEnabled(not busy and self._connected)
         self.add_button.setEnabled(not busy and bool(self._selected_entities()))
-        self.load_metrics_button.setEnabled(not busy and len(self._selected_entities()) == 1)
+        self.select_queue_button.setEnabled(not busy and queue_count > 0)
+        self.clear_queue_selection_button.setEnabled(not busy and bool(queue_rows))
+        self.remove_button.setEnabled(not busy and bool(queue_rows))
+        self.clear_queue_button.setEnabled(not busy and queue_count > 0)
+        self.load_metrics_button.setEnabled(not busy and bool(queue_entities))
         self.exact_button.setEnabled(not busy and self._catalog is not None)
-        self.download_button.setEnabled(not busy and self._connected and self.queue.rowCount() > 0)
-        self.apply_dates_button.setEnabled(not busy and self.queue.rowCount() > 0)
-        self.apply_metrics_button.setEnabled(not busy and self.queue.rowCount() > 0)
+        self.download_button.setEnabled(not busy and self._connected and queue_count > 0)
+        self.apply_dates_button.setEnabled(not busy and queue_count > 0)
+        metrics_ready = self.all_metrics.isChecked() or (
+            bool(self._metrics_entities) and self._metrics_entities == queue_entities
+        )
+        self.apply_metrics_button.setEnabled(not busy and bool(queue_rows) and metrics_ready)
         self.open_button.setEnabled(not busy and self._last_folder is not None)
         self.cancel_button.setVisible(self._worker is not None and self._operation != "disconnect")
         self.cancel_button.setEnabled(self._worker is not None and not self._cancelling)

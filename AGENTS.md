@@ -88,7 +88,7 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Version 0.5.1 makes the official smaXtec Public API v2 the primary workspace. Read
+Version 0.6.0 makes the official smaXtec Public API v2 the primary workspace. Read
 `docs/API_DATA.md` before changing it. The UI dynamically discovers authorized farms,
 cows, groups, devices and per-target metrics; queues immutable target/From/To/metric
 combinations; explicitly reviews them; and downloads bounded JSON chunks into one
@@ -103,9 +103,14 @@ silently deduplicate boundary points: API To-date inclusivity is not documented.
 Raw response shapes win over guessed schemas. Do not invent metric meanings, preferred
 units, transformations, event timestamp units or clinical interpretations. Events and
 server-side background download jobs remain withheld until their semantics/lifecycle
-are confirmed. Each API workflow page must scroll vertically before Qt compresses
-styled controls below their size hints; short displays must never overlap or clip input,
-table, action or option rows. Source 0.5.1 has synthetic verification and read-only live auth/catalog/
+are confirmed. Browse is for target identity and dates; measurement assignment belongs
+in Download queue. Ordinary clicks toggle row selection without Ctrl, while filtered
+bulk selection and exact-number paste are equivalent paths. Metric discovery operates
+on the frozen selected queue targets, exposes only common codes, and is invalidated if
+that selection changes. Applying metrics changes selected rows only; “all available” is
+per target. Each API workflow page must scroll vertically before Qt compresses styled
+controls below their size hints; short displays must never overlap or clip input, table,
+action or option rows. Source 0.6.0 has synthetic verification and read-only live auth/catalog/
 metric-discovery evidence and packaged Windows CI proof; representative direct downloads
 and client acceptance remain pending. The next milestone is canonical normalization/calculations,
 then graphs, using these preserved raw collections.
