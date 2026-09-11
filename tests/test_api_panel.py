@@ -9,6 +9,7 @@ from smaxtec.application.api_data import (
     ApiCatalog,
     ApiDownloadResult,
     ApiEntity,
+    ApiError,
     ApiFarm,
     ApiMetric,
 )
@@ -139,6 +140,31 @@ def test_inventory_and_queue_use_ordinary_click_multi_selection(qtbot, tmp_path)
     assert panel.inventory.minimumHeight() == 340
     assert panel.account_fields.isHidden()
     assert not panel.disconnect_button.isHidden()
+
+
+def test_failed_connection_keeps_real_error_and_does_not_report_disconnect(qtbot):
+    class RejectingClient(Client):
+        def connect(self, credentials, stop):
+            raise ApiError(
+                "api_login",
+                "smaXtec did not accept this sign-in. Check your account details and API access.",
+            )
+
+    client = RejectingClient()
+    panel = ApiPanel(client=client, service=Service(None))
+    qtbot.addWidget(panel)
+    panel.username.setText("analyst@example.test")
+    panel.password.setText("synthetic-password")
+    panel._connect()
+    qtbot.waitUntil(lambda: not panel.is_busy)
+
+    assert panel.status.text().startswith("smaXtec did not accept this sign-in")
+    assert "Disconnected" not in panel.status.text()
+    assert panel.account_status.text() == "Could not connect to smaXtec"
+    assert not panel._connected
+    assert not panel.account_fields.isHidden()
+    assert panel.connect_button.isEnabled()
+    assert client.disconnected
 
 
 def test_bulk_cow_paste_and_filtered_selection_are_exact_alternatives(qtbot, tmp_path):

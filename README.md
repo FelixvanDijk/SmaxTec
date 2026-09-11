@@ -5,7 +5,7 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.6.0 makes the official smaXtec Public API the primary workflow. Its spacious
+Version 0.6.1 makes the official smaXtec Public API the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
 queued target. Users can review the full queue and save direct raw JSON, CSV and optional

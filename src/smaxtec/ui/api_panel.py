@@ -1170,6 +1170,10 @@ class ApiPanel(QWidget):
             self._show_result(result)
         elif self._operation == "disconnect":
             self.status.setText("Disconnected. Credentials and API session were released.")
+        # Normally finished follows this queued signal and refreshes controls. Keep
+        # this handler complete on its own as Qt does not promise ordering between
+        # our custom result signal and QThread.finished across every platform.
+        self._update_controls()
 
     def _show_result(self, result: ApiDownloadResult) -> None:
         self._last_folder = result.folder
@@ -1202,12 +1206,18 @@ class ApiPanel(QWidget):
 
     def _on_failure(self, error: ApiError) -> None:
         self.status.setText(_text(str(error)))
-        if self._operation == "download":
+        if self._operation == "connect":
+            self.account_status.setText("Could not connect to smaXtec")
+        elif self._operation == "download":
             self.result_summary.setText("Collection needs attention")
             self.result_note.setText(_text(str(error)))
 
     def _on_cancelled(self) -> None:
-        self.status.setText("Cancelled. Completed files, if any, are kept.")
+        if self._operation == "connect":
+            self.account_status.setText("Connect your smaXtec account")
+            self.status.setText("Connection cancelled. Enter your password to try again.")
+        else:
+            self.status.setText("Cancelled. Completed files, if any, are kept.")
         if self._operation == "download":
             self.result_summary.setText("Collection cancelled")
 
@@ -1218,9 +1228,7 @@ class ApiPanel(QWidget):
             self._worker = None
         self.progress.hide()
         self._cancelling = False
-        if operation != "disconnect" and (
-            self._shutting_down or (operation == "connect" and not self._connected)
-        ):
+        if operation != "disconnect" and self._shutting_down:
             self.disconnect()
             if self._worker is not None:
                 return

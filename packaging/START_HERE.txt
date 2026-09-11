@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.6.0
+SmaxTec Workbench — desktop preview 0.6.1
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.

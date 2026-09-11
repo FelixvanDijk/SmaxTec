@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.1 — 2026-09-11 (development preview)
+
+- Fix failed direct-API connections being immediately followed by an unnecessary
+  cleanup worker whose successful **Disconnected** message hid the real sign-in error.
+- Keep the curated authentication, API-access, network, timeout or response message
+  visible, label the account as unable to connect, and leave the form ready to retry.
+- Give connection cancellation its own accurate guidance and make successful result
+  handling refresh its controls independently of cross-platform thread-signal ordering.
+- Confirm against the live smaXtec authentication endpoint, using a nonexistent
+  diagnostic identity and retaining no response body, that JSON authentication requests
+  are still accepted and rejected normally with JSON `401` for invalid credentials.
+
 ## 0.6.0 — 2026-09-11 (development preview)
 
 - Redesign Direct data API around a spacious target browser and queue-first measurement

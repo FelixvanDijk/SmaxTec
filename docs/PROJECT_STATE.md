@@ -1,12 +1,15 @@
 # Project state — start here each session
 
-Last updated: 2026-09-11. **Source preview 0.6.0 redesigns the API dashboard around a
-spacious herd browser and queue-first measurement workflow.** The default workspace
+Last updated: 2026-09-11. **Source preview 0.6.1 fixes direct-API connection failures
+being falsely reported as successful disconnects; it retains the 0.6.0 spacious herd
+browser and queue-first measurement workflow.** The default workspace
 signs in, discovers farms/cows/groups/devices/metrics, queues individual periods, reviews
 them, and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
-browser exports or email. Read-only auth/catalog/metric discovery was live-verified;
-408 offline tests pass. Representative direct downloads, client date/unit/UI acceptance,
-and a signed clean-machine release remain pending. Packaged 0.6.0 CI passes. The
+browser exports or email. All 409 offline tests pass; read-only auth/catalog/metric
+discovery was live-verified, and authentication requests still reach the live JSON
+endpoint correctly. Representative direct downloads, client date/unit/UI acceptance,
+and a signed clean-machine release
+remain pending. Packaged 0.6.1 CI is pending; packaged 0.6.0 CI passes. The
 website/email workflow remains available in a legacy tab and its Graph deployment work
 is paused.
 
@@ -118,7 +121,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Current implementation
 
-- Version 0.6.0 has a primary top-level **Direct data API** tab and preserves the
+- Version 0.6.1 has a primary top-level **Direct data API** tab and preserves the
   earlier website/email UI as **Legacy website + email**. API, browser and email
   workers are independent; close waits for cancellation/session cleanup across all.
 - API module map: `ui/api_panel.py` owns account/discovery/queue/review/results;
@@ -170,6 +173,12 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Verification and packaging evidence
 
+- 0.6.1 source: failed-connection regression passes and preserves the exact curated
+  sign-in error without launching a second disconnect worker. A status-only live probe
+  with a nonexistent diagnostic identity confirmed the JSON auth route responds with
+  JSON `401`, establishing that the request format is still accepted without touching
+  the user's account or retaining a response body. All **409 tests**, dependency
+  integrity, Ruff, formatting and source smoke pass locally. Packaged CI is pending.
 - 0.6.0 source: **408 tests pass** locally. New API UI regressions cover ordinary-click
   multi-selection, filtered/exact selection paths, common-metric intersection, selected-
   row-only assignment, collapsed connected-account controls and short-window scrolling.
@@ -354,7 +363,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.6.0 Git/CI state and packaged launch limitation above; do not confuse
+1. Check the 0.6.1 Git/CI state and packaged launch limitation above; do not confuse
    source/offline proof with client or released status.
 2. Read `API_DATA.md`, then have the client exercise one small direct collection with
    an active cow and known period. Record expected/actual boundaries, codes, units and

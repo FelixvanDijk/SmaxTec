@@ -44,7 +44,7 @@ try {
     if (-not $SkipArchive) {
         $taskPublishedDist = Join-Path $taskRoot 'dist'
         New-Item -ItemType Directory -Path $taskPublishedDist -Force | Out-Null
-        $taskArchive = Join-Path $taskRoot 'dist\SmaxTec-Workbench-0.6.0-windows-x64.zip'
+        $taskArchive = Join-Path $taskRoot 'dist\SmaxTec-Workbench-0.6.1-windows-x64.zip'
         Compress-Archive -LiteralPath $taskBundle -DestinationPath $taskArchive -Force
         Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256
     }
