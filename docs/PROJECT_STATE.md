@@ -10,7 +10,7 @@ tests pass; read-only auth/catalog/metric
 discovery was live-verified, and authentication requests still reach the live JSON
 endpoint correctly. Representative direct downloads, client date/unit/UI acceptance,
 and a signed clean-machine release
-remain pending. Packaged 0.7.0 CI is pending; packaged 0.6.1 CI passes. The
+remain pending. Packaged 0.7.0 CI passes. The
 website/email workflow remains available in a legacy tab and its Graph deployment work
 is paused.
 
@@ -182,7 +182,11 @@ Do not invent calculations or clinical meanings in M4.
   smoke pass locally. Focused direct-collection tests prove the compatible staging file and
   hashed tidy companion contain the same observations; aware timestamps receive correct
   DST-sensitive UTC/local values, while duplicate and ambiguous timestamps are retained
-  without inference. Packaged CI remains to be recorded.
+  without inference. **GitHub Windows CI passed** for `5939c51`: clean locked install,
+  all checks, bundle build, packaged executable smoke and artifact upload.
+  [Verified 0.7.0 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34612732347).
+  The [0.7.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34612732347/artifacts/10269370832)
+  is approximately 288 MiB and retained through 2026-09-25.
 - 0.6.1 source: failed-connection regression passes and preserves the exact curated
   sign-in error without launching a second disconnect worker. A status-only live probe
   with a nonexistent diagnostic identity confirmed the JSON auth route responds with

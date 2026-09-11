@@ -146,7 +146,10 @@ Version 0.7.0 preserves the format-1 staging CSV columns and adds a tidy, hashed
 `analysis_ready.csv` through collection manifest format 2. Focused synthetic tests cover
 DST-aware local/UTC derivation, duplicate retention and non-inference for ambiguous
 timestamps. All 410 local tests, dependency, lint, format and source smoke checks pass;
-packaging and client data acceptance remain pending.
+GitHub Windows CI passed clean packaging, packaged executable smoke and artifact upload
+for [`5939c51`](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34612732347).
+The approximately 288 MiB [0.7.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34612732347/artifacts/10269370832)
+is retained through 2026-09-25. Client data acceptance remains pending.
 
 Version 0.6.1 fixes connection failures being overwritten by a successful Disconnect
 message. Its focused lifecycle regression and a status-only live JSON-auth route probe

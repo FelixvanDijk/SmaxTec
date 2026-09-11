@@ -12,6 +12,8 @@
   conversion, value coercion and duplicate policy to the reviewed normalization milestone.
 - Upgrade direct collection manifests to format 2 with the companion filename and SHA-256
   hash while leaving the original staging CSV columns compatible with format 1.
+- Pass clean GitHub Windows packaging and packaged executable smoke and publish the
+  approximately 288 MiB 0.7.0 preview artifact.
 
 ## 0.6.1 — 2026-09-11 (development preview)
 
