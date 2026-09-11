@@ -5,11 +5,12 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.6.1 makes the official smaXtec Public API the primary workflow. Its spacious
+Version 0.7.0 makes the official smaXtec Public API the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
-queued target. Users can review the full queue and save direct raw JSON, CSV and optional
-Excel data without waiting for email. The earlier browser/email workflow remains in a
+queued target. Users can review the full queue and save direct raw JSON, a lossless
+technical CSV, a graph-ready tidy CSV and optional Excel data without waiting for email.
+The earlier browser/email workflow remains in a
 labelled legacy tab. Canonical calculations and analysis are next.
 See [current status](docs/PROJECT_STATE.md) for verified evidence and remaining gates;
 implementation is not a claim that client acceptance or a production release is complete.
@@ -37,10 +38,11 @@ The app opens on **Direct data API**:
    **Results** shows saved, partial, failed or cancelled targets and opens the folder.
 
 Each run creates a unique folder. It contains the original API response chunks,
-`measurements.csv`, optional `<collection>.xlsx`, and a hashed `collection.json`
-manifest. Raw data and UTC chunk boundaries are retained for the next normalization/
-graph milestone. See [Direct API data](docs/API_DATA.md) for the exact contract and
-known API ambiguities.
+`measurements.csv`, `analysis_ready.csv`, optional `<collection>.xlsx`, and a hashed
+`collection.json` manifest. Open `analysis_ready.csv` first for a readable one-observation-
+per-row table with identity, metric/unit, local and UTC times, value and provenance.
+The existing `measurements.csv` and raw JSON remain unchanged as the lossless audit path.
+See [Direct API data](docs/API_DATA.md) for the exact contract and known API ambiguities.
 
 ## Legacy website export requests
 
@@ -109,8 +111,10 @@ or requested date period. Check these before later analysis.
 
 ## Download the packaged desktop preview
 
-Download the `SmaxTec-Workbench-windows-preview` artifact from the latest successful
-[0.6.1 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34605927646),
+The latest packaged artifact is still the successful
+[0.6.1 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34605927646);
+it does **not** contain the new 0.7.0 tidy CSV yet. Download its
+`SmaxTec-Workbench-windows-preview` artifact,
 extract both the artifact wrapper and the included application ZIP, and open
 `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.

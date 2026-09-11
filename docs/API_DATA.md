@@ -123,6 +123,7 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
 <collection>-YYYYMMDD-HHMMSS-<random>/
   collection.json
   measurements.csv
+  analysis_ready.csv
   <collection>.xlsx                 # when selected
   raw/
     cow-57-YYYYMMDD-YYYYMMDD-metadata.json
@@ -136,10 +137,21 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
 - `measurements.csv` is an analysis-friendly **staging** table. It preserves farm,
   timezone, target type/internal identity, Animal number/name/ear tag, requested dates,
   chunk bounds, metric, unit, timestamp, value and complete raw point JSON.
+- `analysis_ready.csv` is the recommended human/graphing view of those same rows. Its
+  readable columns begin with farm and target identity, then metric/unit, farm-local and
+  UTC timestamps, value and request details; technical lineage follows at the end. It is
+  a tidy long table: one source observation per row, suitable for filtering, grouping
+  and charting without first unpacking raw JSON.
+- `analysis_ready.csv` never deduplicates, pivots, converts units, interprets metrics or
+  coerces values. Timezone-aware ISO source timestamps receive canonical UTC plus the
+  farm-local timestamp/date/time. Numeric epochs, timezone-free strings and other
+  ambiguous timestamps remain in `source_timestamp`, with derived time fields blank.
+  `api_chunk`, `series_index` and `point_index` retain order and distinguish duplicates.
 - The optional XLSX contains a readable collection summary and the same staging rows;
   additional measurement sheets are created before Excel's row limit.
-- `collection.json` records target statuses, file paths, row counts and SHA-256 hashes.
-  It never stores credentials or bearer tokens.
+- `collection.json` format 2 records target statuses, file paths, row counts and SHA-256
+  hashes for both CSV views. It never stores credentials or bearer tokens. The original
+  `measurements.csv` columns are unchanged from format 1 for compatibility.
 
 Raw/CSV files are written through exclusive partial files and atomically published.
 Cancellation keeps completed chunks and marks the interrupted target `partial`; targets
@@ -176,6 +188,9 @@ resume; rerun creates a new collection and does not overwrite the earlier one.
   documented. The conservative chunks are a local safety choice, not a vendor limit.
 - Direct download, dates and output must be client-tested with representative cows,
   groups, devices and longer periods. Corporate proxy behavior also remains a release gate.
+- `analysis_ready.csv` is a safer bridge into graphing, not yet the canonical validated
+  dataset. Representative data still must determine timestamp/value shapes, duplicate
+  policy, unit handling and missing-interval rules before calculations or graphs.
 - The next product milestone defines a canonical normalized schema and then builds
   calculations, a master workbook and graphs from that one dataset. No clinical formula,
-  anomaly threshold or visual interpretation is implied by preview 0.5.0.
+  anomaly threshold or visual interpretation is implied by preview 0.7.0.

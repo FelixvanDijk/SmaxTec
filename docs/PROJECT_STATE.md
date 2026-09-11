@@ -1,15 +1,16 @@
 # Project state — start here each session
 
-Last updated: 2026-09-11. **Source preview 0.6.1 fixes direct-API connection failures
-being falsely reported as successful disconnects; it retains the 0.6.0 spacious herd
-browser and queue-first measurement workflow.** The default workspace
+Last updated: 2026-09-11. **Source preview 0.7.0 preserves the technical measurement
+export and adds a far clearer tidy `analysis_ready.csv` for people and the future graph
+pipeline; it retains the 0.6.1 connection fix and spacious queue-first workflow.** The default workspace
 signs in, discovers farms/cows/groups/devices/metrics, queues individual periods, reviews
-them, and writes direct raw JSON + staging CSV + optional XLSX + hashed provenance without
-browser exports or email. All 409 offline tests pass; read-only auth/catalog/metric
+them, and writes direct raw JSON + compatible staging CSV + graph-ready tidy CSV +
+optional XLSX + hashed provenance without browser exports or email. All 410 offline
+tests pass; read-only auth/catalog/metric
 discovery was live-verified, and authentication requests still reach the live JSON
 endpoint correctly. Representative direct downloads, client date/unit/UI acceptance,
 and a signed clean-machine release
-remain pending. Packaged 0.6.1 CI passes. The
+remain pending. Packaged 0.7.0 CI is pending; packaged 0.6.1 CI passes. The
 website/email workflow remains available in a legacy tab and its Graph deployment work
 is paused.
 
@@ -45,9 +46,13 @@ Do not invent calculations or clinical meanings in M4.
 - Whole farm-local dates are converted to half-open UTC instants with DST support. The
   API is asked for ISO UTC values. Native/10-minute reads use 31-day chunks, hourly 180
   and daily 730; raw response shape and every chunk boundary are preserved.
-- Each unique output folder contains raw per-target chunks and metadata, a staging CSV,
-  optional XlsxWriter workbook and `collection.json` with SHA-256 hashes/status. Output
-  never includes credentials/tokens. Cancellation retains partial/completed work.
+- Each unique output folder contains raw per-target chunks and metadata, the compatible
+  `measurements.csv` audit table, a tidy `analysis_ready.csv`, optional XlsxWriter workbook
+  and `collection.json` format 2 with SHA-256 hashes/status. Both CSVs come from the same
+  observation record. The tidy view adds local/UTC time columns only for timezone-aware
+  ISO source values and preserves duplicates/order; it does not guess ambiguous times,
+  coerce values, convert units or pivot metrics. Output never includes credentials/tokens.
+  Cancellation retains partial/completed work.
 - Optional weekly farm health-index data is implemented from its documented route.
   Events are withheld because Swagger does not define its integer date unit. Preferred-
   unit conversion, transformations, background jobs and emailed reports are not exposed.
@@ -121,7 +126,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Current implementation
 
-- Version 0.6.1 has a primary top-level **Direct data API** tab and preserves the
+- Version 0.7.0 has a primary top-level **Direct data API** tab and preserves the
   earlier website/email UI as **Legacy website + email**. API, browser and email
   workers are independent; close waits for cancellation/session cleanup across all.
 - API module map: `ui/api_panel.py` owns account/discovery/queue/review/results;
@@ -173,6 +178,11 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Verification and packaging evidence
 
+- 0.7.0 source: all **410 tests**, dependency integrity, Ruff, formatting and source
+  smoke pass locally. Focused direct-collection tests prove the compatible staging file and
+  hashed tidy companion contain the same observations; aware timestamps receive correct
+  DST-sensitive UTC/local values, while duplicate and ambiguous timestamps are retained
+  without inference. Packaged CI remains to be recorded.
 - 0.6.1 source: failed-connection regression passes and preserves the exact curated
   sign-in error without launching a second disconnect worker. A status-only live probe
   with a nonexistent diagnostic identity confirmed the JSON auth route responds with
@@ -367,8 +377,8 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.6.1 Git/CI state and packaged launch limitation above; do not confuse
-   source/offline proof with client or released status.
+1. Check the 0.7.0 Git/CI state and packaged launch limitation above; do not confuse its
+   source/offline proof with the older packaged 0.6.1 artifact or a released status.
 2. Read `API_DATA.md`, then have the client exercise one small direct collection with
    an active cow and known period. Record expected/actual boundaries, codes, units and
    output usability without committing credentials, tokens, IDs or raw farm data.

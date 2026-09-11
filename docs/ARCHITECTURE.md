@@ -375,6 +375,23 @@ The account editor collapses after successful sign-in. Browse and Queue retain t
 tables, deliberate section cards and independent vertical scrolling. Visibility changes
 must never change queue membership, dates or metrics.
 
+## Decision 015: Preserve the audit CSV and derive a tidy graph-ready companion
+
+Status: implemented in 0.7.0; representative-data and client acceptance pending.
+
+Keep `measurements.csv` as the compatible, lossless staging/audit table, including exact
+chunk bounds and complete raw point JSON. Generate `analysis_ready.csv` from the same
+in-memory observation record during collection so the two views cannot diverge. The tidy
+view puts human identity, metric/unit, time and value first and provenance last. It retains
+one source point per row and records chunk/series/point order.
+
+Only parse timezone-aware ISO timestamps. For those, add canonical UTC and farm-local
+timestamp/date/time using the discovered IANA farm timezone. Preserve the exact source
+timestamp separately. Do not infer numeric epoch units or a timezone for naive values.
+Do not deduplicate, pivot, coerce values, merge metric/unit pairs or apply clinical
+semantics. Those choices belong to the reviewed canonical normalization milestone after
+representative collections establish the real shapes and expected policies.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

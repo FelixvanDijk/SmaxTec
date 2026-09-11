@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0 — 2026-09-11 (development preview)
+
+- Preserve the existing `measurements.csv` staging/audit layout and add an always-created
+  `analysis_ready.csv` companion generated from the same observation records.
+- Put farm/target identity, metric/unit, farm-local and UTC timestamps, value and request
+  context into a readable tidy table, with stable chunk/series/point lineage at the end.
+- Convert only timezone-aware ISO timestamps; retain ambiguous numeric or timezone-free
+  values unchanged in `source_timestamp` instead of guessing their unit or timezone.
+- Preserve every source observation—including duplicates—and defer pivoting, unit
+  conversion, value coercion and duplicate policy to the reviewed normalization milestone.
+- Upgrade direct collection manifests to format 2 with the companion filename and SHA-256
+  hash while leaving the original staging CSV columns compatible with format 1.
+
 ## 0.6.1 — 2026-09-11 (development preview)
 
 - Fix failed direct-API connections being immediately followed by an unnecessary

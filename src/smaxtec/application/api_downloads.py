@@ -9,11 +9,13 @@ import os
 import re
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from threading import Event
 from typing import Any, Protocol
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from smaxtec.application.api_data import (
     ApiCancelled,
@@ -44,6 +46,31 @@ MEASUREMENT_HEADERS = (
     "timestamp",
     "value",
     "raw_point",
+)
+ANALYSIS_HEADERS = (
+    "farm_name",
+    "target_type",
+    "target_number",
+    "target_name",
+    "official_id",
+    "target_group",
+    "metric",
+    "unit",
+    "timestamp_local",
+    "local_date",
+    "local_time",
+    "timestamp_utc",
+    "value",
+    "resolution",
+    "requested_from",
+    "requested_to",
+    "farm_timezone",
+    "farm_id",
+    "target_id",
+    "api_chunk",
+    "series_index",
+    "point_index",
+    "source_timestamp",
 )
 EXCEL_MAX_DATA_ROWS = 1_000_000
 RAW_RESPONSE_LIMIT = 128 * 1024 * 1024
@@ -150,35 +177,96 @@ def _series_points(data: Any) -> Iterable[Any]:
     return (data,)
 
 
+def _analysis_times(timestamp: str, timezone: str) -> tuple[str, str, str, str]:
+    """Derive explicit times only from an unambiguous timezone-aware ISO value."""
+    candidate = timestamp.strip()
+    if not candidate:
+        return "", "", "", ""
+    if candidate[-1:] in {"Z", "z"}:
+        candidate = candidate[:-1] + "+00:00"
+    try:
+        source = datetime.fromisoformat(candidate)
+        if source.tzinfo is None or source.utcoffset() is None:
+            return "", "", "", ""
+        utc_value = source.astimezone(UTC)
+        local_value = utc_value.astimezone(ZoneInfo(timezone))
+    except (ValueError, TypeError):
+        return "", "", "", ""
+    return (
+        utc_value.isoformat().replace("+00:00", "Z"),
+        local_value.isoformat(),
+        local_value.date().isoformat(),
+        local_value.timetz().isoformat(),
+    )
+
+
+@dataclass(frozen=True)
+class _MeasurementRecord:
+    staging: tuple[str, ...]
+    analysis: tuple[str, ...]
+
+
 def _rows(
     target: ApiTarget,
     series: dict[str, Any],
     chunk_index: int,
+    series_index: int,
     chunk_start: datetime,
     chunk_end: datetime,
-) -> Iterator[tuple[str, ...]]:
+    aggregation: str,
+) -> Iterator[_MeasurementRecord]:
     metric = _scalar(series.get("metric"))
     unit = _scalar(series.get("unit"))
-    for point in _series_points(series.get("data")):
+    for point_index, point in enumerate(_series_points(series.get("data")), 1):
         timestamp, value, raw = _point_parts(point)
-        yield (
-            target.entity.farm.name,
-            target.entity.farm.timezone,
-            target.entity.kind,
-            target.entity.id,
-            target.entity.number,
-            target.entity.name,
-            target.entity.official_id,
-            target.start_date.isoformat(),
-            target.end_date.isoformat(),
-            str(chunk_index),
-            chunk_start.isoformat(),
-            chunk_end.isoformat(),
-            metric,
-            unit,
-            timestamp,
-            value,
-            raw,
+        timestamp_utc, timestamp_local, local_date, local_time = _analysis_times(
+            timestamp, target.entity.farm.timezone
+        )
+        yield _MeasurementRecord(
+            staging=(
+                target.entity.farm.name,
+                target.entity.farm.timezone,
+                target.entity.kind,
+                target.entity.id,
+                target.entity.number,
+                target.entity.name,
+                target.entity.official_id,
+                target.start_date.isoformat(),
+                target.end_date.isoformat(),
+                str(chunk_index),
+                chunk_start.isoformat(),
+                chunk_end.isoformat(),
+                metric,
+                unit,
+                timestamp,
+                value,
+                raw,
+            ),
+            analysis=(
+                target.entity.farm.name,
+                target.entity.kind,
+                target.entity.number,
+                target.entity.name,
+                target.entity.official_id,
+                target.entity.group,
+                metric,
+                unit,
+                timestamp_local,
+                local_date,
+                local_time,
+                timestamp_utc,
+                value,
+                aggregation,
+                target.start_date.isoformat(),
+                target.end_date.isoformat(),
+                target.entity.farm.timezone,
+                target.entity.farm.id,
+                target.entity.id,
+                str(chunk_index),
+                str(series_index),
+                str(point_index),
+                timestamp,
+            ),
         )
 
 
@@ -285,6 +373,8 @@ class ApiDownloadService:
         raw_folder.mkdir(parents=True)
         csv_partial = folder / ".measurements.csv.partial"
         csv_path = folder / "measurements.csv"
+        analysis_partial = folder / ".analysis_ready.csv.partial"
+        analysis_path = folder / "analysis_ready.csv"
         excel_partial = folder / f".{request.name}.partial.xlsx"
         excel_path = folder / f"{request.name}.xlsx"
         excel = _ExcelWriter(excel_partial) if request.excel else None
@@ -294,9 +384,14 @@ class ApiDownloadService:
         total_rows = 0
         cancelled = False
         extras: dict[str, Any] = {}
-        with csv_partial.open("x", encoding="utf-8-sig", newline="") as csv_handle:
+        with (
+            csv_partial.open("x", encoding="utf-8-sig", newline="") as csv_handle,
+            analysis_partial.open("x", encoding="utf-8-sig", newline="") as analysis_handle,
+        ):
             writer = csv.writer(csv_handle)
+            analysis_writer = csv.writer(analysis_handle)
             writer.writerow(MEASUREMENT_HEADERS)
+            analysis_writer.writerow(ANALYSIS_HEADERS)
             try:
                 if excel:
                     excel.summary_row(("Collection", request.name))
@@ -313,7 +408,13 @@ class ApiDownloadService:
                         )
                     )
                     result, record, rows = self._target(
-                        target, request.aggregation, raw_folder, writer, excel, stop
+                        target,
+                        request.aggregation,
+                        raw_folder,
+                        writer,
+                        analysis_writer,
+                        excel,
+                        stop,
                     )
                     results.append(result)
                     manifest_targets.append(record)
@@ -327,9 +428,12 @@ class ApiDownloadService:
             finally:
                 csv_handle.flush()
                 os.fsync(csv_handle.fileno())
+                analysis_handle.flush()
+                os.fsync(analysis_handle.fileno())
                 if excel:
                     excel.close()
         csv_partial.replace(csv_path)
+        analysis_partial.replace(analysis_path)
         if excel:
             excel_partial.replace(excel_path)
         if cancelled:
@@ -340,12 +444,14 @@ class ApiDownloadService:
                 if target not in completed
             )
         manifest = {
-            "format_version": 1,
+            "format_version": 2,
             "created_at_utc": datetime.now(UTC).isoformat(),
             "collection_name": request.name,
             "aggregation": request.aggregation,
             "measurement_csv": csv_path.name,
             "measurement_csv_sha256": self._hash(csv_path),
+            "analysis_csv": analysis_path.name,
+            "analysis_csv_sha256": self._hash(analysis_path),
             "excel": excel_path.name if request.excel else None,
             "excel_sha256": self._hash(excel_path) if request.excel else None,
             "cancelled": cancelled,
@@ -372,6 +478,7 @@ class ApiDownloadService:
         aggregation: str,
         raw_folder: Path,
         writer: csv.writer,
+        analysis_writer: csv.writer,
         excel: _ExcelWriter | None,
         stop: Event,
     ) -> tuple[ApiFileResult, dict[str, Any], int]:
@@ -406,13 +513,22 @@ class ApiDownloadService:
             for chunk_index, (start, end) in enumerate(_chunks(target, aggregation), 1):
                 _check_stop(stop)
                 series = self.client.data(target.entity, selected, start, end, aggregation, stop)
-                for item in series:
+                for series_index, item in enumerate(series, 1):
                     if not isinstance(item, dict):
                         raise ApiError("api_response", "smaXtec returned invalid measurement data.")
-                    for row in _rows(target, item, chunk_index, start, end):
-                        writer.writerow(row)
+                    for row in _rows(
+                        target,
+                        item,
+                        chunk_index,
+                        series_index,
+                        start,
+                        end,
+                        aggregation,
+                    ):
+                        writer.writerow(row.staging)
+                        analysis_writer.writerow(row.analysis)
                         if excel:
-                            excel.measurement_row(row)
+                            excel.measurement_row(row.staging)
                         row_count += 1
                 chunk_name = f"{stem}-part-{chunk_index:04d}.json"
                 sha256 = _write_json(

@@ -73,7 +73,7 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     assert result.folder.name.startswith("September-herd-data-")
 
     manifest = json.loads((result.folder / "collection.json").read_text("utf-8"))
-    assert manifest["format_version"] == 1
+    assert manifest["format_version"] == 2
     assert manifest["total_measurement_rows"] == 4
     assert manifest["cancelled"] is False
     assert len(manifest["targets"]) == 2
@@ -84,13 +84,66 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
             assert (result.folder / raw["file"]).is_file()
             assert len(raw["sha256"]) == 64
     assert manifest["extras"]["farm-synthetic-001"]["health_index"]["records"] == 1
+    assert manifest["analysis_csv"] == "analysis_ready.csv"
+    assert len(manifest["analysis_csv_sha256"]) == 64
 
     with (result.folder / "measurements.csv").open(encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle))
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+    assert reader.fieldnames == [
+        "farm",
+        "farm_timezone",
+        "target_type",
+        "target_id",
+        "animal_number",
+        "animal_name",
+        "official_id",
+        "requested_from",
+        "requested_to",
+        "api_chunk",
+        "chunk_from_utc",
+        "chunk_to_utc",
+        "metric",
+        "unit",
+        "timestamp",
+        "value",
+        "raw_point",
+    ]
     assert [row["animal_number"] for row in rows] == ["57", "57", "657", "657"]
     assert json.loads(rows[1]["raw_point"])["quality"] == "synthetic"
     assert rows[0]["requested_from"] == "2026-09-01"
     assert rows[0]["farm_timezone"] == "Europe/London"
+
+    with (result.folder / "analysis_ready.csv").open(encoding="utf-8-sig", newline="") as handle:
+        analysis_reader = csv.DictReader(handle)
+        analysis_rows = list(analysis_reader)
+    assert analysis_reader.fieldnames[:12] == [
+        "farm_name",
+        "target_type",
+        "target_number",
+        "target_name",
+        "official_id",
+        "target_group",
+        "metric",
+        "unit",
+        "timestamp_local",
+        "local_date",
+        "local_time",
+        "timestamp_utc",
+    ]
+    assert [row["target_number"] for row in analysis_rows] == ["57", "57", "657", "657"]
+    assert analysis_rows[0]["metric"] == "temp"
+    assert analysis_rows[0]["unit"] == "celsius"
+    assert analysis_rows[0]["value"] == "38.4"
+    assert analysis_rows[0]["resolution"] == "hourly"
+    assert analysis_rows[0]["timestamp_utc"] == "2026-08-31T23:00:00Z"
+    assert analysis_rows[0]["timestamp_local"] == "2026-09-01T00:00:00+01:00"
+    assert analysis_rows[0]["local_date"] == "2026-09-01"
+    assert analysis_rows[0]["local_time"] == "00:00:00"
+    assert analysis_rows[0]["source_timestamp"] == "2026-08-31T23:00:00+00:00"
+    assert analysis_rows[0]["farm_id"] == "farm-synthetic-001"
+    assert analysis_rows[0]["series_index"] == "1"
+    assert analysis_rows[0]["point_index"] == "1"
 
     workbook = result.folder / "September herd data.xlsx"
     with ZipFile(workbook) as archive:
@@ -131,6 +184,42 @@ def test_invalid_metric_is_a_per_target_failure_and_other_targets_continue(tmp_p
     assert result.files[1].rows == 2
     manifest = json.loads((result.folder / "collection.json").read_text("utf-8"))
     assert manifest["targets"][0]["requested_metrics"] == ["unknown"]
+
+
+def test_analysis_view_preserves_duplicates_and_does_not_guess_ambiguous_times(tmp_path):
+    class AmbiguousClient(FakeClient):
+        def data(self, entity, metrics, start, end, aggregation, stop):
+            return [
+                {
+                    "metric": "temp",
+                    "unit": "celsius",
+                    "data": [["1725148800", 38.4], ["1725148800", 38.4]],
+                },
+                {
+                    "metric": "activity",
+                    "unit": "index",
+                    "data": [{"timestamp": "2026-09-01 12:00:00", "value": 9}],
+                },
+            ]
+
+    request = ApiDownloadRequest(
+        (target(metrics=("temp",)),),
+        tmp_path,
+        "Ambiguous timestamps",
+        aggregation="native",
+        excel=False,
+    )
+    result = ApiDownloadService(AmbiguousClient()).download(
+        request, Event(), lambda _progress: None
+    )
+    with (result.folder / "analysis_ready.csv").open(encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+
+    assert len(rows) == 3
+    assert [row["source_timestamp"] for row in rows[:2]] == ["1725148800", "1725148800"]
+    assert [row["point_index"] for row in rows[:2]] == ["1", "2"]
+    assert all(row["timestamp_utc"] == "" for row in rows)
+    assert all(row["timestamp_local"] == "" for row in rows)
 
 
 def test_cancellation_keeps_completed_chunk_with_explicit_partial_status(tmp_path):

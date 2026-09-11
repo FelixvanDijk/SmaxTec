@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.6.1
+SmaxTec Workbench — desktop preview 0.7.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
@@ -16,8 +16,10 @@ SmaxTec Workbench — desktop preview 0.6.1
 10. Results shows each saved, partial, failed or cancelled target. Open its folder.
 11. Choose Disconnect or close the app to release the in-memory API session.
 
-Each run makes a unique folder with raw API JSON, measurements.csv, optional XLSX and
-a hashed collection.json manifest. Earlier collections are never overwritten.
+Each run makes a unique folder with raw API JSON, the unchanged technical
+measurements.csv, an easier graph-ready analysis_ready.csv, optional XLSX and a hashed
+collection.json manifest. Start with analysis_ready.csv for filtering and charts; use
+measurements.csv/raw JSON when auditing the source. Earlier collections are never overwritten.
 Credentials and bearer token stay in memory and are not written to that folder.
 
 No Python, editor, browser driver or package installation is required.

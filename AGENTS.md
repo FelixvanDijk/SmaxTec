@@ -88,7 +88,7 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Version 0.6.1 makes the official smaXtec Public API v2 the primary workspace. Read
+Version 0.7.0 makes the official smaXtec Public API v2 the primary workspace. Read
 `docs/API_DATA.md` before changing it. The UI dynamically discovers authorized farms,
 cows, groups, devices and per-target metrics; queues immutable target/From/To/metric
 combinations; explicitly reviews them; and downloads bounded JSON chunks into one
@@ -112,9 +112,13 @@ per target. Each API workflow page must scroll vertically before Qt compresses s
 controls below their size hints; short displays must never overlap or clip input, table,
 action or option rows. A failed connection must preserve its curated authentication,
 permission, network or response error; cleanup must never replace it with a successful
-Disconnect message. Source 0.6.1 has synthetic verification and read-only live auth/catalog/
-metric-discovery evidence and packaged Windows CI proof; representative direct downloads
-and client acceptance remain pending. The next milestone is canonical normalization/calculations,
+Disconnect message. Source 0.7.0 has synthetic verification; the underlying API path has
+read-only live auth/catalog/metric-discovery evidence and 0.6.1 packaged Windows CI proof.
+Representative direct downloads, a 0.7.0 packaged build and client acceptance remain
+pending. Direct collections preserve the compatible
+`measurements.csv` audit table and also create `analysis_ready.csv` from the same rows.
+The tidy companion never deduplicates, pivots, converts units, coerces values or guesses
+ambiguous timestamps. The next milestone is canonical normalization/calculations,
 then graphs, using these preserved raw collections.
 
 The previous website and email implementation remains under **Legacy website + email**
