@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
-    QLayout,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
@@ -197,7 +196,9 @@ class ApiReviewDialog(QDialog):
                 cell.setToolTip(_text(value))
                 self.table.setItem(row, column, cell)
         layout.addWidget(self.table, 1)
-        formats = "Raw JSON + CSV" + (" + Excel" if request.excel else "")
+        formats = "Raw JSON + audit CSV + graph-ready CSV" + (
+            " + polished Excel" if request.excel else ""
+        )
         layout.addWidget(
             label(
                 f"{formats} · Resolution: {request.aggregation}\n"
@@ -253,6 +254,8 @@ class ApiPanel(QWidget):
         self._entities: tuple[ApiEntity, ...] = ()
         self._metrics_entities: tuple[ApiEntity, ...] = ()
         self._last_folder: Path | None = None
+        self._last_analysis: Path | None = None
+        self._last_workbook: Path | None = None
         self._reviewing = False
         self.setObjectName("apiPanel")
         layout = QVBoxLayout(self)
@@ -281,9 +284,10 @@ class ApiPanel(QWidget):
         account_heading.addWidget(self.disconnect_button)
         account.addLayout(account_heading)
         self.account_fields = QWidget()
-        account_fields = QHBoxLayout(self.account_fields)
+        account_fields = QGridLayout(self.account_fields)
         account_fields.setContentsMargins(0, 0, 0, 0)
-        account_fields.setSpacing(10)
+        account_fields.setHorizontalSpacing(10)
+        account_fields.setVerticalSpacing(5)
         self.username = QLineEdit()
         self.username.setPlaceholderText("smaXtec email address")
         self.username.setAccessibleName("API smaXtec email address")
@@ -292,9 +296,13 @@ class ApiPanel(QWidget):
         self.password.setPlaceholderText("smaXtec password")
         self.password.setAccessibleName("API smaXtec password")
         self.connect_button = self._button("Connect", self._connect, primary=True)
-        account_fields.addWidget(self.username, 1)
-        account_fields.addWidget(self.password, 1)
-        account_fields.addWidget(self.connect_button)
+        account_fields.addWidget(label("Email address", "fieldLabel"), 0, 0)
+        account_fields.addWidget(label("Password", "fieldLabel"), 0, 1)
+        account_fields.addWidget(self.username, 1, 0)
+        account_fields.addWidget(self.password, 1, 1)
+        account_fields.addWidget(self.connect_button, 1, 2)
+        account_fields.setColumnStretch(0, 1)
+        account_fields.setColumnStretch(1, 1)
         account.addWidget(self.account_fields)
         account.addWidget(
             label("Credentials and API session stay in memory until you disconnect.", "privacy")
@@ -346,9 +354,6 @@ class ApiPanel(QWidget):
         """Keep styled controls at usable heights on short laptop displays."""
         page.setObjectName("apiStepPage")
         page.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        page_layout = page.layout()
-        if page_layout is not None:
-            page_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         scroll = QScrollArea()
         scroll.setObjectName("apiPageScroll")
         scroll.setAccessibleName(accessible_name)
@@ -380,7 +385,9 @@ class ApiPanel(QWidget):
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 14, 0, 0)
         layout.setSpacing(10)
-        filters = QHBoxLayout()
+        filters = QGridLayout()
+        filters.setHorizontalSpacing(12)
+        filters.setVerticalSpacing(5)
         self.farm = QComboBox()
         self.farm.setAccessibleName("API farm")
         self.farm.addItem("Connect to choose a farm")
@@ -396,14 +403,20 @@ class ApiPanel(QWidget):
         self.kind.currentIndexChanged.connect(self._show_inventory)
         self.archived = QCheckBox("Include archived cows")
         self.archived.toggled.connect(self._load_catalog)
-        filters.addWidget(self.farm, 3)
-        filters.addWidget(self.kind, 2)
-        filters.addWidget(self.archived)
+        filters.addWidget(label("Farm", "fieldLabel"), 0, 0)
+        filters.addWidget(label("Browse", "fieldLabel"), 0, 1)
+        filters.addWidget(label("Catalogue", "fieldLabel"), 0, 2)
+        filters.addWidget(self.farm, 1, 0)
+        filters.addWidget(self.kind, 1, 1)
+        filters.addWidget(self.archived, 1, 2)
+        filters.setColumnStretch(0, 3)
+        filters.setColumnStretch(1, 2)
+        filters.setColumnStretch(2, 2)
         layout.addLayout(filters)
         self.inventory_note = label("Your connected farms will appear here.", "muted")
         layout.addWidget(self.inventory_note)
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Filter by number, name, ear tag or group…")
+        self.search.setPlaceholderText("Search this farm by number, name, ear tag or group…")
         self.search.setAccessibleName("Filter API inventory")
         self.search.textChanged.connect(self._filter_inventory)
         layout.addWidget(self.search)
@@ -499,16 +512,15 @@ class ApiPanel(QWidget):
         self.remove_button = self._button("Remove selected rows", self._remove_selected)
         self.clear_queue_button = self._button("Clear entire queue", self._clear_queue)
         self.apply_dates_button = self._button("Apply Browse dates to all", self._apply_dates)
-        queue_actions.addWidget(label("Selected rows", "fieldLabel"), 0, 0, 1, 3)
+        queue_actions.addWidget(label("Selected rows", "fieldLabel"), 0, 0, 1, 2)
         queue_actions.addWidget(self.select_queue_button, 1, 0)
         queue_actions.addWidget(self.clear_queue_selection_button, 1, 1)
-        queue_actions.addWidget(self.remove_button, 1, 2)
-        queue_actions.addWidget(label("Whole queue", "fieldLabel"), 2, 0, 1, 3)
-        queue_actions.addWidget(self.apply_dates_button, 3, 0)
-        queue_actions.addWidget(self.clear_queue_button, 3, 1)
+        queue_actions.addWidget(self.remove_button, 2, 0)
+        queue_actions.addWidget(label("Whole queue", "fieldLabel"), 3, 0, 1, 2)
+        queue_actions.addWidget(self.apply_dates_button, 4, 0)
+        queue_actions.addWidget(self.clear_queue_button, 4, 1)
         queue_actions.setColumnStretch(0, 1)
         queue_actions.setColumnStretch(1, 1)
-        queue_actions.setColumnStretch(2, 1)
         layout.addWidget(queue_tools)
         measurements = QFrame()
         measurements.setObjectName("card")
@@ -598,8 +610,8 @@ class ApiPanel(QWidget):
         settings_layout.setColumnStretch(3, 1)
         settings_layout.addWidget(
             label(
-                "Every collection includes original JSON, CSV measurements and a "
-                "provenance manifest. "
+                "Every collection includes original JSON, an audit CSV, graph-ready "
+                "analysis_ready.csv and a provenance manifest. "
                 "Choose a name above; a unique folder prevents overwriting earlier work.",
                 "privacy",
             ),
@@ -624,14 +636,52 @@ class ApiPanel(QWidget):
             "muted",
         )
         layout.addWidget(self.result_note)
+        self.file_card = QFrame()
+        self.file_card.setObjectName("resultFiles")
+        file_layout = QGridLayout(self.file_card)
+        file_layout.setContentsMargins(18, 16, 18, 16)
+        file_layout.setHorizontalSpacing(16)
+        file_layout.setVerticalSpacing(10)
+        file_layout.addWidget(label("Your collection files", "cardTitle"), 0, 0, 1, 3)
+        self.open_analysis_button = self._button(
+            "Open graph-ready CSV", lambda: self._open_file(self._last_analysis, "CSV")
+        )
+        self.open_workbook_button = self._button(
+            "Open Excel workbook", lambda: self._open_file(self._last_workbook, "workbook")
+        )
+        self.open_button = self._button("Open collection folder", self._open_folder)
+        file_rows = (
+            (
+                "ANALYSE",
+                "Graph-ready CSV",
+                "Clean, tidy rows for filtering and future charts.",
+                self.open_analysis_button,
+            ),
+            (
+                "PRESENT",
+                "Excel workbook",
+                "Styled overview, measurement index and source data.",
+                self.open_workbook_button,
+            ),
+            (
+                "AUDIT",
+                "Complete collection",
+                "Raw JSON, both CSV views, workbook and manifest.",
+                self.open_button,
+            ),
+        )
+        for row, (purpose, title, description, button) in enumerate(file_rows, start=1):
+            file_layout.addWidget(label(purpose, "eyebrow", wrap=False), row, 0)
+            file_layout.addWidget(label(f"{title}\n{description}", "statusTitle"), row, 1)
+            file_layout.addWidget(button, row, 2)
+        file_layout.setColumnStretch(1, 1)
+        layout.addWidget(self.file_card)
         self.results = self._table(
             ["Farm", "Target", "From", "To", "Status", "Rows", "Details"],
             "API collection results by target and date range",
         )
         self.results.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         layout.addWidget(self.results, 1)
-        self.open_button = self._button("Open collection folder", self._open_folder)
-        layout.addWidget(self.open_button)
         return page
 
     @property
@@ -1083,6 +1133,8 @@ class ApiPanel(QWidget):
             return self._service.download(request, stop, progress)
 
         self.results.setRowCount(0)
+        self._last_analysis = None
+        self._last_workbook = None
         self.result_summary.setText("Collecting your data…")
         self.result_note.setText("Completed files will be kept if you cancel this collection.")
         self.steps.setCurrentIndex(2)
@@ -1177,6 +1229,8 @@ class ApiPanel(QWidget):
 
     def _show_result(self, result: ApiDownloadResult) -> None:
         self._last_folder = result.folder
+        self._last_analysis = result.analysis_csv
+        self._last_workbook = result.workbook
         self.open_button.setToolTip(str(result.folder))
         self.results.setRowCount(len(result.files))
         for row, entry in enumerate(result.files):
@@ -1197,11 +1251,12 @@ class ApiPanel(QWidget):
         prefix = "Collection cancelled" if result.cancelled else "Collection finished"
         self.result_summary.setText(f"{prefix} · {result.rows:,} measurement rows")
         self.result_note.setText(
-            f"{saved:,} of {len(result.files):,} targets saved. Check each status below.\n"
+            f"{saved:,} of {len(result.files):,} targets saved. Your graph-ready CSV"
+            + (" and Excel workbook are ready.\n" if result.workbook else " is ready.\n")
             + "\n".join(_text(warning) for warning in result.warnings)
         )
         self.status.setText(
-            f"{prefix}. Open your collection folder to inspect the data and manifest."
+            f"{prefix}. Open the graph-ready CSV, workbook or complete collection below."
         )
 
     def _on_failure(self, error: ApiError) -> None:
@@ -1263,6 +1318,8 @@ class ApiPanel(QWidget):
             bool(self._metrics_entities) and self._metrics_entities == queue_entities
         )
         self.apply_metrics_button.setEnabled(not busy and bool(queue_rows) and metrics_ready)
+        self.open_analysis_button.setEnabled(not busy and self._last_analysis is not None)
+        self.open_workbook_button.setEnabled(not busy and self._last_workbook is not None)
         self.open_button.setEnabled(not busy and self._last_folder is not None)
         self.cancel_button.setVisible(self._worker is not None and self._operation != "disconnect")
         self.cancel_button.setEnabled(self._worker is not None and not self._cancelling)
@@ -1282,3 +1339,9 @@ class ApiPanel(QWidget):
             and not QDesktopServices.openUrl(QUrl.fromLocalFile(str(self._last_folder)))
         ):
             self.status.setText(f"Open this folder in File Explorer: {self._last_folder}")
+
+    def _open_file(self, path: Path | None, label_name: str) -> None:
+        if path is None or self.is_busy:
+            return
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            self.status.setText(f"Open this {label_name} from the collection folder: {path.name}")

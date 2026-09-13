@@ -27,16 +27,16 @@ QFrame#card { background: #ffffff; border: 1px solid #dce4dc; border-radius: 14p
 QLabel#cardTitle { color: #244d40; font-size: 20px; font-weight: 600; }
 QLabel#muted { color: #63776e; font-size: 13px; }
 QLabel#fieldLabel { color: #334e42; font-size: 13px; font-weight: 600; padding-top: 4px; }
-QLineEdit, QTextEdit, QComboBox {
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox {
     background: #fbfcfa; border: 1px solid #cbd8ce; border-radius: 7px;
     padding: 11px 13px; color: #274537; selection-background-color: #bde5ac;
 }
-QTextEdit { padding: 9px 11px; }
-QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+QTextEdit, QPlainTextEdit { padding: 9px 11px; }
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
     border: 2px solid #468362; padding: 10px 12px;
 }
-QTextEdit:focus { padding: 8px 10px; }
-QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled {
+QTextEdit:focus, QPlainTextEdit:focus { padding: 8px 10px; }
+QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled, QComboBox:disabled {
     background: #f0f3ee; color: #6f7f73;
 }
 QComboBox::drop-down { border: none; width: 30px; }
@@ -138,6 +138,11 @@ QScrollArea#apiPageScroll {
 QScrollArea#apiPageScroll QWidget#qt_scrollarea_viewport,
 QWidget#apiStepPage {
     background: #ffffff;
+}
+QFrame#resultFiles {
+    background: #f1f6ed;
+    border: 1px solid #cfddca;
+    border-radius: 12px;
 }
 QListWidget {
     background: #fbfcfa;

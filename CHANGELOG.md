@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8.0 — 2026-09-13 (presentation preview)
+
+- Preserve the proven direct-API authentication, discovery, request, date, metric,
+  raw JSON, CSV and manifest paths while polishing their presentation and handoff.
+- Add explicit field labels, responsive two-column queue actions and independent
+  vertical scrolling so long controls no longer push the right edge off-screen on
+  laptop-sized windows.
+- Turn Results into a clear next-step workspace with separate actions for the
+  graph-ready CSV, presentation workbook and complete auditable collection.
+- Upgrade optional workbooks with a branded collection overview, descriptive
+  observation-count chart, `Measurement index` and `Data guide`; retain every source
+  column/value and hide technical lineage columns only by default.
+- Recheck the live Public API v2 contract and official `smaxtec/sxapi` repository.
+  Additional event/KPI/report routes remain deferred until representative samples and
+  client-approved meanings make them safer than the working collection path.
+- Tag the working 0.7.0 state as `presentation-baseline-2026-09-13` before changes and
+  add a concise presenter runbook and responsive/output regression coverage.
+
 ## 0.7.0 — 2026-09-11 (development preview)
 
 - Preserve the existing `measurements.csv` staging/audit layout and add an always-created

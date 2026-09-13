@@ -49,7 +49,13 @@ class Service:
 
     def download(self, request, stop, progress):
         self.requests.append(request)
-        return ApiDownloadResult(self.folder, (), 0)
+        return ApiDownloadResult(
+            self.folder,
+            (),
+            0,
+            analysis_csv=self.folder / "analysis_ready.csv",
+            workbook=self.folder / "Herd data.xlsx",
+        )
 
 
 def connected_panel(qtbot, tmp_path):
@@ -214,6 +220,11 @@ def test_reviewed_queue_runs_download_off_ui_thread(qtbot, tmp_path, monkeypatch
     assert service.requests[0].targets[0].entity.number == "57"
     assert panel.result_summary.text().startswith("Collection finished")
     assert panel._last_folder == tmp_path
+    assert panel._last_analysis == tmp_path / "analysis_ready.csv"
+    assert panel._last_workbook == tmp_path / "Herd data.xlsx"
+    assert panel.open_analysis_button.isEnabled()
+    assert panel.open_workbook_button.isEnabled()
+    assert panel.open_button.isEnabled()
 
 
 def test_future_date_in_farm_timezone_is_rejected(qtbot, tmp_path):
@@ -267,3 +278,26 @@ def test_short_window_scrolls_workflow_pages_without_compressing_or_overlapping(
         panel.download_button,
     ):
         assert control.height() >= control.minimumSizeHint().height()
+
+    panel._show_result(
+        ApiDownloadResult(
+            tmp_path,
+            (),
+            0,
+            analysis_csv=tmp_path / "analysis_ready.csv",
+            workbook=tmp_path / "Herd data.xlsx",
+        )
+    )
+    panel.steps.setCurrentIndex(2)
+    qtbot.wait(25)
+    assert panel.results_scroll.horizontalScrollBar().maximum() == 0
+    assert_below(panel.result_note, panel.file_card, panel.results_page)
+    assert_below(panel.file_card, panel.results, panel.results_page)
+    for control in (
+        panel.open_analysis_button,
+        panel.open_workbook_button,
+        panel.open_button,
+    ):
+        bounds = rectangle(control, panel.results_page)
+        assert bounds.left() >= 0
+        assert bounds.right() < panel.results_page.width()

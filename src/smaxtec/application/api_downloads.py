@@ -7,7 +7,7 @@ import hashlib
 import json
 import os
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -276,17 +276,67 @@ class _ExcelWriter:
 
         self.path = path
         self.workbook = xlsxwriter.Workbook(str(path), {"constant_memory": True})
-        self.header = self.workbook.add_format(
-            {"bold": True, "font_color": "#FFFFFF", "bg_color": "#245D43"}
+        self.workbook.set_properties(
+            {
+                "title": "SmaxTec Workbench direct data collection",
+                "subject": "Auditable smaXtec measurement collection",
+                "author": "SmaxTec Workbench",
+                "comments": "Source values preserved; see Data guide for provenance.",
+            }
         )
-        self.wrap = self.workbook.add_format({"text_wrap": True, "valign": "top"})
+        self.header = self.workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#FFFFFF",
+                "bg_color": "#245D43",
+                "border": 0,
+                "valign": "vcenter",
+            }
+        )
+        self.title = self.workbook.add_format(
+            {"bold": True, "font_color": "#193E34", "font_size": 24}
+        )
+        self.subtitle = self.workbook.add_format(
+            {"bold": True, "font_color": "#4C8854", "font_size": 11}
+        )
+        self.wrap = self.workbook.add_format(
+            {"text_wrap": True, "valign": "top", "font_color": "#35523E"}
+        )
+        self.note = self.workbook.add_format(
+            {
+                "text_wrap": True,
+                "valign": "top",
+                "font_color": "#63776E",
+                "bg_color": "#F1F6ED",
+            }
+        )
+        self.count = self.workbook.add_format(
+            {"num_format": "#,##0", "font_color": "#244D40", "align": "right"}
+        )
+        self._metric_counts: Counter[tuple[str, str]] = Counter()
         self._sheet_index = 0
         self._sheet = None
         self._row = EXCEL_MAX_DATA_ROWS + 1
         self._summary = self.workbook.add_worksheet("Collection summary")
-        self._summary.set_column(0, 0, 25)
-        self._summary.set_column(1, 1, 80)
-        self._summary_row = 0
+        self._summary.hide_gridlines(2)
+        self._summary.set_tab_color("#4C8854")
+        self._summary.set_zoom(95)
+        self._summary.set_column(0, 0, 28)
+        self._summary.set_column(1, 1, 62)
+        self._summary.set_column(2, 8, 13)
+        self._summary.set_row(0, 36)
+        self._summary.write_string(0, 0, "SmaxTec Workbench", self.title)
+        self._summary.write_string(1, 0, "DIRECT API COLLECTION", self.subtitle)
+        self._summary.write_string(2, 0, "START HERE", self.subtitle)
+        self._summary.write_string(
+            2,
+            1,
+            "Start with analysis_ready.csv for filtering and future charts. "
+            "The raw JSON and measurements.csv remain the audit source.",
+            self.note,
+        )
+        self._summary.set_row(2, 34)
+        self._summary_row = 4
         self.summary_row(("Field", "Value"), header=True)
 
     @staticmethod
@@ -305,14 +355,28 @@ class _ExcelWriter:
         self._summary_row += 1
 
     def measurement_row(self, values: tuple[str, ...]) -> None:
+        self._metric_counts[(values[12], values[13])] += 1
         if self._row > EXCEL_MAX_DATA_ROWS:
             self._sheet_index += 1
             self._sheet = self.workbook.add_worksheet(f"Measurements {self._sheet_index:03d}")
+            self._sheet.hide_gridlines(2)
+            self._sheet.set_zoom(90)
             self._sheet.freeze_panes(1, 0)
             self._sheet.autofilter(0, 0, 0, len(MEASUREMENT_HEADERS) - 1)
-            self._sheet.set_column(0, 13, 18)
-            self._sheet.set_column(14, 15, 24)
-            self._sheet.set_column(16, 16, 45)
+            self._sheet.set_row(0, 26)
+            self._sheet.set_column(0, 0, 22)
+            self._sheet.set_column(1, 1, 16, None, {"hidden": True})
+            self._sheet.set_column(2, 2, 13)
+            self._sheet.set_column(3, 3, 18, None, {"hidden": True})
+            self._sheet.set_column(4, 4, 14)
+            self._sheet.set_column(5, 6, 22)
+            self._sheet.set_column(7, 8, 14)
+            self._sheet.set_column(9, 11, 22, None, {"hidden": True})
+            self._sheet.set_column(12, 12, 22)
+            self._sheet.set_column(13, 13, 16)
+            self._sheet.set_column(14, 14, 25)
+            self._sheet.set_column(15, 15, 16)
+            self._sheet.set_column(16, 16, 45, None, {"hidden": True})
             for column, heading in enumerate(MEASUREMENT_HEADERS):
                 self._sheet.write_string(0, column, heading, self.header)
             self._row = 1
@@ -334,7 +398,111 @@ class _ExcelWriter:
             sheet.write_number(row, 0, row)
             sheet.write_string(row, 1, self._cell(record), self.wrap)
 
+    def _write_metric_index(self) -> None:
+        sheet = self.workbook.add_worksheet("Measurement index")
+        sheet.hide_gridlines(2)
+        sheet.freeze_panes(4, 0)
+        sheet.set_tab_color("#80B25E")
+        sheet.set_column(0, 0, 32)
+        sheet.set_column(1, 1, 22)
+        sheet.set_column(2, 2, 16)
+        sheet.write_string(0, 0, "Measurement index", self.title)
+        sheet.write_string(
+            1,
+            0,
+            "Descriptive source row counts only — no clinical meaning, unit conversion "
+            "or duplicate removal has been applied.",
+            self.note,
+        )
+        headings = ("Measurement", "Source unit", "Observations")
+        for column, heading in enumerate(headings):
+            sheet.write_string(3, column, heading, self.header)
+        ordered = sorted(
+            self._metric_counts.items(), key=lambda item: (-item[1], item[0][0], item[0][1])
+        )
+        for row, ((metric, unit), observations) in enumerate(ordered, 4):
+            sheet.write_string(row, 0, self._cell(metric))
+            sheet.write_string(row, 1, self._cell(unit))
+            sheet.write_number(row, 2, observations, self.count)
+        if ordered:
+            chart_rows = min(len(ordered), 15)
+            chart = self.workbook.add_chart({"type": "column"})
+            chart.add_series(
+                {
+                    "name": "Observations",
+                    "categories": ["Measurement index", 4, 0, 3 + chart_rows, 0],
+                    "values": ["Measurement index", 4, 2, 3 + chart_rows, 2],
+                    "fill": {"color": "#4C8854"},
+                    "border": {"none": True},
+                }
+            )
+            chart.set_title({"name": "Observations by measurement"})
+            chart.set_y_axis({"name": "Source rows", "major_gridlines": {"visible": False}})
+            chart.set_x_axis({"label_position": "low"})
+            chart.set_legend({"none": True})
+            chart.set_style(10)
+            self._summary.insert_chart(4, 3, chart, {"x_scale": 1.25, "y_scale": 1.1})
+
+    def _write_data_guide(self) -> None:
+        sheet = self.workbook.add_worksheet("Data guide")
+        sheet.hide_gridlines(2)
+        sheet.freeze_panes(4, 0)
+        sheet.set_column(0, 0, 24)
+        sheet.set_column(1, 1, 76)
+        sheet.set_column(2, 2, 18)
+        sheet.write_string(0, 0, "Data guide", self.title)
+        sheet.write_string(
+            1,
+            0,
+            "Nothing in this workbook changes the source measurements. Technical columns "
+            "are hidden only for readability and can be unhidden in Excel.",
+            self.note,
+        )
+        rows = (
+            (
+                "analysis_ready.csv",
+                "Recommended tidy table for filtering and future graphs.",
+                "Companion file",
+            ),
+            (
+                "measurements.csv",
+                "Complete staging rows with raw point and chunk lineage.",
+                "Companion file",
+            ),
+            (
+                "raw/",
+                "Original bounded API response chunks and target metadata.",
+                "Companion folder",
+            ),
+            (
+                "collection.json",
+                "File names, statuses, row counts and SHA-256 hashes.",
+                "Companion file",
+            ),
+            ("farm", "Farm display name returned by smaXtec.", "Visible"),
+            ("farm_timezone", "IANA timezone used for reviewed local dates.", "Hidden"),
+            ("target_type", "animals, groups or devices.", "Visible"),
+            ("target_id", "Internal smaXtec target identity.", "Hidden"),
+            ("animal_number", "Animal number or target number, preserved as text.", "Visible"),
+            ("animal_name", "Target display name returned by smaXtec.", "Visible"),
+            ("official_id", "Official animal identifier when supplied.", "Visible"),
+            ("requested_from / to", "Reviewed whole farm-local date period.", "Visible"),
+            ("api_chunk / bounds", "Exact request part and half-open UTC boundaries.", "Hidden"),
+            ("metric", "Source measurement code returned by smaXtec.", "Visible"),
+            ("unit", "Source unit returned by smaXtec.", "Visible"),
+            ("timestamp", "Source timestamp serialized without interpretation.", "Visible"),
+            ("value", "Source value serialized without conversion.", "Visible"),
+            ("raw_point", "Complete source point JSON for audit and later validation.", "Hidden"),
+        )
+        for column, heading in enumerate(("Item", "Purpose", "Default view")):
+            sheet.write_string(3, column, heading, self.header)
+        for row, values in enumerate(rows, 4):
+            for column, value in enumerate(values):
+                sheet.write_string(row, column, value, self.wrap)
+
     def close(self) -> None:
+        self._write_metric_index()
+        self._write_data_guide()
         self.workbook.close()
 
 
@@ -469,7 +637,13 @@ class ApiDownloadService:
             )
         )
         return ApiDownloadResult(
-            folder, tuple(results), total_rows, cancelled=cancelled, warnings=tuple(warnings)
+            folder,
+            tuple(results),
+            total_rows,
+            cancelled=cancelled,
+            warnings=tuple(warnings),
+            analysis_csv=analysis_path,
+            workbook=excel_path if request.excel else None,
         )
 
     def _target(

@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.7.0
+SmaxTec Workbench — desktop preview 0.8.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
@@ -13,12 +13,15 @@ SmaxTec Workbench — desktop preview 0.7.0
 8. Edit individual dates and choose resolution, optional weekly farm health index,
    output folder/name and optional Excel.
 9. Choose Review & download. Inspect every target/date/measurement row, then confirm.
-10. Results shows each saved, partial, failed or cancelled target. Open its folder.
+10. Results shows each saved, partial, failed or cancelled target. Open the graph-ready
+    CSV, presentation workbook or complete audit folder directly from that screen.
 11. Choose Disconnect or close the app to release the in-memory API session.
 
 Each run makes a unique folder with raw API JSON, the unchanged technical
 measurements.csv, an easier graph-ready analysis_ready.csv, optional XLSX and a hashed
-collection.json manifest. Start with analysis_ready.csv for filtering and charts; use
+collection.json manifest. Start with analysis_ready.csv for filtering and future charts.
+The Excel file opens with a collection overview, observation-count chart, measurement
+index and data guide; its source-data sheets retain every technical column. Use
 measurements.csv/raw JSON when auditing the source. Earlier collections are never overwritten.
 Credentials and bearer token stay in memory and are not written to that folder.
 

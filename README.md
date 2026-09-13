@@ -5,7 +5,7 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.7.0 makes the official smaXtec Public API the primary workflow. Its spacious
+Version 0.8.0 makes the official smaXtec Public API the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
 queued target. Users can review the full queue and save direct raw JSON, a lossless
@@ -35,13 +35,17 @@ The app opens on **Direct data API**:
    unwanted, and apply that choice only to those rows. Edit any row's dates independently,
    then choose resolution, optional farm health index, destination, name and XLSX output.
 5. Choose **Review & download**, inspect every target/date/metric row, and confirm.
-   **Results** shows saved, partial, failed or cancelled targets and opens the folder.
+   **Results** shows saved, partial, failed or cancelled targets and directly opens the
+   graph-ready CSV, polished workbook or complete audit folder.
 
 Each run creates a unique folder. It contains the original API response chunks,
 `measurements.csv`, `analysis_ready.csv`, optional `<collection>.xlsx`, and a hashed
 `collection.json` manifest. Open `analysis_ready.csv` first for a readable one-observation-
 per-row table with identity, metric/unit, local and UTC times, value and provenance.
-The existing `measurements.csv` and raw JSON remain unchanged as the lossless audit path.
+The workbook starts with a branded collection overview, descriptive observation-count
+chart, measurement index and data guide. Its measurement sheets preserve every original
+column and value; technical lineage columns are merely hidden for readability and can be
+unhidden. The existing `measurements.csv` and raw JSON remain unchanged as the lossless audit path.
 See [Direct API data](docs/API_DATA.md) for the exact contract and known API ambiguities.
 
 ## Legacy website export requests
@@ -134,6 +138,7 @@ application registration and tenant-consent gate still need completion.
 - [Milestones and acceptance criteria](docs/ROADMAP.md)
 - [Email collection design and prerequisites](docs/EMAIL_COLLECTION.md)
 - [Direct API research and data contract](docs/API_DATA.md)
+- [Monday client demonstration](docs/DEMO_RUNBOOK.md)
 - [Microsoft 365 one-time IT setup](docs/MICROSOFT_365_SETUP.md)
 - [Developer setup](docs/DEVELOPMENT.md)
 - [Packaging and release requirements](docs/RELEASING.md)

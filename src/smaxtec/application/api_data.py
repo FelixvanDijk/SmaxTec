@@ -145,3 +145,5 @@ class ApiDownloadResult:
     rows: int
     cancelled: bool = False
     warnings: tuple[str, ...] = ()
+    analysis_csv: Path | None = None
+    workbook: Path | None = None

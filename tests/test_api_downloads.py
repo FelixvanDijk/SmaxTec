@@ -148,6 +148,16 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     workbook = result.folder / "September herd data.xlsx"
     with ZipFile(workbook) as archive:
         assert "xl/workbook.xml" in archive.namelist()
+        workbook_xml = archive.read("xl/workbook.xml").decode("utf-8")
+        assert 'name="Collection summary"' in workbook_xml
+        assert 'name="Measurements 001"' in workbook_xml
+        assert 'name="Measurement index"' in workbook_xml
+        assert 'name="Data guide"' in workbook_xml
+        assert "xl/charts/chart1.xml" in archive.namelist()
+        measurement_xml = archive.read("xl/worksheets/sheet2.xml").decode("utf-8")
+        assert 'hidden="1"' in measurement_xml
+    assert result.analysis_csv == result.folder / "analysis_ready.csv"
+    assert result.workbook == workbook
     serialized = "\n".join(path.read_text("utf-8") for path in result.folder.rglob("*.json"))
     assert "password" not in serialized.casefold()
     assert "api-token" not in serialized.casefold()

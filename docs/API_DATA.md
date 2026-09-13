@@ -147,8 +147,11 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   farm-local timestamp/date/time. Numeric epochs, timezone-free strings and other
   ambiguous timestamps remain in `source_timestamp`, with derived time fields blank.
   `api_chunk`, `series_index` and `point_index` retain order and distinguish duplicates.
-- The optional XLSX contains a readable collection summary and the same staging rows;
-  additional measurement sheets are created before Excel's row limit.
+- The optional XLSX contains a branded collection summary, a descriptive chart of
+  source-row counts by metric, a `Measurement index`, a `Data guide`, and the same
+  staging rows. Technical lineage columns are hidden by default for readability, not
+  deleted, and can be unhidden. Additional measurement sheets are created before
+  Excel's row limit. The chart is descriptive inventory, not a clinical conclusion.
 - `collection.json` format 2 records target statuses, file paths, row counts and SHA-256
   hashes for both CSV views. It never stores credentials or bearer tokens. The original
   `measurements.csv` columns are unchanged from format 1 for compatibility.
@@ -193,4 +196,4 @@ resume; rerun creates a new collection and does not overwrite the earlier one.
   policy, unit handling and missing-interval rules before calculations or graphs.
 - The next product milestone defines a canonical normalized schema and then builds
   calculations, a master workbook and graphs from that one dataset. No clinical formula,
-  anomaly threshold or visual interpretation is implied by preview 0.7.0.
+  anomaly threshold or clinical interpretation is implied by preview 0.8.0.

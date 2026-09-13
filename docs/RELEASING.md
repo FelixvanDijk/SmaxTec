@@ -8,7 +8,7 @@
 
 The build runs checks, bundles the application with Chromium, starts the executable
 with Python removed from PATH and an unavailable external browser cache, and
-produces `dist/SmaxTec-Workbench-0.7.0-windows-x64.zip`.
+produces `dist/SmaxTec-Workbench-0.8.0-windows-x64.zip`.
 Assembly uses a fresh validated system-temporary staging directory, smoke-tests that
 exact bundle, then publishes only the versioned ZIP. This avoids stale files and does
 not require replacing an older OneDrive-synchronized `dist/SmaxTec Workbench` folder.
@@ -27,7 +27,7 @@ Build on Windows; PyInstaller does not make another platform's binaries from a
 single build host. Only full Chromium is shipped; its headless mode runs the
 offline smoke test. Browser updates require rebuilding the application.
 
-The 0.7.0 smoke resolves representative IANA farm timezones and imports the direct XLSX
+The 0.8.0 smoke resolves representative IANA farm timezones and imports the direct XLSX
 writer plus email/XML/MSAL parsers and Windows COM runtime modules without creating
 Outlook. It checks private helper IPC with an invalid action rejected before
 the helper imports COM or accesses Outlook. It does not prove a
@@ -141,6 +141,12 @@ helper IPC were tested without creating Outlook. Configured profile, corporate p
 Inbox access, signing and clean-client-machine acceptance remain separate gates.
 
 ## M4 direct API evidence
+
+Version 0.8.0 preserves the 0.7.0 API request/CSV/manifest behavior and adds only
+presentation-safe GUI/output improvements. All 410 tests plus dependency, lint and format
+checks pass locally. Its complete bundle assembles locally, but this development computer
+still denies unsigned executable launch, so packaged smoke/archive proof must come from
+the Windows CI run for the 0.8.0 commit.
 
 Version 0.7.0 preserves the format-1 staging CSV columns and adds a tidy, hashed
 `analysis_ready.csv` through collection manifest format 2. Focused synthetic tests cover

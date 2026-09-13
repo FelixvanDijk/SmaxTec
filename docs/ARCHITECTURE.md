@@ -392,6 +392,23 @@ Do not deduplicate, pivot, coerce values, merge metric/unit pairs or apply clini
 semantics. Those choices belong to the reviewed canonical normalization milestone after
 representative collections establish the real shapes and expected policies.
 
+## Decision 016: Add a descriptive workbook presentation layer without changing data
+
+Status: implemented in 0.8.0; representative-data and client acceptance pending.
+
+Keep raw JSON, `measurements.csv`, `analysis_ready.csv`, manifest version, request logic
+and all measurement worksheet values stable. Build the optional Excel workbook from the
+same streamed staging rows, then add only presentation-safe material: a branded summary,
+source observation counts grouped by metric and source unit, a measurement index and a
+data guide. Hide technical lineage columns by default but never remove them. The workbook
+chart is explicitly a volume/inventory view; it must not imply health, causality, quality,
+normal ranges or clinical meaning.
+
+This gives a nontechnical user an immediate, presentable first view while M5/M6 remain
+blocked on representative client data and agreed semantics. Revisit the workbook layout
+after client acceptance; all future calculations and analytical charts must originate
+from the single reviewed canonical dataset rather than from this descriptive index.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

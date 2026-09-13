@@ -1,8 +1,8 @@
 # Project state — start here each session
 
-Last updated: 2026-09-11. **Source preview 0.7.0 preserves the technical measurement
-export and adds a far clearer tidy `analysis_ready.csv` for people and the future graph
-pipeline; it retains the 0.6.1 connection fix and spacious queue-first workflow.** The default workspace
+Last updated: 2026-09-13. **Source preview 0.8.0 preserves the proven 0.7.0 direct-API
+request and data contracts while adding presentation-safe UI and workbook polish for the
+Monday client demonstration.** The default workspace
 signs in, discovers farms/cows/groups/devices/metrics, queues individual periods, reviews
 them, and writes direct raw JSON + compatible staging CSV + graph-ready tidy CSV +
 optional XLSX + hashed provenance without browser exports or email. All 410 offline
@@ -10,7 +10,10 @@ tests pass; read-only auth/catalog/metric
 discovery was live-verified, and authentication requests still reach the live JSON
 endpoint correctly. Representative direct downloads, client date/unit/UI acceptance,
 and a signed clean-machine release
-remain pending. Packaged 0.7.0 CI passes. The
+remain pending. The 0.8.0 bundle assembles locally, but this computer's existing policy
+still denies launching unsigned executables; GitHub Windows packaging is pending. The
+working 0.7.0 baseline is preserved on GitHub as
+`presentation-baseline-2026-09-13` (`14fab69`). The
 website/email workflow remains available in a legacy tab and its Graph deployment work
 is paused.
 
@@ -53,6 +56,10 @@ Do not invent calculations or clinical meanings in M4.
   ISO source values and preserves duplicates/order; it does not guess ambiguous times,
   coerce values, convert units or pivot metrics. Output never includes credentials/tokens.
   Cancellation retains partial/completed work.
+- Results provides separate, direct actions for `analysis_ready.csv`, the optional
+  workbook and the complete audit folder. The workbook adds a branded summary,
+  descriptive source-observation chart, measurement index and data guide. Every staging
+  value/column remains present; technical lineage columns are hidden only by default.
 - Optional weekly farm health-index data is implemented from its documented route.
   Events are withheld because Swagger does not define its integer date unit. Preferred-
   unit conversion, transformations, background jobs and emailed reports are not exposed.
@@ -63,6 +70,10 @@ Do not invent calculations or clinical meanings in M4.
   animal identifiers, token or response data are retained in Git. One unavailable-sensor
   case returned 400 and is handled as a target failure. No live write was performed.
 - `docs/API_DATA.md` is the detailed research, implementation and output contract.
+- The 2026-09-13 live Swagger and official SDK review found additional event, attention,
+  todo, report/template and KPI reads. They remain outside 0.8.0 because point/event
+  schemas or clinical meanings are undocumented or not client-accepted. See
+  `docs/PRESENTATION_PLAN.md`.
 - Acceptance still requires representative live downloads across target types/periods,
   explicit boundary/units/output review, corporate proxy testing and packaged CI proof.
 
@@ -178,6 +189,14 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Verification and packaging evidence
 
+- 0.8.0 source: all **410 tests**, dependency integrity, Ruff, formatting and focused
+  API/export/UI checks pass locally. Synthetic workbook regression proves the existing
+  measurement sheet and technical columns remain while the summary chart, measurement
+  index and data guide are present. The 760×560 UI regression now covers Results actions
+  and zero horizontal clipping; themed Browse, Queue and Results renders were inspected
+  at presentation dimensions. PyInstaller assembled the complete bundle, but local
+  packaged smoke was denied at process launch by the known unsigned-executable policy,
+  before archive publication. GitHub Windows verification is pending.
 - 0.7.0 source: all **410 tests**, dependency integrity, Ruff, formatting and source
   smoke pass locally. Focused direct-collection tests prove the compatible staging file and
   hashed tidy companion contain the same observations; aware timestamps receive correct
@@ -381,8 +400,8 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.7.0 Git/CI state and packaged launch limitation above; do not confuse its
-   source/offline proof with the older packaged 0.6.1 artifact or a released status.
+1. Check the 0.8.0 Git/CI state and packaged launch limitation above. Use
+   `docs/DEMO_RUNBOOK.md` for Monday and keep the 0.7.0 rollback tag available.
 2. Read `API_DATA.md`, then have the client exercise one small direct collection with
    an active cow and known period. Record expected/actual boundaries, codes, units and
    output usability without committing credentials, tokens, IDs or raw farm data.

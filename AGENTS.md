@@ -88,7 +88,7 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Version 0.7.0 makes the official smaXtec Public API v2 the primary workspace. Read
+Version 0.8.0 makes the official smaXtec Public API v2 the primary workspace. Read
 `docs/API_DATA.md` before changing it. The UI dynamically discovers authorized farms,
 cows, groups, devices and per-target metrics; queues immutable target/From/To/metric
 combinations; explicitly reviews them; and downloads bounded JSON chunks into one
@@ -112,7 +112,9 @@ per target. Each API workflow page must scroll vertically before Qt compresses s
 controls below their size hints; short displays must never overlap or clip input, table,
 action or option rows. A failed connection must preserve its curated authentication,
 permission, network or response error; cleanup must never replace it with a successful
-Disconnect message. Source 0.7.0 has synthetic verification and packaged Windows CI proof;
+Disconnect message. Source 0.8.0 adds presentation-safe GUI/workbook polish without
+changing the proven API request or source-data contracts; its current verification is
+recorded in `docs/PROJECT_STATE.md`. The 0.7.0 baseline has packaged Windows CI proof;
 the underlying API path has read-only live auth/catalog/metric-discovery evidence.
 Representative direct downloads and client acceptance remain pending. Direct collections
 preserve the compatible
@@ -120,6 +122,9 @@ preserve the compatible
 The tidy companion never deduplicates, pivots, converts units, coerces values or guesses
 ambiguous timestamps. The next milestone is canonical normalization/calculations,
 then graphs, using these preserved raw collections.
+The optional workbook may add descriptive source-row counts, formatting and guidance,
+and may hide technical columns by default. It must preserve every source value/column,
+must not present row counts as clinical analysis, and must not invent metric meanings.
 
 The previous website and email implementation remains under **Legacy website + email**
 as a compatibility path; email work is paused, not deleted. Its constraints follow.
