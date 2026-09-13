@@ -145,8 +145,11 @@ Inbox access, signing and clean-client-machine acceptance remain separate gates.
 Version 0.8.0 preserves the 0.7.0 API request/CSV/manifest behavior and adds only
 presentation-safe GUI/output improvements. All 410 tests plus dependency, lint and format
 checks pass locally. Its complete bundle assembles locally, but this development computer
-still denies unsigned executable launch, so packaged smoke/archive proof must come from
-the Windows CI run for the 0.8.0 commit.
+still denies unsigned executable launch. GitHub Windows CI passed the clean locked install,
+all checks, bundle build, packaged executable smoke and artifact upload for
+[`2fe5845`](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778). The
+approximately 288 MiB [0.8.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778/artifacts/10309481262)
+is retained through 2026-09-27. Client data acceptance remains pending.
 
 Version 0.7.0 preserves the format-1 staging CSV columns and adds a tidy, hashed
 `analysis_ready.csv` through collection manifest format 2. Focused synthetic tests cover

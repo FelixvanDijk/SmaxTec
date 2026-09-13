@@ -11,7 +11,8 @@ discovery was live-verified, and authentication requests still reach the live JS
 endpoint correctly. Representative direct downloads, client date/unit/UI acceptance,
 and a signed clean-machine release
 remain pending. The 0.8.0 bundle assembles locally, but this computer's existing policy
-still denies launching unsigned executables; GitHub Windows packaging is pending. The
+still denies launching unsigned executables; clean GitHub Windows packaging and
+packaged-executable smoke pass. The
 working 0.7.0 baseline is preserved on GitHub as
 `presentation-baseline-2026-09-13` (`14fab69`). The
 website/email workflow remains available in a legacy tab and its Graph deployment work
@@ -196,7 +197,11 @@ Do not invent calculations or clinical meanings in M4.
   and zero horizontal clipping; themed Browse, Queue and Results renders were inspected
   at presentation dimensions. PyInstaller assembled the complete bundle, but local
   packaged smoke was denied at process launch by the known unsigned-executable policy,
-  before archive publication. GitHub Windows verification is pending.
+  before archive publication. **GitHub Windows CI passed** for `2fe5845`: clean locked
+  install, all checks, bundle build, packaged executable smoke and artifact upload.
+  [Verified 0.8.0 run](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778).
+  The [0.8.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778/artifacts/10309481262)
+  is approximately 288 MiB and retained through 2026-09-27.
 - 0.7.0 source: all **410 tests**, dependency integrity, Ruff, formatting and source
   smoke pass locally. Focused direct-collection tests prove the compatible staging file and
   hashed tidy companion contain the same observations; aware timestamps receive correct

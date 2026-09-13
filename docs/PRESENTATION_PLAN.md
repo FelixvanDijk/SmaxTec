@@ -73,9 +73,10 @@ Results actions stay inside the visible page with no horizontal scroll or clippi
 - Push a versioned preview and require clean Windows CI packaging/executable smoke.
 - Record the exact artifact, remaining live-data gates and a concise presenter runbook.
 
-**In progress.** All 410 local tests/checks pass, themed screens were inspected and the
-bundle assembled. Local packaged launch is blocked by the computer's known unsigned-EXE
-policy; Windows CI packaging/executable smoke and final artifact recording remain.
+**Complete for the preview.** All 410 local tests/checks pass, themed screens were
+inspected and the bundle assembled. Local packaged launch is blocked by the computer's
+known unsigned-EXE policy; clean Windows CI passed the executable smoke and published
+the versioned artifact. Client/live-data acceptance and production signing remain.
 
 ## Monday acceptance checklist
 

@@ -17,6 +17,8 @@
   client-approved meanings make them safer than the working collection path.
 - Tag the working 0.7.0 state as `presentation-baseline-2026-09-13` before changes and
   add a concise presenter runbook and responsive/output regression coverage.
+- Pass clean GitHub Windows packaging and packaged executable smoke and publish the
+  approximately 288 MiB 0.8.0 preview artifact.
 
 ## 0.7.0 — 2026-09-11 (development preview)
 

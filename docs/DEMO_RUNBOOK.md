@@ -7,8 +7,11 @@ has passed.
 
 ## Prepare before the meeting
 
-1. Extract the complete packaged ZIP into a short local path. Keep `_internal` beside
-   `SmaxTec Workbench.exe`; launch the executable once before the meeting.
+1. On this prepared development computer, double-click `Start SmaxTec.cmd`. On another
+   computer that permits unsigned previews, extract both ZIP layers from the 0.8.0
+   artifact, keep `_internal` beside `SmaxTec Workbench.exe`, and launch it once before
+   the meeting. If Windows policy blocks that EXE, do not troubleshoot for the first time
+   in the meeting—use the already-preflighted prepared computer.
 2. Confirm the presentation computer has network access to `api.smaxtec.com`, adequate
    free disk space and Microsoft Excel or another approved XLSX viewer.
 3. Agree one active cow and a short, known date period with the account owner. Also
