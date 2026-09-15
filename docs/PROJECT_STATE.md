@@ -55,7 +55,8 @@ Do not invent calculations or clinical meanings in M4.
 - The separate, non-overwriting `client-study.xlsx` holds client-style parameters
   A:AB, source/event columns, Normal values, configurable exact T/RT points, three
   side-by-side cow alignment sheets, a Study graphs sheet with absolute/relative
-  temperature/activity/rumination mean and 95% limits, Definitions and QC.
+  temperature/activity/rumination mean, separate absolute/relative available-cow n,
+  sample SD and 95% limits, Definitions and QC.
   Elapsed time is UTC; exact T/RT points never become nearest samples. The tidy
   CSV SHA-256 is rechecked before generation; raw responses, both CSVs, manifest
   and existing optional API workbook are unchanged.
@@ -233,16 +234,22 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Verification and packaging evidence
 
-- 0.9.0 source: all **415 offline tests** passed locally on 2026-09-15; the new
+- 0.9.0 source: all **419 offline tests** passed locally on 2026-09-15. The new
   study tests check numerical client fields, UTC exact-hour selection, aligned
   sheets/valid charts, unmapped roles, source hash/DST, non-overwrite and Qt
-  review/short-screen operation. Focused 17-test study/API panel set passed.
+  review/short-screen operation and 300-cow row/cohort preservation. Focused
+  study/API panel tests passed. Dense 10-minute, long-period hundreds-cow
+  performance remains unverified and may exceed the current 3-million-row bound.
   `pip check`, Ruff lint/format and the source app's offline smoke passed. Local
   PyInstaller assembly succeeded, but this development computer's existing
   executable policy denied `Start-Process` of the unsigned bundle during packaged
   smoke; the build script safely removed its temporary stage and did not publish
   a local archive. GitHub clean Windows CI/preview artifact is the required
-  independent executable proof and remains pending until push/check.
+  independent executable proof. GitHub Windows run 34982543106 completed all
+  415 tests, bundle build and packaged executable smoke successfully, then failed
+  **only** at `upload-artifact`: the repository's Actions artifact storage quota
+  was full. No new ZIP was published; older preview artifacts are not deleted
+  without user approval. Final follow-up source revision still needs CI proof.
 - 0.8.0 source: all **410 tests**, dependency integrity, Ruff, formatting and focused
   API/export/UI checks pass locally. Synthetic workbook regression proves the existing
   measurement sheet and technical columns remain while the summary chart, measurement
@@ -461,7 +468,8 @@ Do not invent calculations or clinical meanings in M4.
 1. Check the 0.9.0 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
    presentation rollback tag. The prepared source launcher includes the new study UI;
-   the 0.8.0 artifact does not.
+   the 0.8.0 artifact does not. GitHub upload for 0.9.0 is currently blocked by
+   Actions artifact storage quota; do not delete older artifacts without approval.
 2. Read `API_DATA.md` and `CLIENT_STUDY_WORKBOOK.md`; run one small direct cow
    collection including the desired normal temperature, temperature without drinking
    cycles, activity and rumination codes at 10-minute resolution across adequate

@@ -13,12 +13,14 @@ import math
 from bisect import bisect_left
 from collections import Counter, defaultdict
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from statistics import mean, stdev
 from threading import Event
 from typing import Any
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import xlsxwriter
@@ -278,14 +280,17 @@ def _number(text: str) -> float | None:
         return None
 
 
-def _sample_stats(values: list[float]) -> tuple[int, float | None, float | None, float | None]:
+def _sample_stats(
+    values: list[float],
+) -> tuple[int, float | None, float | None, float | None, float | None]:
     if not values:
-        return 0, None, None, None
+        return 0, None, None, None, None
     average = mean(values)
     if len(values) < 2:
-        return 1, average, None, None
-    margin = 1.96 * stdev(values) / math.sqrt(len(values))
-    return len(values), average, average - margin, average + margin
+        return 1, average, None, None, None
+    sample_sd = stdev(values)
+    margin = 1.96 * sample_sd / math.sqrt(len(values))
+    return len(values), average, sample_sd, average - margin, average + margin
 
 
 class StudyWorkbookService:
@@ -376,26 +381,29 @@ class StudyWorkbookService:
             if not output.exists():
                 break
             suffix += 1
-        temporary = source.folder / f".{output.stem}.partial.xlsx"
-        if temporary.exists():
-            raise ApiError("study_output", "A previous study workbook is still being written here.")
+        temporary = source.folder / f".client-study-{uuid4().hex}.partial.xlsx"
         try:
             self._write(temporary, source, settings, series, conflicts, quality, stop)
             if stop.is_set():
                 raise ApiCancelled
             temporary.replace(output)
         except (ApiCancelled, ApiError):
-            if temporary.exists():
-                temporary.unlink()
             raise
         except (OSError, xlsxwriter.exceptions.XlsxWriterException):
-            if temporary.exists():
-                temporary.unlink()
             raise ApiError(
                 "study_output",
                 "Could not save the study workbook. Check free space and that the collection "
                 "folder is writable.",
             ) from None
+        except Exception:
+            raise ApiError(
+                "study_output",
+                "The study workbook could not finish. Original source files are unchanged; "
+                "retry with this collection or a smaller one.",
+            ) from None
+        finally:
+            with suppress(OSError):
+                temporary.unlink(missing_ok=True)
         progress(ApiProgress("Client study workbook ready.", 3, 3))
         return output
 
@@ -438,11 +446,11 @@ class StudyWorkbookService:
         ):
             for relative in (False, True):
                 chart = workbook.add_chart({"type": "line"})
-                start_col = stats_start + (4 if relative else 1)
+                start_col = stats_start + (6 if relative else 1)
                 for column, label, color in (
                     (start_col, "Mean", "#245D43"),
-                    (start_col + 1, "Lower 95%", "#80B25E"),
-                    (start_col + 2, "Upper 95%", "#80B25E"),
+                    (start_col + 2, "Lower 95%", "#80B25E"),
+                    (start_col + 3, "Upper 95%", "#80B25E"),
                 ):
                     chart.add_series(
                         {
@@ -930,7 +938,7 @@ class StudyWorkbookService:
         sheet.set_column(0, 0, 16)
         sheet.set_column(1, len(cases), 15)
         stats_start = len(cases) + 1
-        sheet.set_column(stats_start, stats_start + 6, 16)
+        sheet.set_column(stats_start, stats_start + 9, 16)
         sheet.write_string(0, 0, name, title)
         sheet.write_string(
             1,
@@ -945,9 +953,12 @@ class StudyWorkbookService:
         headings += (
             "n",
             "Mean",
+            "Sample SD",
             "Lower 95%",
             "Upper 95%",
+            "Relative n",
             "Mean vs normal",
+            "Relative sample SD",
             "Relative lower 95%",
             "Relative upper 95%",
         )
@@ -981,21 +992,22 @@ class StudyWorkbookService:
                     baseline = baselines[case.key][role]
                     if baseline is not None:
                         relative.append(value - baseline)
-            n, avg, low, high = _sample_stats(absolute)
+            n, avg, sd, low, high = _sample_stats(absolute)
             sheet.write_number(row, stats_start, n)
-            for column, value in enumerate((avg, low, high), stats_start + 1):
+            for column, value in enumerate((avg, sd, low, high), stats_start + 1):
                 if value is not None:
                     sheet.write_number(row, column, value, number)
-            _, rel_avg, rel_low, rel_high = _sample_stats(relative)
-            for column, value in enumerate((rel_avg, rel_low, rel_high), stats_start + 4):
+            rel_n, rel_avg, rel_sd, rel_low, rel_high = _sample_stats(relative)
+            sheet.write_number(row, stats_start + 5, rel_n)
+            for column, value in enumerate((rel_avg, rel_sd, rel_low, rel_high), stats_start + 6):
                 if value is not None:
                     sheet.write_number(row, column, value, number)
         if offsets:
             chart = workbook.add_chart({"type": "line"})
             for col, label, color in (
                 (stats_start + 1, "Mean", "#245D43"),
-                (stats_start + 2, "Lower 95%", "#80B25E"),
-                (stats_start + 3, "Upper 95%", "#80B25E"),
+                (stats_start + 3, "Lower 95%", "#80B25E"),
+                (stats_start + 4, "Upper 95%", "#80B25E"),
             ):
                 chart.add_series(
                     {
@@ -1009,7 +1021,7 @@ class StudyWorkbookService:
             chart.set_x_axis({"name": "Elapsed hours from time zero"})
             chart.set_y_axis({"name": f"Source units: {pair[1] if pair else 'unmapped'}"})
             chart.set_legend({"position": "bottom"})
-            sheet.insert_chart(2, stats_start + 8, chart, {"x_scale": 1.35, "y_scale": 1.25})
+            sheet.insert_chart(2, stats_start + 11, chart, {"x_scale": 1.35, "y_scale": 1.25})
 
     def _timepoint_sheet(
         self,

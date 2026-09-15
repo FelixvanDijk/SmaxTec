@@ -9,6 +9,7 @@ from xml.etree import ElementTree
 from zipfile import ZipFile
 
 import pytest
+from xlsxwriter.utility import xl_col_to_name
 
 from smaxtec.application.api_data import ApiError
 from smaxtec.application.api_downloads import ANALYSIS_HEADERS
@@ -20,9 +21,15 @@ from smaxtec.application.study_workbook import (
 )
 
 
-def _collection(tmp_path, *, two_cows=True):
+def _collection(tmp_path, *, two_cows=True, second_without_normal=False, cow_count=None):
     event = datetime(2026, 9, 15, 8, 10, tzinfo=UTC)
-    cows = ("57", "657") if two_cows else ("57",)
+    cows = (
+        tuple(f"{index:03d}" for index in range(1, cow_count + 1))
+        if cow_count is not None
+        else ("57", "657")
+        if two_cows
+        else ("57",)
+    )
     targets = []
     rows = []
     for cow in cows:
@@ -63,7 +70,8 @@ def _collection(tmp_path, *, two_cows=True):
 
         for offset in (-14 * 24 + 1, -7 * 24 + 1, -5 * 24 + 1, -6, 0, 6, 24, 48, 72, 96, 120):
             add("temp_no_drink", "celsius", offset, 39 if offset < 0 else 40 + offset / 100)
-            add("normal_temp", "celsius", offset, 39.5)
+            if not (second_without_normal and cow == "657"):
+                add("normal_temp", "celsius", offset, 39.5)
             add("activity", "index", offset, 6 if offset < 0 else 8)
             add("rumination", "minutes", offset, 500 if offset < 0 else 400 + offset)
         add("activity", "index", 3, 10)
@@ -144,6 +152,13 @@ def test_client_workbook_has_one_case_row_exact_hours_aligned_cows_and_qc(tmp_pa
         assert _numeric_cell(raw_sheet, "T4") == pytest.approx(300)  # Rl
         assert _numeric_cell(raw_sheet, "U4") == pytest.approx(0.4)  # 40% formatted
         assert b'formatCode="0.0%"' in archive.read("xl/styles.xml")
+        aligned = archive.read("xl/worksheets/sheet5.xml")
+        assert b"Sample SD" in aligned
+        assert _numeric_cell(aligned, "D8") == pytest.approx(2)  # available cows at T0
+        assert _numeric_cell(aligned, "E8") == pytest.approx(40)  # absolute mean
+        assert _numeric_cell(aligned, "F8") == pytest.approx(0)  # sample SD
+        assert _numeric_cell(aligned, "I8") == pytest.approx(2)  # relative available cows
+        assert _numeric_cell(aligned, "J8") == pytest.approx(0.5)  # mean vs baseline
         qc = archive.read("xl/worksheets/sheet10.xml").decode("utf-8")
         assert "identical_duplicate_collapsed" in qc
         assert "Availability by cow/case" in qc
@@ -200,3 +215,48 @@ def test_unavailable_metric_roles_remain_blank_without_guessing(tmp_path):
         assert '<c r="H4"' in main  # Available exact temperature still works.
         definitions = archive.read("xl/worksheets/sheet9.xml").decode("utf-8")
         assert "Not mapped" in definitions
+
+
+def test_relative_confidence_uses_its_own_available_cow_count(tmp_path):
+    _collection(tmp_path, second_without_normal=True)
+    source = StudySource.load(tmp_path)
+    output = StudyWorkbookService().create(source, _settings(source), Event(), lambda _: None)
+    with ZipFile(output) as archive:
+        main = archive.read("xl/worksheets/sheet1.xml")
+        assert _numeric_cell(main, "E5") is None  # Cow 657 has no normal baseline.
+        assert _numeric_cell(main, "L5") is None  # No invented R20 without Tn.
+        aligned = archive.read("xl/worksheets/sheet5.xml")
+        assert _numeric_cell(aligned, "D8") == 2  # Both cows have T0.
+        assert _numeric_cell(aligned, "I8") == 1  # Only one baseline-adjusted cow.
+        assert _numeric_cell(aligned, "J8") == pytest.approx(0.5)
+        assert _numeric_cell(aligned, "L8") is None  # n<2 has no confidence limits.
+
+
+def test_three_hundred_cow_study_keeps_every_row_and_cohort_count(tmp_path):
+    _collection(tmp_path, cow_count=300)
+    source = StudySource.load(tmp_path)
+    assert len(source.cases) == 300
+    output = StudyWorkbookService().create(source, _settings(source), Event(), lambda _: None)
+    with ZipFile(output) as archive:
+        main = archive.read("xl/worksheets/sheet1.xml")
+        assert b'<c r="B303"' in main  # Row 303 is the 300th cow.
+        aligned = archive.read("xl/worksheets/sheet5.xml")
+        n_col = xl_col_to_name(len(source.cases) + 1)
+        assert _numeric_cell(aligned, f"{n_col}8") == 300
+
+
+def test_unexpected_study_write_error_cleans_partial_without_touching_source(tmp_path, monkeypatch):
+    _collection(tmp_path, two_cows=False)
+    source = StudySource.load(tmp_path)
+    service = StudyWorkbookService()
+
+    def fails_after_partial(path, *_args):
+        path.write_bytes(b"synthetic partial")
+        raise RuntimeError("synthetic internal failure")
+
+    monkeypatch.setattr(service, "_write", fails_after_partial)
+    with pytest.raises(ApiError, match="Original source files are unchanged"):
+        service.create(source, _settings(source), Event(), lambda _: None)
+    assert not list(tmp_path.glob(".client-study-*.partial.xlsx"))
+    assert not list(tmp_path.glob("client-study*.xlsx"))
+    assert StudySource.load(tmp_path).csv_sha256 == source.csv_sha256

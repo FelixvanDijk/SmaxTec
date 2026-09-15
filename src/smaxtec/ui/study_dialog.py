@@ -469,6 +469,15 @@ class StudyWorkbookDialog(QDialog):
         if self._output and not QDesktopServices.openUrl(QUrl.fromLocalFile(str(self._output))):
             self.status.setText(f"Open {self._output.name} from the collection folder.")
 
+    def reject(self) -> None:
+        # Escape must not destroy a running QThread while its collection file is open.
+        if self._worker is not None:
+            self._closing = True
+            self._worker.request_stop()
+            self.status.setText("Stopping safely before closing…")
+        else:
+            super().reject()
+
     def closeEvent(self, event) -> None:  # noqa: N802
         if self._worker is not None:
             self._closing = True

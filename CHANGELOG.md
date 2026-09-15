@@ -8,6 +8,10 @@
   one row per cow/case in the client's 28-column parameter order, normal values,
   configurable exact T/RT timepoints, side-by-side cow alignment, absolute/relative
   cohort graphs, Definitions and missing-data/coverage QC.
+- Show separate available-cow n and sample SD for absolute and baseline-relative
+  cohort data beside the mean and 95% bounds, matching the client's Analysis sheet
+  more closely. Guard Escape
+  during a file job and clean temporary XLSX files after unexpected failures.
 - Require reviewed source measurement-code/unit roles and each cow's farm-local key
   event time. Keep T6 at exactly six elapsed hours regardless of download interval;
   do not fill missing exact points with nearest samples.
@@ -15,7 +19,10 @@
   changing authentication, requests, original raw/CSV/manifest/descriptive workbook
   outputs. Keep Lact, DIM and Rback blank; label Talert/R20 as explicit proxies.
 - Add synthetic formula, hash, timezone, non-overwrite, chart and Qt workflow tests.
-  Representative source data and client/clinical acceptance remain pending.
+  A sparse 300-cow regression checks every parameter row and aligned cohort n.
+  Representative source data and client/clinical acceptance remain pending. Clean
+  Windows bundling/executable smoke passed; the artifact upload remains blocked by
+  the repository's Actions storage quota.
 
 ## 0.8.0 — 2026-09-13 (presentation preview)
 

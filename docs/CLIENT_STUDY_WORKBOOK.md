@@ -47,7 +47,8 @@ Client definitions:
 The core A:AB layout stays close to the example. Add adjacent event/farm/date/status columns
 to make periods, metric units and lineage auditable. Provide a separate aligned sheet
 for each metric with cow/case columns side-by-side around time zero, per-offset n,
-mean and 95% confidence limits; both absolute and baseline-relative views are useful
+mean, sample SD and 95% confidence limits; separate absolute/relative n is needed
+when some cows lack baselines. Both absolute and baseline-relative views are useful
 because the example analyses both. Use `1.96 * sample SD / sqrt(n)` for the normal
 95% half-width as in its `CONFIDENCE.NORM` examples; use the actual available n at each
 offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.

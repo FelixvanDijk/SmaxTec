@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QScrollArea
 from test_study_workbook import _collection
 
+from smaxtec.application.api_data import ApiCancelled
 from smaxtec.ui.study_dialog import StudyWorkbookDialog
 
 
@@ -52,4 +53,21 @@ def test_study_dialog_small_screen_scrolls_and_requires_all_event_times(qtbot, t
     assert "Choose at least one" in dialog.status.text()
     assert not (tmp_path / "client-study.xlsx").exists()
     dialog._cancel_or_close()
+    assert not dialog.isVisible()
+
+
+def test_escape_waits_for_study_worker_cleanup(qtbot):
+    dialog = StudyWorkbookDialog(None)
+    qtbot.addWidget(dialog)
+    dialog.show()
+
+    def slow_job(stop, _progress):
+        stop.wait(2)
+        raise ApiCancelled
+
+    dialog._start(slow_job, "Synthetic long job")
+    assert dialog._worker is not None
+    dialog.reject()  # Same path as Escape while a worker owns a file.
+    assert dialog.isVisible()
+    qtbot.waitUntil(lambda: dialog._worker is None)
     assert not dialog.isVisible()
