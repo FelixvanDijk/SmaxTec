@@ -8,7 +8,7 @@
 
 The build runs checks, bundles the application with Chromium, starts the executable
 with Python removed from PATH and an unavailable external browser cache, and
-produces `dist/SmaxTec-Workbench-0.8.0-windows-x64.zip`.
+produces `dist/SmaxTec-Workbench-0.9.0-windows-x64.zip`.
 Assembly uses a fresh validated system-temporary staging directory, smoke-tests that
 exact bundle, then publishes only the versioned ZIP. This avoids stale files and does
 not require replacing an older OneDrive-synchronized `dist/SmaxTec Workbench` folder.
@@ -27,7 +27,7 @@ Build on Windows; PyInstaller does not make another platform's binaries from a
 single build host. Only full Chromium is shipped; its headless mode runs the
 offline smoke test. Browser updates require rebuilding the application.
 
-The 0.8.0 smoke resolves representative IANA farm timezones and imports the direct XLSX
+The 0.9.0 smoke resolves representative IANA farm timezones and imports the direct XLSX
 writer plus email/XML/MSAL parsers and Windows COM runtime modules without creating
 Outlook. It checks private helper IPC with an invalid action rejected before
 the helper imports COM or accesses Outlook. It does not prove a
@@ -139,6 +139,16 @@ B3 naming, duplicate detection and hash-verified resume. No Outlook/Excel instal
 was used by CI to open an actual mailbox or workbook: COM-module import and private
 helper IPC were tested without creating Outlook. Configured profile, corporate policy,
 Inbox access, signing and clean-client-machine acceptance remain separate gates.
+
+## 0.9.0 client-study preview evidence
+
+On 2026-09-15 all 415 offline tests, dependency/lint/format checks and the source
+app's smoke passed locally. PyInstaller assembled the updated bundle, but this
+development computer again refused to launch its unsigned executable for packaged
+smoke; the staging folder was cleaned without publishing a local archive. Clean
+GitHub Windows CI and its versioned artifact must be verified separately after push.
+This only proves bundling/offline startup, not target-machine signing, real API
+source mapping or client acceptance of the study calculations/charts.
 
 ## M4 direct API evidence
 

@@ -676,6 +676,25 @@ class ApiPanel(QWidget):
             file_layout.addWidget(button, row, 2)
         file_layout.setColumnStretch(1, 1)
         layout.addWidget(self.file_card)
+        study_actions = QVBoxLayout()
+        study_actions.addWidget(
+            label(
+                "Client study view · one row per cow, exact time points and aligned 95% limits",
+                "muted",
+            ),
+        )
+        study_buttons = QHBoxLayout()
+        self.saved_study_button = self._button(
+            "Choose saved collection…", lambda: self._open_study(None)
+        )
+        self.study_button = self._button(
+            "Create study workbook", lambda: self._open_study(self._last_folder), primary=True
+        )
+        study_buttons.addWidget(self.saved_study_button)
+        study_buttons.addWidget(self.study_button)
+        study_buttons.addStretch(1)
+        study_actions.addLayout(study_buttons)
+        layout.addLayout(study_actions)
         self.results = self._table(
             ["Farm", "Target", "From", "To", "Status", "Rows", "Details"],
             "API collection results by target and date range",
@@ -1321,6 +1340,8 @@ class ApiPanel(QWidget):
         self.open_analysis_button.setEnabled(not busy and self._last_analysis is not None)
         self.open_workbook_button.setEnabled(not busy and self._last_workbook is not None)
         self.open_button.setEnabled(not busy and self._last_folder is not None)
+        self.saved_study_button.setEnabled(not busy)
+        self.study_button.setEnabled(not busy and self._last_folder is not None)
         self.cancel_button.setVisible(self._worker is not None and self._operation != "disconnect")
         self.cancel_button.setEnabled(self._worker is not None and not self._cancelling)
         self._metric_controls()
@@ -1345,3 +1366,12 @@ class ApiPanel(QWidget):
             return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             self.status.setText(f"Open this {label_name} from the collection folder: {path.name}")
+
+    def _open_study(self, folder: Path | None) -> None:
+        if self.is_busy:
+            return
+        from smaxtec.ui.study_dialog import StudyWorkbookDialog
+
+        dialog = StudyWorkbookDialog(folder, self)
+        dialog.exec()
+        dialog.deleteLater()

@@ -1,6 +1,13 @@
 # Project state — start here each session
 
-Last updated: 2026-09-13. **Source preview 0.8.0 preserves the proven 0.7.0 direct-API
+Last updated: 2026-09-15. **Source preview 0.9.0 adds an opt-in client-example study
+workbook without changing the established 0.8.0 API download or audit files.** Its
+metric/event mapping, one-row-per-cow parameters, exact event-relative time points,
+aligned cow values and 95% confidence charts have synthetic offline verification.
+Real collection mapping, adequacy, client calculation/graph acceptance and release
+proof are still pending. See `CLIENT_STUDY_WORKBOOK.md` and the M5 slice below.
+
+The 0.8.0 presentation baseline preserves the proven 0.7.0 direct-API
 request and data contracts while adding presentation-safe UI and workbook polish for the
 Monday client demonstration.** The default workspace
 signs in, discovers farms/cows/groups/devices/metrics, queues individual periods, reviews
@@ -31,7 +38,39 @@ substantial milestones. M1/M2 were browser login/export requests. M3 implemented
 email collection but is now a compatibility path. M4 is the direct API vertical slice.
 Do not invent calculations or clinical meanings in M4.
 
+## M5/M6 client-study workbook preview and acceptance boundaries
+
+- The client-provided `Analysis sheet.xlsx` has five worksheets. ASPI and Ketofen
+  tables use 28 core columns with one cow/case per row. Its Normal values and
+  Analysis sheets motivate the separate baseline, aligned and graph views; the
+  example has broken chart references, which are not replicated. The companion
+  two-page PDF defines the event-relative fields. The files were inspected
+  read-only outside Git; no farm/client data was committed.
+- Source 0.9.0 adds **Create study workbook** from a completed local format-2 API
+  collection in the Results area. A guided, scrollable modal discovers the exact
+  source code/unit pairs, lets the user assign normal temperature, temperature
+  without drinking cycles, activity and rumination, and enter a farm-local study
+  time zero per cow/case. The shared-event button copies a timestamp only on an
+  explicit action. File scanning/writing stays off the Qt thread and can be stopped.
+- The separate, non-overwriting `client-study.xlsx` holds client-style parameters
+  A:AB, source/event columns, Normal values, configurable exact T/RT points, three
+  side-by-side cow alignment sheets, a Study graphs sheet with absolute/relative
+  temperature/activity/rumination mean and 95% limits, Definitions and QC.
+  Elapsed time is UTC; exact T/RT points never become nearest samples. The tidy
+  CSV SHA-256 is rechecked before generation; raw responses, both CSVs, manifest
+  and existing optional API workbook are unchanged.
+- Talert and R20 are *labelled proxies*, not actual alerts. Lact, DIM and Rback are
+  deliberately blank pending accepted sources/clarification. 95% limits use the
+  available n per offset; missing/conflicting points remain blank, not estimated.
+  Baseline/follow-up coverage shortfalls and duplicate counts appear in QC.
+- This is an analytical **preview**, not a general canonical master or a clinically
+  accepted report. No real API collection with reviewed metrics/time zero has yet
+  been supplied. Exact code/unit mapping, 10-minute/source timestamp behavior,
+  date coverage, formulas, Rback meaning and chart appearance require client review.
+  See `CLIENT_STUDY_WORKBOOK.md` for precise window contracts and source limitations.
+
 ## M4 direct API implementation and acceptance boundaries
+
 
 - The **Direct data API** tab is the default workspace. Credentials are masked and
   cleared from the GUI; credentials/token remain in memory only until Disconnect/close.
@@ -187,9 +226,23 @@ Do not invent calculations or clinical meanings in M4.
   orchestration and SQLite state; `adapters/mail/graph.py` owns Microsoft sign-in and
   Graph paging, while the same folder owns the Outlook helper, message parsing and
   bounded downloads; `adapters/workbooks.py` owns read-only ZIP/XML B3 validation.
+- Study module map: `application/study_workbook.py` owns hashed collection loading,
+  reviewed event/role settings, exact series selection, baseline/proxy calculations,
+  derived XLSX/chart/QC generation; `ui/study_dialog.py` owns the guided event editor
+  and cancellable worker. `ui/api_panel.py` links the workflow from Results only.
 
 ## Verification and packaging evidence
 
+- 0.9.0 source: all **415 offline tests** passed locally on 2026-09-15; the new
+  study tests check numerical client fields, UTC exact-hour selection, aligned
+  sheets/valid charts, unmapped roles, source hash/DST, non-overwrite and Qt
+  review/short-screen operation. Focused 17-test study/API panel set passed.
+  `pip check`, Ruff lint/format and the source app's offline smoke passed. Local
+  PyInstaller assembly succeeded, but this development computer's existing
+  executable policy denied `Start-Process` of the unsigned bundle during packaged
+  smoke; the build script safely removed its temporary stage and did not publish
+  a local archive. GitHub clean Windows CI/preview artifact is the required
+  independent executable proof and remains pending until push/check.
 - 0.8.0 source: all **410 tests**, dependency integrity, Ruff, formatting and focused
   API/export/UI checks pass locally. Synthetic workbook regression proves the existing
   measurement sheet and technical columns remain while the summary chart, measurement
@@ -405,16 +458,24 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.8.0 Git/CI state and packaged launch limitation above. Use
-   `docs/DEMO_RUNBOOK.md` for Monday and keep the 0.7.0 rollback tag available.
-2. Read `API_DATA.md`, then have the client exercise one small direct collection with
-   an active cow and known period. Record expected/actual boundaries, codes, units and
-   output usability without committing credentials, tokens, IDs or raw farm data.
-3. Exercise a multi-target/farm collection, unavailable-sensor failure, cancellation,
-   a longer chunked period and health KPI. Confirm corporate proxy behavior.
-4. For M5 obtain a sanitized representative API collection and reviewed definitions for
-   the canonical schema, duplicate policy, calculations and master workbook layout.
-   Only then implement normalization; graphs follow from that same dataset.
+1. Check the 0.9.0 Git/CI state and packaged launch limitation above. Use
+   `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
+   presentation rollback tag. The prepared source launcher includes the new study UI;
+   the 0.8.0 artifact does not.
+2. Read `API_DATA.md` and `CLIENT_STUDY_WORKBOOK.md`; run one small direct cow
+   collection including the desired normal temperature, temperature without drinking
+   cycles, activity and rumination codes at 10-minute resolution across adequate
+   baseline/follow-up dates. Record the observed codes/units/UTC times and one known
+   administration time for explicit role mapping. Keep identifiers/data outside Git.
+3. Compare the generated main parameter values, baseline sample counts, aligned
+   sheets, six charts and QC against the client's example and reviewed manual
+   calculations. Ask whether Rback means return to normal rumination, another
+   threshold or literally repeating Rl; leave it blank until clarified. Confirm
+   Talert/R20 proxies and 95% interval interpretation before any clinical use.
+4. Exercise a multi-cow/farm collection, unavailable-sensor failure, cancellation,
+   longer chunked periods and health KPI. Confirm corporate proxy behavior and report
+   performance with hundreds of cows. General canonical master/other studies are
+   later M5 work, not covered by this client-example preview.
 5. Return to `EMAIL_COLLECTION.md`/Graph deployment only if the legacy route remains
    required after direct API acceptance. No polling or Public assignment is implied.
 6. Before distribution beyond development, resolve signing/installation on the

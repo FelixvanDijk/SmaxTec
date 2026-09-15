@@ -88,6 +88,18 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
+Source 0.9.0 adds an **opt-in** client-study workbook after the existing direct-API
+collection. Read `docs/CLIENT_STUDY_WORKBOOK.md` before changing this derived view.
+The supplied analysis workbook/PDF define one cow/case per row, T0/T6/... exact
+event-relative temperature, six-hour activity windows, rumination fields and
+side-by-side aligned cohort views. The event time is explicitly entered per cow;
+From/To is not time zero. Require reviewed `(source metric code, unit)` roles and
+farm-local event times, recheck collection hashes, calculate elapsed offsets in UTC
+and record missing/coverage/duplicate QC. Never pivot or overwrite the audit CSVs.
+Talert/R20 are labelled proxies; Lact, DIM and Rback stay blank pending accepted
+sources/definition. This preview has synthetic tests, **not** client-approved real
+metric mappings, source coverage, clinical meaning or a released installer.
+
 Version 0.8.0 makes the official smaXtec Public API v2 the primary workspace. Read
 `docs/API_DATA.md` before changing it. The UI dynamically discovers authorized farms,
 cows, groups, devices and per-target metrics; queues immutable target/From/To/metric

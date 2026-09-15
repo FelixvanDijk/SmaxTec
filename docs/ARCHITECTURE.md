@@ -409,7 +409,34 @@ blocked on representative client data and agreed semantics. Revisit the workbook
 after client acceptance; all future calculations and analytical charts must originate
 from the single reviewed canonical dataset rather than from this descriptive index.
 
+## Decision 017: Add an opt-in, client-example study view beside the audit collection
+
+Status: implemented in source 0.9.0; synthetic verification complete, representative
+API data and client/clinical acceptance pending.
+
+The client's five-sheet example and two-page parameter PDF establish event-relative,
+one-cow/case-per-row T/AT/RT parameters and side-by-side cow alignment. Add a separate
+`client-study.xlsx` (non-overwriting numbered suffixes) from a *completed local*
+format-2 direct-API collection, rather than changing API authentication, requests,
+raw JSON, staging/tidy CSV, manifest or the existing descriptive workbook. The
+application service checks the tidy CSV hash, requires explicit source metric-code/
+unit roles and one farm-local time zero per cow/case, and generates the derived view
+on a worker thread. UTC elapsed offsets, source-specific metric pairs, identical-
+duplicate collapse/conflict exclusion and QC make each calculation auditable.
+
+The client example's T6 is exactly six hours after each cow's key event, not the
+selected download aggregation interval. Retain fixed T0/6/12/18/24 and RT0/24/...
+client columns; extra configurable step/horizon sheets and aligned mean/95%-limit
+graphs extend the view without changing those meanings. Talert and R20 are explicitly
+labelled proxies. Lact, DIM and ambiguous Rback stay blank. Alternative of pivoting
+the existing measurement CSV was rejected because it would erase its lossless audit
+contract; alternative of guessing metric mappings, nearest values or clinical fields
+was rejected because it would imply unverified semantics. Revisit after real source
+samples, reviewed mapping/units, baseline coverage, exact event timestamps and the
+client's acceptance of formulas/charts. See `CLIENT_STUDY_WORKBOOK.md`.
+
 ## Data and workflow design to preserve
+
 
 - A direct collection records stable farm/target IDs + display identity, individual
   start/end periods, farm timezone, metrics, chunk bounds and output hashes.

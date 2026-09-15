@@ -25,10 +25,15 @@ def _check_collection_runtime() -> None:
     from smaxtec.adapters.mail.messages import candidate_from_message
     from smaxtec.adapters.mail.outlook import helper_command
     from smaxtec.application.collection import MailMessage
+    from smaxtec.application.study_workbook import StudySource, StudyWorkbookService
+    from smaxtec.ui.study_dialog import StudyWorkbookDialog
 
     assert callable(olefile.isOleFile)
     assert callable(msal.PublicClientApplication)
     assert callable(xlsxwriter.Workbook)
+    assert callable(StudySource.load)
+    assert callable(StudyWorkbookService().create)
+    assert callable(StudyWorkbookDialog)
     assert ElementTree.fromstring("<smoke>ready</smoke>").text == "ready"
     # Windows has no system IANA database. API date bounds need the bundled
     # tzdata package for every farm timezone used by the signed-in account.

@@ -1,0 +1,1068 @@
+"""Client-defined, opt-in study view of an existing direct-API collection.
+
+This module never changes the collection's source files or manifest. Metric roles and
+time zero are explicit user choices; exact points are never replaced by nearest ones.
+"""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import math
+from bisect import bisect_left
+from collections import Counter, defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from statistics import mean, stdev
+from threading import Event
+from typing import Any
+from zoneinfo import ZoneInfo
+
+import xlsxwriter
+
+from smaxtec.application.api_data import ApiCancelled, ApiError, ApiProgress
+
+CORE_HEADERS = (
+    "No",
+    "Cow",
+    "Lact",
+    "DIM",
+    "Tn",
+    "Talert proxy",
+    "T0",
+    "T6",
+    "T12",
+    "T18",
+    "T24",
+    "R20 proxy",
+    "AN",
+    "AT0",
+    "AT6",
+    "AT12",
+    "AT18",
+    "AT24",
+    "Rn",
+    "Rl",
+    "%drop",
+    "Rback",
+    "RT0",
+    "RT24",
+    "RT48",
+    "RT72",
+    "RT96",
+    "RT120",
+)
+REQUIRED_CSV = {
+    "target_type",
+    "target_id",
+    "farm_id",
+    "requested_from",
+    "requested_to",
+    "metric",
+    "unit",
+    "timestamp_utc",
+    "value",
+}
+MAX_ANALYSIS_ROWS = 3_000_000
+MAX_CASES = 500
+MAX_OFFSETS = 241
+
+
+@dataclass(frozen=True)
+class StudyCase:
+    index: int
+    farm: str
+    farm_id: str
+    target_id: str
+    cow: str
+    from_date: str
+    to_date: str
+    timezone: str
+    status: str
+
+    @property
+    def key(self) -> tuple[str, str, str, str]:
+        return self.farm_id, self.target_id, self.from_date, self.to_date
+
+
+@dataclass(frozen=True)
+class StudySource:
+    folder: Path
+    csv_path: Path
+    csv_sha256: str
+    cases: tuple[StudyCase, ...]
+    pairs: tuple[tuple[str, str], ...]
+    resolution: str
+
+    @classmethod
+    def load(cls, folder: Path, stop: Event | None = None) -> StudySource:
+        stop = stop or Event()
+        folder = folder.resolve()
+        manifest_path = folder / "collection.json"
+        csv_path = folder / "analysis_ready.csv"
+        if not manifest_path.is_file() or not csv_path.is_file():
+            raise ApiError("study_source", "Choose a completed direct-API collection folder.")
+        try:
+            if manifest_path.stat().st_size > 16 * 1024 * 1024:
+                raise ValueError("manifest too large")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            expected = manifest["analysis_csv_sha256"]
+            if manifest.get("analysis_csv") != csv_path.name or manifest.get("format_version") != 2:
+                raise ValueError("incompatible collection")
+            cases = []
+            for index, entry in enumerate(manifest["targets"], 1):
+                if entry.get("target_type") != "animals":
+                    continue
+                cases.append(
+                    StudyCase(
+                        index,
+                        str(entry["farm"]),
+                        str(entry["farm_id"]),
+                        str(entry["target_id"]),
+                        str(entry["animal_number"]),
+                        str(entry["from"]),
+                        str(entry["to"]),
+                        str(entry["farm_timezone"]),
+                        str(entry["status"]),
+                    )
+                )
+            if not cases or len(cases) > MAX_CASES:
+                raise ValueError("no supported cow rows or too many cow rows")
+            digest = hashlib.sha256()
+            with csv_path.open("rb") as handle:
+                while block := handle.read(1024 * 1024):
+                    if stop.is_set():
+                        raise ApiCancelled
+                    digest.update(block)
+            if digest.hexdigest() != expected:
+                raise ValueError("analysis CSV hash changed")
+            pairs: set[tuple[str, str]] = set()
+            with csv_path.open(encoding="utf-8-sig", newline="") as handle:
+                reader = csv.DictReader(handle)
+                if not REQUIRED_CSV.issubset(reader.fieldnames or ()):
+                    raise ValueError("analysis CSV schema changed")
+                for index, row in enumerate(reader, 1):
+                    if stop.is_set():
+                        raise ApiCancelled
+                    if index > MAX_ANALYSIS_ROWS:
+                        raise ValueError("too many measurement rows")
+                    if row["target_type"] == "animals" and row["metric"]:
+                        pairs.add((row["metric"], row["unit"]))
+            if not pairs:
+                raise ValueError("no cow measurements")
+        except ApiCancelled:
+            raise
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            raise ApiError(
+                "study_source",
+                "This collection is incomplete, changed or too large for a study workbook. "
+                "Use an intact direct-API collection with cow measurements.",
+            ) from None
+        return cls(
+            folder,
+            csv_path,
+            expected,
+            tuple(cases),
+            tuple(sorted(pairs)),
+            str(manifest.get("aggregation", "")),
+        )
+
+
+def parse_event_time(text: str, timezone: str) -> datetime:
+    """Strict farm-local DD/MM/YYYY HH:MM, rejecting DST gaps and ambiguous folds."""
+    try:
+        naive = datetime.strptime(text.strip(), "%d/%m/%Y %H:%M")
+        if naive.strftime("%d/%m/%Y %H:%M") != text.strip():
+            raise ValueError
+        zone = ZoneInfo(timezone)
+        candidates = []
+        for fold in (0, 1):
+            local = naive.replace(tzinfo=zone, fold=fold)
+            utc = local.astimezone(UTC)
+            if utc.astimezone(zone).replace(tzinfo=None) == naive:
+                candidates.append(utc)
+        if len(set(candidates)) != 1:
+            raise ValueError
+        return candidates[0]
+    except (ValueError, KeyError):
+        raise ValueError(
+            "Enter an unambiguous farm-local time as DD/MM/YYYY HH:MM; "
+            "the selected time may fall in a daylight-saving change."
+        ) from None
+
+
+@dataclass(frozen=True)
+class StudySettings:
+    events: tuple[tuple[tuple[str, str, str, str], datetime], ...]
+    normal_temp: tuple[str, str] | None
+    temperature: tuple[str, str] | None
+    activity: tuple[str, str] | None
+    rumination: tuple[str, str] | None
+    threshold_c: float = 0.8
+    followup_days: int = 20
+    temp_step_hours: int = 6
+    temp_horizon_hours: int = 24
+    rum_step_hours: int = 24
+    rum_horizon_hours: int = 120
+    aligned_before_hours: int = 24
+    aligned_after_hours: int = 120
+    aligned_step_hours: int = 6
+
+    def validate(self, source: StudySource) -> None:
+        cases = {case.key for case in source.cases}
+        events = dict(self.events)
+        if len(events) != len(self.events) or set(events) != cases:
+            raise ValueError("Enter one time zero for every cow/case in the collection.")
+        roles = (self.normal_temp, self.temperature, self.activity, self.rumination)
+        selected = tuple(pair for pair in roles if pair is not None)
+        if not selected or any(pair not in source.pairs for pair in selected):
+            raise ValueError(
+                "Choose at least one source code/unit pair from this collection. "
+                "Unmapped fields will remain blank."
+            )
+        if self.normal_temp is not None and self.normal_temp == self.temperature:
+            raise ValueError(
+                "Normal temperature and temperature without drinking cycles must differ."
+            )
+        if len(set(selected)) != len(selected):
+            raise ValueError("Choose a distinct source measurement for each study role.")
+        celsius_units = {"c", "celsius", "°c", "℃", "degc", "degrees celsius"}
+        if any(
+            pair[1].strip().casefold() not in celsius_units
+            for pair in (
+                self.normal_temp,
+                self.temperature,
+            )
+            if pair is not None
+        ):
+            raise ValueError(
+                "The two temperature source units must be Celsius for the requested "
+                "degree-above-normal calculation. No unit conversion is applied."
+            )
+        if not (0 <= self.threshold_c <= 5 and 1 <= self.followup_days <= 60):
+            raise ValueError("Temperature differential must be 0–5 °C and follow-up 1–60 days.")
+        for step, horizon in (
+            (self.temp_step_hours, self.temp_horizon_hours),
+            (self.rum_step_hours, self.rum_horizon_hours),
+            (self.aligned_step_hours, self.aligned_before_hours + self.aligned_after_hours),
+        ):
+            if step < 1 or horizon < 1 or horizon > 1440 or horizon // step > MAX_OFFSETS:
+                raise ValueError("Choose positive time steps and a horizon of at most 60 days.")
+        if self.aligned_before_hours < 0 or self.aligned_after_hours < 1:
+            raise ValueError("Aligned time must include at least one post-event hour.")
+        for case in source.cases:
+            event = events[case.key]
+            if event.tzinfo is None or event.utcoffset() is None:
+                raise ValueError("Each time zero must include a valid farm timezone.")
+            local = event.astimezone(ZoneInfo(case.timezone))
+            if not (case.from_date <= local.date().isoformat() <= case.to_date):
+                raise ValueError(
+                    f"Cow {case.cow}: time zero is outside its reviewed From/To dates."
+                )
+
+
+@dataclass(frozen=True)
+class _Point:
+    time: datetime
+    value: float
+
+
+def _number(text: str) -> float | None:
+    try:
+        value = float(text)
+        return value if math.isfinite(value) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _sample_stats(values: list[float]) -> tuple[int, float | None, float | None, float | None]:
+    if not values:
+        return 0, None, None, None
+    average = mean(values)
+    if len(values) < 2:
+        return 1, average, None, None
+    margin = 1.96 * stdev(values) / math.sqrt(len(values))
+    return len(values), average, average - margin, average + margin
+
+
+class StudyWorkbookService:
+    """Produce a separate, non-overwriting XLSX and explicit QC from hashed CSV."""
+
+    def create(
+        self,
+        source: StudySource,
+        settings: StudySettings,
+        stop: Event,
+        progress: Callable[[ApiProgress], None],
+    ) -> Path:
+        settings.validate(source)
+        if stop.is_set():
+            raise ApiCancelled
+        with source.csv_path.open("rb") as handle:
+            digest = hashlib.sha256()
+            while chunk := handle.read(1024 * 1024):
+                if stop.is_set():
+                    raise ApiCancelled
+                digest.update(chunk)
+        if digest.hexdigest() != source.csv_sha256:
+            raise ApiError(
+                "study_source_changed",
+                "The selected collection changed since it was loaded. Choose it again.",
+            )
+        progress(ApiProgress("Reading validated cow measurements…", 0, 3))
+        chosen = {
+            settings.normal_temp,
+            settings.temperature,
+            settings.activity,
+            settings.rumination,
+        } - {None}
+        case_keys = {case.key for case in source.cases}
+        raw: dict[tuple[tuple[str, str, str, str], tuple[str, str]], dict[datetime, set[float]]] = (
+            defaultdict(lambda: defaultdict(set))
+        )
+        quality: Counter[str] = Counter()
+        with source.csv_path.open(encoding="utf-8-sig", newline="") as handle:
+            for index, row in enumerate(csv.DictReader(handle), 1):
+                if index % 4096 == 0 and stop.is_set():
+                    raise ApiCancelled
+                if index > MAX_ANALYSIS_ROWS:
+                    raise ApiError(
+                        "study_size", "This collection is too large for a study workbook."
+                    )
+                key = (
+                    row["farm_id"],
+                    row["target_id"],
+                    row["requested_from"],
+                    row["requested_to"],
+                )
+                pair = row["metric"], row["unit"]
+                if key not in case_keys or pair not in chosen:
+                    continue
+                if not row["timestamp_utc"]:
+                    quality["ambiguous_source_time"] += 1
+                    continue
+                try:
+                    stamp = datetime.fromisoformat(row["timestamp_utc"].replace("Z", "+00:00"))
+                    stamp = stamp.astimezone(UTC)
+                except ValueError:
+                    quality["ambiguous_source_time"] += 1
+                    continue
+                value = _number(row["value"])
+                if value is None:
+                    quality["non_numeric_value"] += 1
+                    continue
+                bucket = raw[(key, pair)][stamp]
+                if value in bucket:
+                    quality["identical_duplicate_collapsed"] += 1
+                bucket.add(value)
+        series: dict[tuple[tuple[str, str, str, str], tuple[str, str]], tuple[_Point, ...]] = {}
+        conflicts: dict[tuple[tuple[str, str, str, str], tuple[str, str]], set[datetime]] = {}
+        for key_pair, by_time in raw.items():
+            conflicts[key_pair] = {stamp for stamp, values in by_time.items() if len(values) > 1}
+            quality["conflicting_same_timestamp_excluded"] += len(conflicts[key_pair])
+            series[key_pair] = tuple(
+                _Point(stamp, next(iter(values)))
+                for stamp, values in sorted(by_time.items())
+                if len(values) == 1
+            )
+        progress(ApiProgress("Calculating exact event-relative study values…", 1, 3))
+        suffix = 0
+        while True:
+            name = "client-study.xlsx" if suffix == 0 else f"client-study-{suffix}.xlsx"
+            output = source.folder / name
+            if not output.exists():
+                break
+            suffix += 1
+        temporary = source.folder / f".{output.stem}.partial.xlsx"
+        if temporary.exists():
+            raise ApiError("study_output", "A previous study workbook is still being written here.")
+        try:
+            self._write(temporary, source, settings, series, conflicts, quality, stop)
+            if stop.is_set():
+                raise ApiCancelled
+            temporary.replace(output)
+        except (ApiCancelled, ApiError):
+            if temporary.exists():
+                temporary.unlink()
+            raise
+        except (OSError, xlsxwriter.exceptions.XlsxWriterException):
+            if temporary.exists():
+                temporary.unlink()
+            raise ApiError(
+                "study_output",
+                "Could not save the study workbook. Check free space and that the collection "
+                "folder is writable.",
+            ) from None
+        progress(ApiProgress("Client study workbook ready.", 3, 3))
+        return output
+
+    @staticmethod
+    def _graphs(workbook, cases, settings, title, muted) -> None:
+        """One intact chart pair per metric, referenced from aligned summaries."""
+        sheet = workbook.add_worksheet("Study graphs")
+        sheet.hide_gridlines(2)
+        sheet.set_column(0, 23, 11)
+        sheet.write_string(0, 0, "Cohort study graphs", title)
+        sheet.write_string(
+            1,
+            0,
+            "Available-cow mean and 95% limits; relative plots subtract each cow's normal.",
+            muted,
+        )
+        stats_start = len(cases) + 1
+        offsets = list(
+            range(
+                -settings.aligned_before_hours,
+                settings.aligned_after_hours + 1,
+                settings.aligned_step_hours,
+            )
+        )
+        if 0 not in offsets:
+            offsets.append(0)
+        last_row = 2 + len(offsets)
+        for metric_index, (name, unit) in enumerate(
+            (
+                (
+                    "Temperature aligned",
+                    settings.temperature[1] if settings.temperature else "unmapped",
+                ),
+                ("Activity aligned", settings.activity[1] if settings.activity else "unmapped"),
+                (
+                    "Rumination aligned",
+                    settings.rumination[1] if settings.rumination else "unmapped",
+                ),
+            )
+        ):
+            for relative in (False, True):
+                chart = workbook.add_chart({"type": "line"})
+                start_col = stats_start + (4 if relative else 1)
+                for column, label, color in (
+                    (start_col, "Mean", "#245D43"),
+                    (start_col + 1, "Lower 95%", "#80B25E"),
+                    (start_col + 2, "Upper 95%", "#80B25E"),
+                ):
+                    chart.add_series(
+                        {
+                            "name": label,
+                            "categories": [name, 3, 0, last_row, 0],
+                            "values": [name, 3, column, last_row, column],
+                            "line": {"color": color, "width": 2 if label == "Mean" else 1},
+                        }
+                    )
+                metric = name.split()[0]
+                chart.set_title(
+                    {"name": f"{metric}: {'change vs normal' if relative else 'absolute mean'}"}
+                )
+                chart.set_x_axis({"name": "Hours from time zero"})
+                chart.set_y_axis({"name": f"{'Change in ' if relative else ''}{unit}"})
+                chart.set_legend({"position": "bottom"})
+                sheet.insert_chart(
+                    4 + metric_index * 21,
+                    12 if relative else 0,
+                    chart,
+                    {"x_scale": 1.55, "y_scale": 1.35},
+                )
+
+    @staticmethod
+    def _values(
+        series: dict,
+        case: StudyCase,
+        pair: tuple[str, str] | None,
+        start: datetime,
+        end: datetime,
+    ) -> list[float]:
+        points = series.get((case.key, pair), ())
+        first = bisect_left(points, start, key=lambda point: point.time)
+        last = bisect_left(points, end, key=lambda point: point.time)
+        return [point.value for point in points[first:last]]
+
+    @staticmethod
+    def _exact(
+        series: dict,
+        case: StudyCase,
+        pair: tuple[str, str] | None,
+        at: datetime,
+    ) -> float | None:
+        points = series.get((case.key, pair), ())
+        index = bisect_left(points, at, key=lambda point: point.time)
+        return points[index].value if index < len(points) and points[index].time == at else None
+
+    def _write(
+        self,
+        path: Path,
+        source: StudySource,
+        settings: StudySettings,
+        series: dict,
+        conflicts: dict,
+        quality: Counter[str],
+        stop: Event,
+    ) -> None:
+        workbook = xlsxwriter.Workbook(str(path), {"constant_memory": True})
+        workbook.set_properties({"title": "Client study workbook", "author": "SmaxTec Workbench"})
+        title = workbook.add_format({"bold": True, "font_size": 22, "font_color": "#193E34"})
+        header = workbook.add_format(
+            {"bold": True, "font_color": "#FFFFFF", "bg_color": "#245D43", "text_wrap": True}
+        )
+        number = workbook.add_format({"num_format": "0.00"})
+        integer = workbook.add_format({"num_format": "0"})
+        percent = workbook.add_format({"num_format": "0.0%"})
+        muted = workbook.add_format({"font_color": "#63776E", "text_wrap": True})
+        cases_sheet = workbook.add_worksheet("Client parameters")
+        cases_sheet.hide_gridlines(2)
+        cases_sheet.freeze_panes(3, 2)
+        cases_sheet.set_tab_color("#4C8854")
+        cases_sheet.set_column(0, 0, 7)
+        cases_sheet.set_column(1, 1, 15)
+        cases_sheet.set_column(2, 3, 10)
+        cases_sheet.set_column(4, 27, 13)
+        cases_sheet.set_column(28, 28, 24)
+        cases_sheet.set_column(29, 32, 20)
+        cases_sheet.write_string(0, 0, "Cow-by-cow study parameters", title)
+        cases_sheet.write_string(
+            1,
+            0,
+            "One row per reviewed cow/case. T6 means exactly six elapsed hours; blanks "
+            "mean missing/unsupported, never a nearest reading. See Definitions and QC.",
+            muted,
+        )
+        extra_headers = (
+            "Farm-local time zero",
+            "Farm",
+            "Requested From",
+            "Requested To",
+            "Source case status",
+        )
+        for column, name in enumerate(CORE_HEADERS + extra_headers):
+            cases_sheet.write_string(2, column, name, header)
+        cases_sheet.set_row(2, 34)
+        cases_sheet.autofilter(2, 0, 2 + len(source.cases), 32)
+        events = dict(settings.events)
+        case_baselines: dict[tuple, dict[str, float | None]] = {}
+        missing: Counter[str] = Counter()
+        for row, case in enumerate(source.cases, 3):
+            if stop.is_set():
+                raise ApiCancelled
+            event = events[case.key]
+            day = timedelta(days=1)
+            hour = timedelta(hours=1)
+            tn = self._values(series, case, settings.normal_temp, event - 7 * day, event)
+            an = self._values(series, case, settings.activity, event - 14 * day, event)
+            rn = self._values(series, case, settings.rumination, event - 7 * day, event)
+            tn_value, an_value, rn_value = (
+                mean(values) if values else None for values in (tn, an, rn)
+            )
+            case_baselines[case.key] = {
+                "temperature": tn_value,
+                "activity": an_value,
+                "rumination": rn_value,
+            }
+            temps_pre = self._values(series, case, settings.temperature, event - 5 * day, event)
+            temps_post = self._values(
+                series, case, settings.temperature, event, event + settings.followup_days * day
+            )
+            rum_post = self._values(series, case, settings.rumination, event, event + 5 * day)
+            low = min(rum_post) if rum_post else None
+            r20 = (
+                sum(value > tn_value + settings.threshold_c for value in temps_post)
+                if tn_value is not None
+                else None
+            )
+            drop = (
+                1 - low / rn_value
+                if low is not None and rn_value and rn_value > 0
+                else None
+            )
+            temps = [
+                self._exact(series, case, settings.temperature, event + n * hour)
+                for n in (0, 6, 12, 18, 24)
+            ]
+            activities = [
+                mean(values) if values else None
+                for values in (
+                    self._values(series, case, settings.activity, event - 6 * hour, event),
+                    *(
+                        self._values(
+                            series,
+                            case,
+                            settings.activity,
+                            event + (n - 6) * hour,
+                            event + n * hour,
+                        )
+                        for n in (6, 12, 18, 24)
+                    ),
+                )
+            ]
+            rumination = [
+                self._exact(series, case, settings.rumination, event + n * hour)
+                for n in (0, 24, 48, 72, 96, 120)
+            ]
+            values: tuple[Any, ...] = (
+                row - 2,
+                case.cow,
+                None,
+                None,
+                tn_value,
+                max(temps_pre) if temps_pre else None,
+                *temps,
+                r20,
+                an_value,
+                *activities,
+                rn_value,
+                low,
+                drop,
+                None,
+                *rumination,
+                event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M %Z"),
+                case.farm,
+                case.from_date,
+                case.to_date,
+                case.status,
+            )
+            assert len(values) == 33
+            for column, value in enumerate(values):
+                if value is None:
+                    if column not in (2, 3, 21):
+                        missing[
+                            CORE_HEADERS[column] if column < 28 else extra_headers[column - 28]
+                        ] += 1
+                    continue
+                if isinstance(value, int | float):
+                    fmt = percent if column == 20 else integer if column in (0, 11) else number
+                    cases_sheet.write_number(row, column, value, fmt)
+                else:
+                    cases_sheet.write_string(row, column, str(value))
+        normal_sheet = workbook.add_worksheet("Normal values")
+        normal_sheet.hide_gridlines(2)
+        normal_sheet.freeze_panes(2, 2)
+        normal_sheet.set_column(0, 0, 15)
+        normal_sheet.set_column(1, 1, 16)
+        normal_sheet.set_column(2, 4, 15)
+        normal_sheet.write_string(0, 0, "Baseline normal values", title)
+        for column, name in enumerate(("Cow", "Time zero", "Tn", "AN", "Rn")):
+            normal_sheet.write_string(1, column, name, header)
+        for row, case in enumerate(source.cases, 2):
+            base = case_baselines[case.key]
+            normal_sheet.write_string(row, 0, case.cow)
+            normal_sheet.write_string(
+                row,
+                1,
+                events[case.key].astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M"),
+            )
+            for column, role in enumerate(("temperature", "activity", "rumination"), 2):
+                if base[role] is not None:
+                    normal_sheet.write_number(row, column, base[role], number)
+        self._timepoint_sheet(
+            workbook,
+            "Temperature timepoints",
+            source.cases,
+            events,
+            settings.temperature,
+            settings.temp_step_hours,
+            settings.temp_horizon_hours,
+            "T",
+            series,
+            title,
+            header,
+            number,
+            muted,
+            stop,
+        )
+        self._timepoint_sheet(
+            workbook,
+            "Rumination timepoints",
+            source.cases,
+            events,
+            settings.rumination,
+            settings.rum_step_hours,
+            settings.rum_horizon_hours,
+            "RT",
+            series,
+            title,
+            header,
+            number,
+            muted,
+            stop,
+        )
+        for title_text, pair, role in (
+            ("Temperature aligned", settings.temperature, "temperature"),
+            ("Activity aligned", settings.activity, "activity"),
+            ("Rumination aligned", settings.rumination, "rumination"),
+        ):
+            self._aligned(
+                workbook,
+                title_text,
+                source.cases,
+                events,
+                pair,
+                role,
+                series,
+                case_baselines,
+                settings,
+                title,
+                header,
+                number,
+                muted,
+                stop,
+            )
+        self._graphs(workbook, source.cases, settings, title, muted)
+        definitions = workbook.add_worksheet("Definitions")
+        definitions.hide_gridlines(2)
+        definitions.set_column(0, 0, 27)
+        definitions.set_column(1, 1, 90)
+        definitions.write_string(0, 0, "What each column means", title)
+        notes = (
+            ("Source", "Original analysis_ready.csv SHA-256: " + source.csv_sha256),
+            (
+                "Resolution",
+                source.resolution
+                + "; exact elapsed hours are never renamed as download intervals.",
+            ),
+            (
+                "Time zero",
+                "Explicit farm-local treatment/key-event time per cow; elapsed offsets use UTC.",
+            ),
+            (
+                "Normal temperature",
+                (
+                    f"{settings.normal_temp[0]} [{settings.normal_temp[1]}], previous 7 days."
+                    if settings.normal_temp
+                    else "Not mapped; Tn and R20 proxy remain blank."
+                ),
+            ),
+            (
+                "Temperature",
+                (
+                    f"{settings.temperature[0]} [{settings.temperature[1]}], "
+                    "without drinking cycles; exact T points."
+                    if settings.temperature
+                    else "Not mapped; T points and Talert proxy blank."
+                ),
+            ),
+            (
+                "Activity",
+                (
+                    f"{settings.activity[0]} [{settings.activity[1]}], "
+                    "previous 14 days baseline; AT in 6-hour windows."
+                    if settings.activity
+                    else "Not mapped; AN and AT points remain blank."
+                ),
+            ),
+            (
+                "Rumination",
+                (
+                    f"{settings.rumination[0]} [{settings.rumination[1]}], "
+                    "previous 7 days baseline; Rl next 5 days."
+                    if settings.rumination
+                    else "Not mapped; R and RT points remain blank."
+                ),
+            ),
+            (
+                "Talert proxy",
+                "Maximum temperature without drinking cycles in the 5 days "
+                "before time zero; not an alert flag.",
+            ),
+            (
+                "R20 proxy",
+                f"Count of distinct measurements > Tn + {settings.threshold_c:g} °C "
+                f"in first {settings.followup_days} days; not alert events.",
+            ),
+            (
+                "%drop",
+                "Stored as 1 - Rl/Rn and formatted as a percentage, like the client's "
+                "Excel example; blank when Rn is zero or unavailable.",
+            ),
+            (
+                "Rback",
+                "Blank pending clarification: PDF says time until Rl is "
+                "reached again after falling to Rl.",
+            ),
+            ("Lact / DIM", "Blank: not established by this measurement collection at time zero."),
+            (
+                "Aligned activity",
+                "At each labelled offset, mean of the preceding 6-hour "
+                "window; point metrics are exact.",
+            ),
+            ("95% limits", "Mean ± 1.96 × sample SD / sqrt(actual n); n<2 leaves limits blank."),
+            (
+                "Duplicate policy",
+                "Identical same-timestamp values collapse only here; conflicting "
+                "values are excluded and flagged. Source unchanged.",
+            ),
+        )
+        for row, (name, text) in enumerate(notes, 2):
+            definitions.write_string(row, 0, name, header)
+            definitions.write_string(row, 1, text, muted)
+        qc = workbook.add_worksheet("QC and missing data")
+        qc.hide_gridlines(2)
+        qc.set_column(0, 0, 36)
+        qc.set_column(1, 1, 20)
+        qc.set_column(2, 7, 17)
+        qc.write_string(0, 0, "Quality and availability", title)
+        qc.write_string(
+            1,
+            0,
+            "All counts describe this derived view; original source files are unchanged.",
+            muted,
+        )
+        qc.write_string(2, 0, "Item", header)
+        qc.write_string(2, 1, "Count", header)
+        all_quality = quality + Counter(
+            {"missing_" + name: count for name, count in missing.items()}
+        )
+        all_quality["cow_cases"] = len(source.cases)
+        all_quality["non_saved_cow_cases"] = sum(case.status != "saved" for case in source.cases)
+        required_windows = (
+            ("short_14d_activity_baseline", timedelta(days=14), timedelta()),
+            ("short_7d_normal_baseline", timedelta(days=7), timedelta()),
+            ("short_5d_temperature_proxy", timedelta(days=5), timedelta()),
+            ("short_5d_rumination_low", timedelta(), timedelta(days=5)),
+            (
+                "short_R20_followup",
+                timedelta(),
+                timedelta(days=settings.followup_days),
+            ),
+            (
+                "short_aligned_window",
+                timedelta(hours=settings.aligned_before_hours),
+                timedelta(hours=settings.aligned_after_hours),
+            ),
+        )
+        for name, before, after in required_windows:
+            all_quality[name] = sum(
+                events[case.key] - before < self._collection_start(case)
+                or events[case.key] + after > self._collection_end(case)
+                for case in source.cases
+            )
+        for row, (name, count) in enumerate(sorted(all_quality.items()), 3):
+            qc.write_string(row, 0, name)
+            qc.write_number(row, 1, count, integer)
+        case_row = len(all_quality) + 6
+        qc.write_string(case_row, 0, "Availability by cow/case", title)
+        qc.write_string(
+            case_row + 1,
+            0,
+            "Baseline sample counts are not adequacy guarantees; inspect dates and resolution.",
+            muted,
+        )
+        for column, label in enumerate(
+            (
+                "Farm",
+                "Cow",
+                "API status",
+                "Normal temp 7d n",
+                "Activity 14d n",
+                "Rumination 7d n",
+                "T0 exact?",
+                "Conflicting points",
+            )
+        ):
+            qc.write_string(case_row + 2, column, label, header)
+        for row, case in enumerate(source.cases, case_row + 3):
+            event = events[case.key]
+            qc.write_string(row, 0, case.farm)
+            qc.write_string(row, 1, case.cow)
+            qc.write_string(row, 2, case.status)
+            for column, pair, days in (
+                (3, settings.normal_temp, 7),
+                (4, settings.activity, 14),
+                (5, settings.rumination, 7),
+            ):
+                qc.write_number(
+                    row,
+                    column,
+                    len(self._values(series, case, pair, event - timedelta(days=days), event)),
+                    integer,
+                )
+            qc.write_string(
+                row,
+                6,
+                "Yes"
+                if self._exact(series, case, settings.temperature, event) is not None
+                else "No",
+            )
+            qc.write_number(
+                row,
+                7,
+                sum(
+                    len(conflicts.get((case.key, pair), ()))
+                    for pair in (
+                        settings.normal_temp,
+                        settings.temperature,
+                        settings.activity,
+                        settings.rumination,
+                    )
+                ),
+                integer,
+            )
+        workbook.close()
+
+    @staticmethod
+    def _collection_start(case: StudyCase) -> datetime:
+        local = datetime.fromisoformat(case.from_date).replace(tzinfo=ZoneInfo(case.timezone))
+        return local.astimezone(UTC)
+
+    @staticmethod
+    def _collection_end(case: StudyCase) -> datetime:
+        local = (datetime.fromisoformat(case.to_date) + timedelta(days=1)).replace(
+            tzinfo=ZoneInfo(case.timezone)
+        )
+        return local.astimezone(UTC)
+
+    def _aligned(
+        self,
+        workbook,
+        name,
+        cases,
+        events,
+        pair,
+        role,
+        series,
+        baselines,
+        settings,
+        title,
+        header,
+        number,
+        muted,
+        stop,
+    ) -> None:
+        sheet = workbook.add_worksheet(name)
+        sheet.hide_gridlines(2)
+        sheet.freeze_panes(3, 1)
+        sheet.set_column(0, 0, 16)
+        sheet.set_column(1, len(cases), 15)
+        stats_start = len(cases) + 1
+        sheet.set_column(stats_start, stats_start + 6, 16)
+        sheet.write_string(0, 0, name, title)
+        sheet.write_string(
+            1,
+            0,
+            "Cow values are aligned by elapsed hours from each cow's own time zero. "
+            "Mean and 95% limits use available cows at each offset.",
+            muted,
+        )
+        headings = ("Hours from T0",) + tuple(
+            f"{case.farm} · cow {case.cow} · case {case.index}" for case in cases
+        )
+        headings += (
+            "n",
+            "Mean",
+            "Lower 95%",
+            "Upper 95%",
+            "Mean vs normal",
+            "Relative lower 95%",
+            "Relative upper 95%",
+        )
+        for column, text in enumerate(headings):
+            sheet.write_string(2, column, text, header)
+        sheet.set_row(2, 44)
+        start = -settings.aligned_before_hours
+        end = settings.aligned_after_hours
+        offsets = list(range(start, end + 1, settings.aligned_step_hours))
+        if 0 not in offsets:
+            offsets.append(0)
+            offsets.sort()
+        if len(offsets) > MAX_OFFSETS:
+            raise ApiError("study_size", "Reduce the aligned time range or increase its step.")
+        for row, offset in enumerate(offsets, 3):
+            if stop.is_set():
+                raise ApiCancelled
+            sheet.write_number(row, 0, offset)
+            absolute = []
+            relative = []
+            for column, case in enumerate(cases, 1):
+                stamp = events[case.key] + timedelta(hours=offset)
+                if role == "activity":
+                    values = self._values(series, case, pair, stamp - timedelta(hours=6), stamp)
+                    value = mean(values) if values else None
+                else:
+                    value = self._exact(series, case, pair, stamp)
+                if value is not None:
+                    sheet.write_number(row, column, value, number)
+                    absolute.append(value)
+                    baseline = baselines[case.key][role]
+                    if baseline is not None:
+                        relative.append(value - baseline)
+            n, avg, low, high = _sample_stats(absolute)
+            sheet.write_number(row, stats_start, n)
+            for column, value in enumerate((avg, low, high), stats_start + 1):
+                if value is not None:
+                    sheet.write_number(row, column, value, number)
+            _, rel_avg, rel_low, rel_high = _sample_stats(relative)
+            for column, value in enumerate((rel_avg, rel_low, rel_high), stats_start + 4):
+                if value is not None:
+                    sheet.write_number(row, column, value, number)
+        if offsets:
+            chart = workbook.add_chart({"type": "line"})
+            for col, label, color in (
+                (stats_start + 1, "Mean", "#245D43"),
+                (stats_start + 2, "Lower 95%", "#80B25E"),
+                (stats_start + 3, "Upper 95%", "#80B25E"),
+            ):
+                chart.add_series(
+                    {
+                        "name": label,
+                        "categories": [name, 3, 0, 2 + len(offsets), 0],
+                        "values": [name, 3, col, 2 + len(offsets), col],
+                        "line": {"color": color, "width": 2 if label == "Mean" else 1},
+                    }
+                )
+            chart.set_title({"name": f"{role.capitalize()} · mean and 95% limits"})
+            chart.set_x_axis({"name": "Elapsed hours from time zero"})
+            chart.set_y_axis({"name": f"Source units: {pair[1] if pair else 'unmapped'}"})
+            chart.set_legend({"position": "bottom"})
+            sheet.insert_chart(2, stats_start + 8, chart, {"x_scale": 1.35, "y_scale": 1.25})
+
+    def _timepoint_sheet(
+        self,
+        workbook,
+        name,
+        cases,
+        events,
+        pair,
+        step,
+        horizon,
+        prefix,
+        series,
+        title,
+        header,
+        number,
+        muted,
+        stop,
+    ) -> None:
+        sheet = workbook.add_worksheet(name)
+        sheet.hide_gridlines(2)
+        sheet.freeze_panes(3, 2)
+        sheet.set_column(0, 0, 14)
+        sheet.set_column(1, 1, 23)
+        sheet.set_column(2, 2 + horizon // step, 15)
+        sheet.write_string(0, 0, name, title)
+        sheet.write_string(
+            1,
+            0,
+            f"Exact source {pair[0] if pair else 'unmapped'} "
+            f"[{pair[1] if pair else 'unmapped'}] points at the configured elapsed-hour "
+            "steps; missing points remain blank.",
+            muted,
+        )
+        offsets = list(range(0, horizon + 1, step))
+        for column, heading in enumerate(
+            ("Cow", "Farm-local time zero") + tuple(f"{prefix}{offset}" for offset in offsets)
+        ):
+            sheet.write_string(2, column, heading, header)
+        for row, case in enumerate(cases, 3):
+            if stop.is_set():
+                raise ApiCancelled
+            event = events[case.key]
+            sheet.write_string(row, 0, case.cow)
+            sheet.write_string(
+                row,
+                1,
+                event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M"),
+            )
+            for column, offset in enumerate(offsets, 2):
+                value = self._exact(series, case, pair, event + timedelta(hours=offset))
+                if value is not None:
+                    sheet.write_number(row, column, value, number)

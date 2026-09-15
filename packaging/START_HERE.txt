@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.8.0
+SmaxTec Workbench — desktop preview 0.9.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
@@ -16,6 +16,21 @@ SmaxTec Workbench — desktop preview 0.8.0
 10. Results shows each saved, partial, failed or cancelled target. Open the graph-ready
     CSV, presentation workbook or complete audit folder directly from that screen.
 11. Choose Disconnect or close the app to release the in-memory API session.
+
+CLIENT STUDY WORKBOOK PREVIEW
+
+In Results choose Create study workbook, or Choose saved collection for an earlier
+complete API collection. Match the source codes/units for normal temperature,
+temperature without drinking cycles, activity and rumination. An unavailable role
+may stay unmapped; its fields will be blank. Enter the actual event/treatment time
+for every cow as DD/MM/YYYY HH:MM in that farm's timezone. Optionally copy a truly
+shared time with Apply to every cow, then review the whole table. Choose study
+windows and create. A separate client-study.xlsx appears beside the original
+collection. Its first sheet has one cow/case per row; aligned cow sheets, cohort
+graphs, Definitions and QC follow. T6 means an actual point exactly six elapsed
+hours after time zero; missing exact data stays blank. Talert/R20 are labelled
+proxies and Lact/DIM/Rback remain blank. This analytical preview needs client
+acceptance before clinical interpretation.
 
 Each run makes a unique folder with raw API JSON, the unchanged technical
 measurements.csv, an easier graph-ready analysis_ready.csv, optional XLSX and a hashed

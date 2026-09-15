@@ -5,13 +5,14 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.8.0 makes the official smaXtec Public API the primary workflow. Its spacious
+Version 0.9.0 keeps the official smaXtec Public API as the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
 queued target. Users can review the full queue and save direct raw JSON, a lossless
 technical CSV, a graph-ready tidy CSV and optional Excel data without waiting for email.
 The earlier browser/email workflow remains in a
-labelled legacy tab. Canonical calculations and analysis are next.
+labelled legacy tab. An additional client-study workbook preview is available from a
+saved collection; broader canonical calculations and accepted analysis remain next.
 See [current status](docs/PROJECT_STATE.md) for verified evidence and remaining gates;
 implementation is not a claim that client acceptance or a production release is complete.
 
@@ -47,6 +48,29 @@ chart, measurement index and data guide. Its measurement sheets preserve every o
 column and value; technical lineage columns are merely hidden for readability and can be
 unhidden. The existing `measurements.csv` and raw JSON remain unchanged as the lossless audit path.
 See [Direct API data](docs/API_DATA.md) for the exact contract and known API ambiguities.
+
+## Create the client-study workbook preview
+
+After downloading cow data, open **Results → Create study workbook**. You can also
+choose an earlier completed direct-API collection folder. Match the four source
+measurement codes and units to normal temperature, temperature *without drinking
+cycles*, activity and rumination; the app does not guess these roles. Enter the
+actual administration/key-event time for **each cow** as `DD/MM/YYYY HH:MM` in its
+farm timezone. If the time is genuinely shared, enter it above the table and press
+**Apply to every cow**, then review the rows. Choose the temperature differential,
+follow-up days and optional extra/aligned time steps, then **Create study workbook**.
+
+The separate `client-study.xlsx` appears in that collection folder; repeated runs
+get numbered names and leave all original API files untouched. Its main sheet has
+one row per cow in the client's T/AT/RT parameter order. Further sheets contain
+normal values, exact configurable timepoints, cow data aligned around their own
+time zero, absolute/relative mean and 95% confidence charts, and Definitions/QC.
+**T6 always means an actual reading exactly six elapsed hours later**, even when
+the chosen download interval was hourly/daily; if there is no exact reading it
+stays blank. Talert and R20 are explicitly labelled estimates, while Lact, DIM and
+Rback remain blank until their sources/meaning are confirmed. Review the QC sheet
+before using the numbers. See [client study contract](docs/CLIENT_STUDY_WORKBOOK.md).
+This is a synthetic-tested analytical preview, not a clinically accepted report.
 
 ## Legacy website export requests
 
@@ -115,8 +139,9 @@ or requested date period. Check these before later analysis.
 
 ## Download the packaged desktop preview
 
-Download the `SmaxTec-Workbench-windows-preview` artifact from the successful
-[0.8.0 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778),
+The earlier successful [0.8.0 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778)
+does **not** include the new study workbook. Download the
+`SmaxTec-Workbench-windows-preview` artifact from a successful **0.9.0** Windows build,
 extract both the artifact wrapper and the included application ZIP, and open
 `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
@@ -124,7 +149,7 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; 0.8.0 passed
-independent Windows CI smoke tests. Consult current status for 0.8.0 build
+independent Windows CI smoke tests. Consult current status for the 0.9.0 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
 installer remain release work. If the legacy Microsoft 365 route is retained, its
@@ -138,6 +163,7 @@ application registration and tenant-consent gate still need completion.
 - [Milestones and acceptance criteria](docs/ROADMAP.md)
 - [Email collection design and prerequisites](docs/EMAIL_COLLECTION.md)
 - [Direct API research and data contract](docs/API_DATA.md)
+- [Client-study workbook contract](docs/CLIENT_STUDY_WORKBOOK.md)
 - [Monday client demonstration](docs/DEMO_RUNBOOK.md)
 - [Microsoft 365 one-time IT setup](docs/MICROSOFT_365_SETUP.md)
 - [Developer setup](docs/DEVELOPMENT.md)

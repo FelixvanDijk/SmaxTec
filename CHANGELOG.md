@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.0 — 2026-09-15 (client-study preview)
+
+- Inspect the client's five-sheet analysis example and two-page parameter brief;
+  document exact field definitions and unavailable/ambiguous items.
+- Add an opt-in, non-overwriting study workbook from an intact direct-API collection:
+  one row per cow/case in the client's 28-column parameter order, normal values,
+  configurable exact T/RT timepoints, side-by-side cow alignment, absolute/relative
+  cohort graphs, Definitions and missing-data/coverage QC.
+- Require reviewed source measurement-code/unit roles and each cow's farm-local key
+  event time. Keep T6 at exactly six elapsed hours regardless of download interval;
+  do not fill missing exact points with nearest samples.
+- Add guided, scrollable, cancellable creation in the API Results workspace without
+  changing authentication, requests, original raw/CSV/manifest/descriptive workbook
+  outputs. Keep Lact, DIM and Rback blank; label Talert/R20 as explicit proxies.
+- Add synthetic formula, hash, timezone, non-overwrite, chart and Qt workflow tests.
+  Representative source data and client/clinical acceptance remain pending.
+
 ## 0.8.0 — 2026-09-13 (presentation preview)
 
 - Preserve the proven direct-API authentication, discovery, request, date, metric,
