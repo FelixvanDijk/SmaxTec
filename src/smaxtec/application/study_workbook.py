@@ -570,11 +570,7 @@ class StudyWorkbookService:
                 if tn_value is not None
                 else None
             )
-            drop = (
-                1 - low / rn_value
-                if low is not None and rn_value and rn_value > 0
-                else None
-            )
+            drop = 1 - low / rn_value if low is not None and rn_value and rn_value > 0 else None
             temps = [
                 self._exact(series, case, settings.temperature, event + n * hour)
                 for n in (0, 6, 12, 18, 24)
