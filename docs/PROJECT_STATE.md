@@ -245,11 +245,13 @@ Do not invent calculations or clinical meanings in M4.
   executable policy denied `Start-Process` of the unsigned bundle during packaged
   smoke; the build script safely removed its temporary stage and did not publish
   a local archive. GitHub clean Windows CI/preview artifact is the required
-  independent executable proof. GitHub Windows run 34982543106 completed all
-  415 tests, bundle build and packaged executable smoke successfully, then failed
+  independent executable proof. [GitHub Windows run 35019228025](https://github.com/FelixvanDijk/SmaxTec/actions/runs/35019228025)
+  for source commit `7bef047` completed all **419 tests**, dependency/lint/format
+  checks, bundle build and packaged executable smoke successfully, then failed
   **only** at `upload-artifact`: the repository's Actions artifact storage quota
-  was full. No new ZIP was published; older preview artifacts are not deleted
-  without user approval. Final follow-up source revision still needs CI proof.
+  was full. No 0.9.0 ZIP was published; 14 older preview artifacts remain intact
+  pending user approval for cleanup. GitHub says usage recalculation takes 6–12
+  hours after quota changes, so an immediate retry may still fail.
 - 0.8.0 source: all **410 tests**, dependency integrity, Ruff, formatting and focused
   API/export/UI checks pass locally. Synthetic workbook regression proves the existing
   measurement sheet and technical columns remain while the summary chart, measurement

@@ -146,11 +146,15 @@ On 2026-09-15 all 415 offline tests, dependency/lint/format checks and the sourc
 app's smoke passed locally. PyInstaller assembled the updated bundle, but this
 development computer again refused to launch its unsigned executable for packaged
 smoke; the staging folder was cleaned without publishing a local archive. Clean
-GitHub Windows run 34982543106 passed the locked install, checks, bundle and
-packaged executable smoke, but `upload-artifact` failed because the repository's
-Actions artifact storage quota is full. Source follow-up with SD/worker cleanup
-awaits another clean CI proof. Old artifacts are preserved pending user direction;
-no 0.9.0 artifact link should be advertised yet.
+[GitHub Windows run 35019228025](https://github.com/FelixvanDijk/SmaxTec/actions/runs/35019228025)
+for source commit `7bef047` passed the locked install, all 419 tests, dependency/
+lint/format checks, bundle build and packaged executable smoke. `upload-artifact`
+then failed because the repository's Actions artifact storage quota is full.
+Fourteen older temporary preview ZIPs total roughly 4 GiB and remain intact
+pending user direction; no 0.9.0 artifact link should be advertised yet. GitHub
+warns quota usage may take 6–12 hours to recalculate after deletion or other
+storage changes. Retain the source rollback tag and do not confuse a built runner
+bundle with a downloadable, signed production installer.
 This only proves bundling/offline startup, not target-machine signing, real API
 source mapping or client acceptance of the study calculations/charts.
 

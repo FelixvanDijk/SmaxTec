@@ -140,8 +140,12 @@ or requested date period. Check these before later analysis.
 ## Download the packaged desktop preview
 
 The earlier successful [0.8.0 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778)
-does **not** include the new study workbook. Download the
-`SmaxTec-Workbench-windows-preview` artifact from a successful **0.9.0** Windows build,
+does **not** include the new study workbook. The [0.9.0 Windows checks](https://github.com/FelixvanDijk/SmaxTec/actions/runs/35019228025)
+passed tests, bundle build and packaged executable smoke, but GitHub rejected the
+artifact upload because this repository's Actions storage quota is full. There is
+therefore **no downloadable 0.9.0 ZIP yet**; use `Start SmaxTec.cmd` on this
+prepared development computer. After the quota issue is resolved, download the
+`SmaxTec-Workbench-windows-preview` artifact from a successful 0.9.0 run,
 extract both the artifact wrapper and the included application ZIP, and open
 `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
