@@ -88,7 +88,7 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.10.2 automatically adds a **single-sheet** `client-analysis.xlsx` to
+Source 0.10.3 automatically adds a **single-sheet** `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
 guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row,
 exact client A:AB header order (`No`, `Cow`, ... `To`, ... `R120`), an Excel table,
@@ -111,6 +111,8 @@ and Rback as the disclosed hours from first post-T0 Rl to the first later value
 at/above Rn. Older collections without lifecycle remain compatible and blank there.
 Never silently widen reviewed dates; tell users to cover 14 days before and five
 days after T0 for all current fields.
+Lifecycle metadata is optional enrichment: unsupported or malformed lifecycle
+records must be skipped per cow and must never block farm/cow catalogue loading.
 Preserve raw JSON, both CSVs,
 existing descriptive workbook, request semantics and the guided builder. A derived
 workbook failure must be a curated warning, not loss of the completed collection.

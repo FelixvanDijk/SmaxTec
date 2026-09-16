@@ -111,29 +111,28 @@ def _optional_timestamp(value: Any) -> datetime | None:
 
 
 def _lactations(item: dict[str, Any]) -> tuple[ApiLactation, ...]:
-    """Read documented ISO lifecycle cycles; ignore deprecated integer dates."""
+    """Read usable lifecycle cycles without making optional metadata a farm blocker."""
     lifecycle = item.get("lifecycle")
-    if lifecycle is None:
-        return ()
     if not isinstance(lifecycle, dict):
-        raise _error("api_response")
+        return ()
     cycles = lifecycle.get("cycles", [])
-    if cycles is None:
-        cycles = []
     if not isinstance(cycles, list) or len(cycles) > 1000:
-        raise _error("api_response")
+        cycles = []
     candidates = [lifecycle, *cycles]
     result: dict[tuple[int, datetime], ApiLactation] = {}
     for cycle in candidates:
         if not isinstance(cycle, dict):
-            raise _error("api_response")
-        number = cycle.get("lactation_number")
-        calving = _optional_timestamp(cycle.get("last_calving_date"))
-        if number is None or calving is None:
             continue
+        number = cycle.get("lactation_number")
         if isinstance(number, bool) or not isinstance(number, int) or number < 1:
-            raise _error("api_response")
-        dry_off = _optional_timestamp(cycle.get("dry_off_date"))
+            continue
+        try:
+            calving = _optional_timestamp(cycle.get("last_calving_date"))
+            dry_off = _optional_timestamp(cycle.get("dry_off_date"))
+        except ApiError:
+            continue
+        if calving is None:
+            continue
         if dry_off is not None and dry_off < calving:
             # A timestamp before this calving cannot close the current cycle.
             dry_off = None

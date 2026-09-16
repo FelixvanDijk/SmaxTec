@@ -195,6 +195,62 @@ def test_metric_400_is_target_specific_and_session_is_retained():
     assert "400" not in str(captured.value)
 
 
+def test_optional_lifecycle_variants_never_block_farm_catalogue():
+    client, farm, _opener = connected_client(
+        Response(
+            {
+                "_id": FARM_ID,
+                "timezone": "Europe/London",
+                "devices": [],
+                "animal_groups": [],
+            }
+        ),
+        Response(
+            [
+                {
+                    "_id": ANIMAL_ID,
+                    "organisation_id": FARM_ID,
+                    "mark": "57",
+                    "archived": False,
+                    "lifecycle": {
+                        "lactation_number": 3,
+                        "last_calving_date": "2026-08-31T23:00:00Z",
+                        "cycles": [
+                            None,
+                            {
+                                "lactation_number": "2",
+                                "last_calving_date": "2025-01-01T00:00:00Z",
+                            },
+                            {
+                                "lactation_number": 2,
+                                "last_calving_date": "not-a-date",
+                            },
+                            {
+                                "lactation_number": 1,
+                                "last_calving_date": "2024-01-01T00:00:00Z",
+                                "dry_off_date": {"unexpected": "shape"},
+                            },
+                        ],
+                    },
+                },
+                {
+                    "_id": "animal-synthetic-657",
+                    "organisation_id": FARM_ID,
+                    "mark": "657",
+                    "archived": False,
+                    "lifecycle": ["unexpected", "shape"],
+                },
+            ]
+        ),
+    )
+
+    catalog = client.catalog(farm, False, Event())
+
+    assert [animal.number for animal in catalog.animals] == ["57", "657"]
+    assert [cycle.number for cycle in catalog.animals[0].lactations] == [3]
+    assert catalog.animals[1].lactations == ()
+
+
 def test_cancelled_request_never_opens_network_connection():
     opener = Opener()
     client = SmaxtecApiClient(opener=opener)

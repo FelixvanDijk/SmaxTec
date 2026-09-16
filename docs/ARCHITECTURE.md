@@ -513,6 +513,11 @@ not make another network request during workbook generation. This preserves the
 source at collection time, keeps the derived workbook offline/reproducible and leaves
 format-2 manifests without the additive field backward compatible.
 
+Lifecycle is optional enrichment, not a catalogue integrity requirement. A valid
+core animal with an absent, malformed or vendor-variant lifecycle must still load;
+parse usable cycles independently and omit only uncertain lifecycle values. Strict
+validation remains in force for the animal's core ID/farm/archived identity fields.
+
 At T0, choose the latest lifecycle cycle whose calving is not later than T0 and whose
 dry-off is absent or later than T0. `Lact` is that cycle number; `DIM` is the farm-local
 calendar-date difference between T0 and calving. Continue the accepted Tn, AN, Rn, Rl

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.3 — 2026-09-17 (farm-loading regression fix)
+
+- Fix the 0.10.2 regression where an unexpected optional animal `lifecycle` shape
+  could reject the complete farm catalogue as an unsupported API response.
+- Parse lifecycle enrichment independently per cycle: retain valid documented
+  cycles, skip malformed/unsupported lifecycle values, and leave only Lact/DIM
+  blank rather than preventing farms and cows from loading.
+- Add a regression containing mixed invalid lifecycle types, dates, numbers and
+  nested shapes while confirming the full animal catalogue remains available.
+
 ## 0.10.2 — 2026-09-16 (lifecycle and baseline fields)
 
 - Read the official Public API v2 animal schema and add its documented lifecycle

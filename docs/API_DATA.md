@@ -195,6 +195,9 @@ resume; rerun creates a new collection and does not overwrite the earlier one.
   JSON/content-encoding checks and a 32 MiB response cap. Raw output files are capped.
 - Remote IDs/names/types are validated and catalogued under the signed-in farm before
   they can be requested. Unexpected HTTP/payload details do not reach the GUI.
+- Animal lifecycle is optional analytical enrichment. Unsupported lifecycle variants
+  are skipped per cycle and may leave Lact/DIM blank; they never invalidate an otherwise
+  valid cow or prevent its farm catalogue from loading.
 - The adapter only reads catalogues, metrics, data and the optional health KPI after
   explicit review. It never calls animal/event mutations or the emailed Excel endpoints.
 - Output contains real farm/sensor data. Users must choose an approved storage location

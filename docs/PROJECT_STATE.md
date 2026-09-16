@@ -1,7 +1,10 @@
 # Project state — start here each session
 
-Last updated: 2026-09-16. **Source preview 0.10.2 fills lifecycle and derived
-baseline/recovery fields in the automatic client-analysis.xlsx**. New API
+Last updated: 2026-09-17. **Source preview 0.10.3 restores farm loading when smaXtec
+returns optional lifecycle variants.** Lifecycle is now best-effort enrichment per
+cow/cycle: valid cycles still fill Lact/DIM, but unsupported values are skipped and
+can no longer reject the entire catalogue. Source 0.10.2 fills lifecycle and derived
+  baseline/recovery fields in the automatic client-analysis.xlsx. New API
 collections preserve documented animal lifecycle cycles, allowing `Lact` and
 farm-local calendar-day `DIM` at T0. `Tn`, `AN`, `Rn` and `%drop` use the client's
 agreed windows/formula; Rback is a disclosed approximation from first post-T0 Rl
@@ -15,12 +18,20 @@ treatment time. A representative saved direct-API collection confirms separate
 `temp_normal_index`, `temp_without_drink_cycles`, `act`, and `rum_index` pairs.
 Rumination seconds are converted to minutes in the derived workbook only. The
 normal-index clinical interpretation remains an inference requiring client review.
-The guided 0.9.0 builder remains available independently. All 428 offline tests
+The guided 0.9.0 builder remains available independently. All 429 offline tests
 pass. Older collections remain readable but cannot retroactively supply lifecycle
 metadata; a saved real collection
 regenerated as a one-sheet `client-analysis-2.xlsx` with seven cow rows and available
 T/AT/RT fields populated. Clinical and installer acceptance remain pending. See
 Decisions 018–020 and `CLIENT_STUDY_WORKBOOK.md`.
+
+0.10.3 verification: the reported failure was isolated to the only new farm-load
+boundary in 0.10.2. Synthetic API coverage now mixes valid cycles with invalid
+container types, dates, lactation numbers and dry-off shapes and still loads every
+cow. The targeted API/download/study suite passes. The full suite passes with all
+429 offline tests, Ruff lint/format and dependency checks. Packaging
+was not repeated because this adapter-only fix adds no dependency or bundle boundary;
+live farm selection by the user remains the acceptance gate.
 
 0.10.2 verification: the targeted API/download/study suite passed (24 tests), all
 428 offline tests passed, and Ruff lint/format checks passed. Synthetic output
