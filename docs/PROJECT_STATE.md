@@ -1,7 +1,11 @@
 # Project state — start here each session
 
-Last updated: 2026-09-16. **Source preview 0.10.1 makes the automatic
-client-analysis.xlsx a single, compact ASPI-style cow table**: exactly one worksheet,
+Last updated: 2026-09-16. **Source preview 0.10.2 fills lifecycle and derived
+baseline/recovery fields in the automatic client-analysis.xlsx**. New API
+collections preserve documented animal lifecycle cycles, allowing `Lact` and
+farm-local calendar-day `DIM` at T0. `Tn`, `AN`, `Rn` and `%drop` use the client's
+agreed windows/formula; Rback is a disclosed approximation from first post-T0 Rl
+to the first later reading at/above Rn. The table remains exactly one worksheet,
 28 A:AB headers in the client's order, and one row per cow/case. The guided
 multi-sheet workbook and established direct-API raw responses, CSVs and descriptive
 workbook are unchanged. The optional per-cow Study T0 is reviewed with each queue
@@ -11,11 +15,21 @@ treatment time. A representative saved direct-API collection confirms separate
 `temp_normal_index`, `temp_without_drink_cycles`, `act`, and `rum_index` pairs.
 Rumination seconds are converted to minutes in the derived workbook only. The
 normal-index clinical interpretation remains an inference requiring client review.
-The guided 0.9.0 builder remains available independently. All 427 offline tests
-pass; a saved real collection
+The guided 0.9.0 builder remains available independently. All 428 offline tests
+pass. Older collections remain readable but cannot retroactively supply lifecycle
+metadata; a saved real collection
 regenerated as a one-sheet `client-analysis-2.xlsx` with seven cow rows and available
 T/AT/RT fields populated. Clinical and installer acceptance remain pending. See
-Decisions 018–019 and `CLIENT_STUDY_WORKBOOK.md`.
+Decisions 018–020 and `CLIENT_STUDY_WORKBOOK.md`.
+
+0.10.2 verification: the targeted API/download/study suite passed (24 tests), all
+428 offline tests passed, and Ruff lint/format checks passed. Synthetic output
+verifies lifecycle history transport, Lact 3, DIM 14, seven-/fourteen-day baseline
+means, decimal `%drop`, an 88-hour Rback recovery and old-manifest compatibility.
+PyInstaller assembled the 0.10.2 bundle, but this computer's existing policy again
+denied launching the unsigned executable (`Access is denied`), so no local packaged
+smoke is claimed and the final ZIP was not published. No live credentialed collection
+was run for this slice; lifecycle semantics and Rback still need client acceptance.
 
 0.10.1 verification: the targeted study/API suite passed (33 tests), all 427
 offline tests passed, Ruff lint/format and dependency checks passed. The real
@@ -82,7 +96,10 @@ Do not invent calculations or clinical meanings in M4.
   absent; it is never substituted for T/temperature-without-drink-cycles. The
   derived rumination values divide source seconds by 60, with raw CSV unchanged.
   A missing T0 uses a labelled From-midnight period anchor for pivoting, not a
-  treatment claim. Rback, Lact and DIM remain unavailable.
+  treatment claim. Source 0.10.2 captures official lifecycle cycles; Lact selects
+  the cycle containing T0 and DIM counts farm-local calendar days since calving.
+  Tn/AN/Rn and `%drop` use the supplied definitions. Rback is explicitly an
+  approximation from first Rl to the first later value at/above Rn.
 - Source 0.10.1 replaces **only the automatic XLSX presentation** with one
   `Cow analysis` sheet matching the ASPI table's 28 exact headers, blue row stripes,
   filter arrows and compact widths. It has no dashboard or extra workbook tabs;
@@ -117,8 +134,9 @@ Do not invent calculations or clinical meanings in M4.
   Elapsed time is UTC; exact T/RT points never become nearest samples. The tidy
   CSV SHA-256 is rechecked before generation; raw responses, both CSVs, manifest
   and existing optional API workbook are unchanged.
-- Talert and R20 are *labelled proxies*, not actual alerts. Lact, DIM and Rback are
-  deliberately blank pending accepted sources/clarification. 95% limits use the
+- Talert and R20 are *labelled proxies*, not actual alerts. Lact/DIM use lifecycle
+  metadata in new collections; Rback uses the disclosed return-to-Rn approximation.
+  Older collections keep unavailable fields blank. 95% limits use the
   available n per offset; missing/conflicting points remain blank, not estimated.
   Baseline/follow-up coverage shortfalls and duplicate counts appear in QC.
 - This is an analytical **preview**, not a general canonical master or a clinically
@@ -541,7 +559,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.10.1 Git/CI state and packaged launch limitation above. Use
+1. Check the 0.10.2 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
    presentation rollback tag. The prepared source launcher includes the single-sheet
    automatic client table and the guided study UI; the retained 0.8.0 artifact does not.
@@ -557,8 +575,9 @@ Do not invent calculations or clinical meanings in M4.
 3. Compare the one-sheet `client-analysis.xlsx` cow values and the guided
    `client-study.xlsx` advanced Analysis/alignments/charts/QC against
    the client's example and reviewed manual
-   calculations. Ask whether Rback means return to normal rumination, another
-   threshold or literally repeating Rl; leave it blank until clarified. Confirm
+   calculations. Ask whether the implemented Rback approximation (first Rl to first
+   later reading at/above Rn) is correct, another threshold is intended, or the PDF
+   literally means repeating Rl. Confirm
    Talert/R20 proxies and 95% interval interpretation before any clinical use.
 4. Exercise a multi-cow/farm collection, unavailable-sensor failure, cancellation,
    longer chunked periods and health KPI. Confirm corporate proxy behavior and report

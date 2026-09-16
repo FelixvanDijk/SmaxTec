@@ -50,19 +50,24 @@ Client definitions:
 - **RT0/RT24/...:** absolute source rumination at exactly the named elapsed hour.
   The automatic report converts `rum_index/seconds` to minutes using `/60` to align
   with the example's values; the audit CSV and guided builder keep their source units.
-- **Rback:** withheld pending clarification. The PDF says time until the series
-  first hits Rl *again* after dropping to Rl, which is internally ambiguous; do
-  not substitute an unapproved return-to-normal definition.
-- **Lact/DIM:** withheld unless the user explicitly supplies reviewed values or a
-  documented, accepted source is available. The current measurement API collection
-  does not establish their values at time zero.
+- **Rback:** current disclosed approximation in hours: elapsed time from the first
+  occurrence of Rl in `[T0,T0+5d)` to the first later rumination reading at or above
+  pre-event Rn. It stays blank when Rn or a recovery reading is unavailable. The
+  client's phrase “hits Rl again” remains ambiguous, so this return-to-normal
+  interpretation still requires explicit client acceptance.
+- **Lact/DIM:** new collections preserve the official animal `lifecycle` and its
+  historical `cycles`. Lact is the latest cycle whose calving is at/before T0 and
+  whose dry-off is absent/after T0. DIM is the farm-local calendar-date difference
+  between T0 and that cycle's calving timestamp. Both remain blank for older
+  collections without lifecycle metadata or when T0 is outside a lactating cycle.
 
-The **automatic 0.10.1 companion** now matches the ASPI table's visible groundwork:
+The **automatic 0.10.2 companion** matches the ASPI table's visible groundwork:
 one `Cow analysis` sheet, A:AB only, exact 28 headers including the example's
 `To` (T0 temperature) and `R120` spellings, one cow/case per row, a filterable
 blue-banded Excel table and decimal-fraction `%drop` display (`0.13`, not `13%`).
-Unavailable Lact/DIM/Rback remain empty. Talert and R20 remain proxies, explained
-in header comments; the To header also explains the period-anchor fallback. The
+Lact/DIM and Rback use the documented/approximated rules above when inputs are
+available. Talert and R20 remain proxies, explained in header comments; the To
+header also explains the period-anchor fallback. The
 automatic table has **no** additional source columns, normal/aligned/chart or QC
 worksheets. Provenance remains in the separate unchanged collection manifest/CSVs.
 
@@ -86,6 +91,9 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   uses farm-local From 00:00 as a **period anchor** and fills available exact T/AT/RT
   columns. This is not a substitute for a real clinical key event; baseline and
   follow-up columns may be blank if the requested period lacks coverage.
+- To cover every current baseline/recovery field, request From at least 14 days
+  before T0 and To at least five days after T0. Workbench warns about this in the
+  queue but does not silently widen the reviewed API date range.
 - In the automatic report, map exact source pairs present in the representative
   collection. `temp_normal_index/degree_celsius` is provisionally the normal role,
   with disclosed `temp/degree_celsius` fallback if missing; neither is used for T.
@@ -120,5 +128,5 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   shows them explicitly; the automatic table leaves unavailable fields blank and
   requires the collection manifest/CSV for detailed audit.
 - The client must review real source metric codes/units, baseline adequacy, formula
-  interpretations, Rback, thresholds, horizon, and aligned graph appearance before
+  interpretations, the Rback approximation, thresholds, horizon, and aligned graph appearance before
   claiming clinical acceptance.

@@ -56,6 +56,13 @@ def _collection(
                 "farm_timezone": "Europe/London",
                 "status": "saved",
                 "study_event_utc": event.isoformat() if auto_event else None,
+                "lactations": [
+                    {
+                        "number": 3,
+                        "calving_utc": "2026-08-31T23:00:00+00:00",
+                        "dry_off_utc": None,
+                    }
+                ],
             }
         )
 
@@ -109,6 +116,7 @@ def _collection(
             add("rumination", "minutes", offset, 500 if offset < 0 else 400 + offset)
         add("activity", "index", 3, 10)
         add("rumination", "minutes", 12, 300)
+        add("rumination", "minutes", 100, 510)
         add("temp_no_drink", "celsius", 6, 40.06)  # identical boundary duplicate
         if auto_pairs:
             start = datetime(2026, 8, 31, 23, tzinfo=UTC)
@@ -262,11 +270,14 @@ def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path
     with ZipFile(output) as archive:
         parameters = archive.read("xl/worksheets/sheet1.xml")
         assert _numeric_cell(parameters, "E3") == pytest.approx(39.5)
+        assert _numeric_cell(parameters, "C3") == 3
+        assert _numeric_cell(parameters, "D3") == 14
         assert _numeric_cell(parameters, "N3") == pytest.approx(6)
         assert _numeric_cell(parameters, "O3") == pytest.approx(9)
         assert _numeric_cell(parameters, "S3") == pytest.approx(500)
         assert _numeric_cell(parameters, "T3") == pytest.approx(300)
         assert _numeric_cell(parameters, "U3") == pytest.approx(0.4)
+        assert _numeric_cell(parameters, "V3") == pytest.approx(88)
         root = ElementTree.fromstring(parameters)
         ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
         # The example displays 0.13 for 13%; do not Excel-format this as 13%.
@@ -276,6 +287,23 @@ def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path
         assert _numeric_cell(parameters, "W3") == pytest.approx(400)
         assert _numeric_cell(parameters, "G3") == pytest.approx(40)
         assert _numeric_cell(parameters, "H3") == pytest.approx(40.06)
+
+
+def test_older_collection_without_lifecycle_remains_compatible(tmp_path):
+    _collection(tmp_path, two_cows=False, auto_pairs=True, auto_event=True)
+    manifest_path = tmp_path / "collection.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["targets"][0].pop("lactations")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    source = StudySource.load(tmp_path)
+    assert source.cases[0].lactations == ()
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+    with ZipFile(output) as archive:
+        parameters = archive.read("xl/worksheets/sheet1.xml")
+        assert _numeric_cell(parameters, "C3") is None
+        assert _numeric_cell(parameters, "D3") is None
+        assert _numeric_cell(parameters, "E3") == pytest.approx(39.5)
 
 
 def test_automatic_table_keeps_hundreds_of_cows_on_one_sheet(tmp_path):

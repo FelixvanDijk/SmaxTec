@@ -12,6 +12,7 @@ from smaxtec.application.api_data import (
     ApiEntity,
     ApiError,
     ApiFarm,
+    ApiLactation,
     ApiMetric,
     ApiTarget,
 )
@@ -43,7 +44,14 @@ class FakeClient:
         return [{"selector": farm.id, "data": [[start.isoformat(), 71, 60, 80]]}]
 
 
-def target(number="57", *, start=date(2026, 9, 1), end=date(2026, 9, 2), metrics=()):
+def target(
+    number="57",
+    *,
+    start=date(2026, 9, 1),
+    end=date(2026, 9, 2),
+    metrics=(),
+    lactations=(),
+):
     farm = ApiFarm("farm-synthetic-001", "Synthetic Farm", "Europe/London")
     entity = ApiEntity(
         "animal-synthetic-" + number,
@@ -52,6 +60,7 @@ def target(number="57", *, start=date(2026, 9, 1), end=date(2026, 9, 2), metrics
         number,
         number,
         "UK000000000" + number,
+        lactations=lactations,
     )
     return ApiTarget(entity, start, end, metrics)
 
@@ -59,7 +68,13 @@ def target(number="57", *, start=date(2026, 9, 1), end=date(2026, 9, 2), metrics
 def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifest(tmp_path):
     client = FakeClient()
     request = ApiDownloadRequest(
-        (target("57"), target("657", metrics=("temp",))),
+        (
+            target(
+                "57",
+                lactations=(ApiLactation(3, datetime(2026, 8, 31, 23, tzinfo=UTC)),),
+            ),
+            target("657", metrics=("temp",)),
+        ),
         tmp_path,
         "September herd data",
         aggregation="hourly",
@@ -80,6 +95,13 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     assert manifest["total_measurement_rows"] == 4
     assert manifest["cancelled"] is False
     assert len(manifest["targets"]) == 2
+    assert manifest["targets"][0]["lactations"] == [
+        {
+            "number": 3,
+            "calving_utc": "2026-08-31T23:00:00+00:00",
+            "dry_off_utc": None,
+        }
+    ]
     for entry in manifest["targets"]:
         assert entry["status"] == "saved"
         assert entry["raw_files"]

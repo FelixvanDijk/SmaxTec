@@ -82,7 +82,9 @@ The **Direct data API** workspace is the default tab:
 5. Edit From/To independently in any queue row. The same target with a different
    period remains a separate request. **Apply Browse dates to all** is explicit.
    For cow studies, optionally enter an individual farm-local **Study T0** as
-   `DD/MM/YYYY HH:MM`; it is metadata for analysis, not an API range filter.
+   `DD/MM/YYYY HH:MM`; it is metadata for analysis, not an API range filter. To
+   cover all current baseline/recovery fields, choose From at least 14 days before
+   T0 and To at least five days after T0; Workbench never widens reviewed dates silently.
 6. Choose native, 10-minute, hourly or daily resolution; optionally include the
    documented weekly farm health index; choose destination, collection name and Excel.
 7. Review every farm/target/date/timezone/measurement association, then download.
@@ -157,7 +159,9 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   Excel's row limit. The chart is descriptive inventory, not a clinical conclusion.
 - `collection.json` format 2 records target statuses, file paths, row counts and SHA-256
   hashes for both CSV views and, when built, the derived client workbook. Each cow's
-  optional UTC study event and companion failure warning are additive metadata. It
+  optional UTC study event, documented lifecycle lactation cycles and companion
+  failure warning are additive metadata. Older format-2 manifests without lifecycle
+  remain compatible. It
   never stores credentials or bearer tokens. The original
   `measurements.csv` columns are unchanged from format 1 for compatibility.
 - `client-analysis.xlsx` now has one worksheet only: a compact, filterable,
@@ -170,6 +174,9 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   `temp_normal_index/degree_celsius` (normal interpretation inferred),
   `temp_without_drink_cycles/degree_celsius`, `act/act`, and `rum_index/seconds`.
   Rumination converts to minutes in the derived workbook, not the source CSV.
+  New collections use the official animal lifecycle at T0 for Lact/DIM. Tn, AN and
+  Rn use the specified pre-T0 windows, `%drop` is `1-Rl/Rn`, and Rback is a disclosed
+  return-to-Rn approximation after the first Rl minimum.
   Original API rows remain in the tidy/audit outputs. See `CLIENT_STUDY_WORKBOOK.md`.
 
 Raw/CSV files are written through exclusive partial files and atomically published.

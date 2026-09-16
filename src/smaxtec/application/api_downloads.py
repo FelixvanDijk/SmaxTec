@@ -697,6 +697,18 @@ class ApiDownloadService:
             "animal_number": target.entity.number,
             "animal_name": target.entity.name,
             "official_id": target.entity.official_id,
+            "lactations": [
+                {
+                    "number": lactation.number,
+                    "calving_utc": lactation.calving_utc.astimezone(UTC).isoformat(),
+                    "dry_off_utc": (
+                        lactation.dry_off_utc.astimezone(UTC).isoformat()
+                        if lactation.dry_off_utc is not None
+                        else None
+                    ),
+                }
+                for lactation in target.entity.lactations
+            ],
             "from": target.start_date.isoformat(),
             "to": target.end_date.isoformat(),
             "requested_metrics": list(target.metrics),

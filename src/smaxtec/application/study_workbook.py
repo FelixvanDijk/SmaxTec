@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 
 import xlsxwriter
 
-from smaxtec.application.api_data import ApiCancelled, ApiError, ApiProgress
+from smaxtec.application.api_data import ApiCancelled, ApiError, ApiLactation, ApiProgress
 
 CORE_HEADERS = (
     "No",
@@ -115,6 +115,7 @@ class StudyCase:
     timezone: str
     status: str
     event_utc: datetime | None = None
+    lactations: tuple[ApiLactation, ...] = ()
 
     @property
     def key(self) -> tuple[str, str, str, str]:
@@ -165,6 +166,7 @@ class StudySource:
                             if entry.get("study_event_utc")
                             else None
                         ),
+                        _manifest_lactations(entry.get("lactations", [])),
                     )
                 )
             if not cases or len(cases) > MAX_CASES:
@@ -238,6 +240,22 @@ def _manifest_event(text: str) -> datetime:
     if event.tzinfo is None or event.utcoffset() is None:
         raise ValueError("event timezone missing")
     return event.astimezone(UTC)
+
+
+def _manifest_lactations(value: Any) -> tuple[ApiLactation, ...]:
+    if not isinstance(value, list) or len(value) > 1000:
+        raise ValueError("invalid lactation history")
+    result = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            raise ValueError("invalid lactation history")
+        number = entry.get("number")
+        if isinstance(number, bool) or not isinstance(number, int):
+            raise ValueError("invalid lactation number")
+        calving = _manifest_event(entry.get("calving_utc", ""))
+        dry_off = _manifest_event(entry["dry_off_utc"]) if entry.get("dry_off_utc") else None
+        result.append(ApiLactation(number, calving, dry_off))
+    return tuple(sorted(result, key=lambda item: item.calving_utc))
 
 
 @dataclass(frozen=True)
@@ -699,6 +717,48 @@ class StudyWorkbookService:
         index = bisect_left(points, at, key=lambda point: point.time)
         return points[index].value if index < len(points) and points[index].time == at else None
 
+    @staticmethod
+    def _lactation_at(case: StudyCase, at: datetime) -> ApiLactation | None:
+        """Return the latest documented lactation cycle containing ``at``."""
+        eligible = (
+            lactation
+            for lactation in case.lactations
+            if lactation.calving_utc <= at
+            and (lactation.dry_off_utc is None or at < lactation.dry_off_utc)
+        )
+        return max(eligible, key=lambda item: item.calving_utc, default=None)
+
+    @staticmethod
+    def _recovery_hours(
+        series: dict,
+        case: StudyCase,
+        pair: tuple[str, str] | None,
+        start: datetime,
+        end: datetime,
+        normal: float | None,
+    ) -> float | None:
+        """Hours from the first post-event minimum until recovery to normal.
+
+        The client's wording for Rback is ambiguous.  This explicit approximation
+        considers the first occurrence of Rl in the five-day Rl window, then finds
+        the first later observed value at or above the pre-event Rn baseline.
+        """
+        if pair is None or normal is None or normal <= 0:
+            return None
+        points = series.get((case.key, pair), ())
+        first = bisect_left(points, start, key=lambda point: point.time)
+        last = bisect_left(points, end, key=lambda point: point.time)
+        window = points[first:last]
+        if len(window) < 2:
+            return None
+        low = min(point.value for point in window)
+        low_index = next(index for index, point in enumerate(window) if point.value == low)
+        low_time = window[low_index].time
+        for point in window[low_index + 1 :]:
+            if point.value >= normal:
+                return (point.time - low_time).total_seconds() / 3600
+        return None
+
     def _write(
         self,
         path: Path,
@@ -762,6 +822,25 @@ class StudyWorkbookService:
             )
             cases_sheet.write_comment(
                 1,
+                2,
+                "Lactation number returned by the smaXtec animal lifecycle for the "
+                "cycle containing time zero. Older collections may not contain it.",
+            )
+            cases_sheet.write_comment(
+                1,
+                3,
+                "Days in milk at time zero: farm-local calendar days since that "
+                "lactation's calving date. Blank if lifecycle data is unavailable "
+                "or the cow was already dry.",
+            )
+            cases_sheet.write_comment(
+                1,
+                4,
+                "Mean normal-temperature metric over the seven days before time zero. "
+                "The downloaded period must include that history.",
+            )
+            cases_sheet.write_comment(
+                1,
                 11,
                 f"Proxy: distinct temperature measurements above Tn + "
                 f"{settings.threshold_c:g} Celsius in the first "
@@ -775,9 +854,23 @@ class StudyWorkbookService:
             )
             cases_sheet.write_comment(
                 1,
+                12,
+                "Mean activity over the fourteen days before time zero. The "
+                "downloaded period must include that history.",
+            )
+            cases_sheet.write_comment(
+                1,
                 18,
-                "Source rumination is in seconds. This derived client sheet divides "
-                "by 60 to display minutes. The source CSV remains unchanged.",
+                "Mean rumination over the seven days before time zero. The calculation "
+                "divides by 60 to display source rumination seconds as minutes; the "
+                "source CSV remains unchanged.",
+            )
+            cases_sheet.write_comment(
+                1,
+                21,
+                "Recovery approximation: elapsed hours from the first Rl minimum "
+                "until the first later rumination reading that reaches or exceeds "
+                "Rn. Blank if Rn or a recovery reading is unavailable.",
             )
         else:
             cases_sheet.set_column(28, 28, 24)
@@ -847,6 +940,21 @@ class StudyWorkbookService:
                 else None
             )
             drop = 1 - low / rn_value if low is not None and rn_value and rn_value > 0 else None
+            lactation = self._lactation_at(case, event)
+            dim = (
+                event.astimezone(ZoneInfo(case.timezone)).date()
+                - lactation.calving_utc.astimezone(ZoneInfo(case.timezone)).date()
+                if lactation is not None
+                else None
+            )
+            rback = self._recovery_hours(
+                series,
+                case,
+                settings.rumination,
+                event,
+                event + 5 * day,
+                rn_value,
+            )
             temps = [
                 self._exact(series, case, settings.temperature, event + n * hour)
                 for n in (0, 6, 12, 18, 24)
@@ -874,8 +982,8 @@ class StudyWorkbookService:
             values: tuple[Any, ...] = (
                 row - first_data_row + 1,
                 case.cow,
-                None,
-                None,
+                lactation.number if lactation is not None else None,
+                dim.days if dim is not None else None,
                 tn_value,
                 max(temps_pre) if temps_pre else None,
                 *temps,
@@ -885,7 +993,7 @@ class StudyWorkbookService:
                 rn_value,
                 low,
                 drop,
-                None,
+                rback,
                 *rumination,
                 (
                     event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M %Z")
@@ -912,7 +1020,7 @@ class StudyWorkbookService:
                     continue
                 if isinstance(value, int | float):
                     if settings.automatic:
-                        integer_columns = (0, 11, 18, 19, 22, 23, 24, 25, 26, 27)
+                        integer_columns = (0, 2, 3, 11, 18, 19, 22, 23, 24, 25, 26, 27)
                         fmt = integer if column in integer_columns else number
                     else:
                         fmt = percent if column == 20 else integer if column in (0, 11) else number
@@ -1102,10 +1210,17 @@ class StudyWorkbookService:
             ),
             (
                 "Rback",
-                "Blank pending clarification: PDF says time until Rl is "
-                "reached again after falling to Rl.",
+                "Approximation in hours: elapsed time from the first Rl minimum in "
+                "the five days after time zero until the first later rumination "
+                "reading at or above the pre-event Rn baseline.",
             ),
-            ("Lact / DIM", "Blank: not established by this measurement collection at time zero."),
+            (
+                "Lact / DIM",
+                "Lact is the documented smaXtec lifecycle cycle containing time zero. "
+                "DIM is the farm-local calendar-day difference between time zero and "
+                "that cycle's calving date. Blank when lifecycle data is unavailable "
+                "or time zero falls outside a lactating cycle.",
+            ),
             (
                 "Aligned activity",
                 "At each labelled offset, mean of the preceding 6-hour "

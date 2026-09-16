@@ -88,7 +88,7 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.10.1 automatically adds a **single-sheet** `client-analysis.xlsx` to
+Source 0.10.2 automatically adds a **single-sheet** `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
 guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row,
 exact client A:AB header order (`No`, `Cow`, ... `To`, ... `R120`), an Excel table,
@@ -104,6 +104,13 @@ temperature; client confirmation pending), `temp_without_drink_cycles/degree_cel
 for client T fields, `act/act` and `rum_index/seconds`. Convert rumination seconds
 to minutes only in the derived workbook; retain original units in raw/CSV. If normal
 index is absent, `temp/degree_celsius` is a disclosed fallback, not the T source.
+New API collections preserve documented animal lifecycle cycles so `Lact` selects
+the cycle containing T0 and `DIM` uses farm-local calendar days since calving.
+Calculate Tn/AN/Rn only from their specified pre-T0 windows, `%drop` as `1-Rl/Rn`,
+and Rback as the disclosed hours from first post-T0 Rl to the first later value
+at/above Rn. Older collections without lifecycle remain compatible and blank there.
+Never silently widen reviewed dates; tell users to cover 14 days before and five
+days after T0 for all current fields.
 Preserve raw JSON, both CSVs,
 existing descriptive workbook, request semantics and the guided builder. A derived
 workbook failure must be a curated warning, not loss of the completed collection.
@@ -118,8 +125,9 @@ side-by-side aligned cohort views. The event time is explicitly entered per cow;
 From/To is not time zero. Require reviewed `(source metric code, unit)` roles and
 farm-local event times, recheck collection hashes, calculate elapsed offsets in UTC
 and record missing/coverage/duplicate QC. Never pivot or overwrite the audit CSVs.
-Talert/R20 are labelled proxies; Lact, DIM and Rback stay blank pending accepted
-sources/definition. This preview has synthetic tests, **not** client-approved real
+Talert/R20 are labelled proxies; lifecycle-backed Lact/DIM and the disclosed Rback
+approximation still require client acceptance. This preview has synthetic tests,
+**not** client-approved real
 metric mappings, source coverage, clinical meaning or a released installer.
 
 Version 0.8.0 makes the official smaXtec Public API v2 the primary workspace. Read

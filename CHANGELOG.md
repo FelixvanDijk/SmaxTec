@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.10.2 — 2026-09-16 (lifecycle and baseline fields)
+
+- Read the official Public API v2 animal schema and add its documented lifecycle
+  `lactation_number`, `last_calving_date`, `dry_off_date` and historical `cycles`
+  to immutable cow identities and new collection manifests. The automatic and
+  guided client workbooks now choose the lifecycle cycle containing T0, write
+  `Lact`, and calculate farm-local `DIM` calendar days from calving.
+- Fill `Tn`, `AN` and `Rn` from their client-defined pre-T0 seven-/fourteen-day
+  windows whenever the downloaded period contains those measurements. Retain the
+  existing `Rl` and decimal `%drop = 1-Rl/Rn` calculation.
+- Add a disclosed Rback approximation: elapsed hours from the first Rl minimum in
+  the five-day post-T0 window to the first later rumination value at or above Rn.
+  Leave it blank when the baseline or recovery observation is unavailable.
+- Add Excel header notes and a queue coverage reminder. Old format-2 collections
+  remain readable; because they did not preserve lifecycle metadata, only their
+  measurement-derived fields can be rebuilt. Raw API JSON/CSVs and reviewed request
+  bounds remain unchanged.
+- Add offline coverage for lifecycle parsing/manifest lineage, Lact/DIM, all three
+  baselines, `%drop`, Rback and older-manifest compatibility. All 428 offline tests
+  pass with Ruff lint/format checks.
+
 ## 0.10.1 — 2026-09-16 (single-sheet client table)
 
 - Re-read the client's ASPI worksheet, screenshot and two-page parameter brief.

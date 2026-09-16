@@ -37,6 +37,26 @@ class ApiFarm:
 
 
 @dataclass(frozen=True)
+class ApiLactation:
+    """A documented lifecycle lactation period returned with an animal."""
+
+    number: int
+    calving_utc: datetime
+    dry_off_utc: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.number, bool) or not isinstance(self.number, int) or self.number < 1:
+            raise ValueError("A lactation number must be positive.")
+        if self.calving_utc.tzinfo is None or self.calving_utc.utcoffset() is None:
+            raise ValueError("A calving timestamp must include a timezone.")
+        if self.dry_off_utc is not None:
+            if self.dry_off_utc.tzinfo is None or self.dry_off_utc.utcoffset() is None:
+                raise ValueError("A dry-off timestamp must include a timezone.")
+            if self.dry_off_utc < self.calving_utc:
+                raise ValueError("Dry-off cannot precede calving.")
+
+
+@dataclass(frozen=True)
 class ApiEntity:
     id: str
     kind: str
@@ -46,6 +66,7 @@ class ApiEntity:
     official_id: str = ""
     group: str = ""
     archived: bool = False
+    lactations: tuple[ApiLactation, ...] = ()
 
     @property
     def label(self) -> str:

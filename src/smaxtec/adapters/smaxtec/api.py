@@ -23,6 +23,7 @@ from smaxtec.application.api_data import (
     ApiEntity,
     ApiError,
     ApiFarm,
+    ApiLactation,
     ApiMetric,
 )
 from smaxtec.application.login import Credentials
@@ -93,6 +94,51 @@ def _utc(value: datetime) -> str:
     if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
         raise _error("api_parameters")
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _optional_timestamp(value: Any) -> datetime | None:
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str) or len(value) > 100:
+        raise _error("api_response")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise _error("api_response") from None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise _error("api_response")
+    return parsed.astimezone(UTC)
+
+
+def _lactations(item: dict[str, Any]) -> tuple[ApiLactation, ...]:
+    """Read documented ISO lifecycle cycles; ignore deprecated integer dates."""
+    lifecycle = item.get("lifecycle")
+    if lifecycle is None:
+        return ()
+    if not isinstance(lifecycle, dict):
+        raise _error("api_response")
+    cycles = lifecycle.get("cycles", [])
+    if cycles is None:
+        cycles = []
+    if not isinstance(cycles, list) or len(cycles) > 1000:
+        raise _error("api_response")
+    candidates = [lifecycle, *cycles]
+    result: dict[tuple[int, datetime], ApiLactation] = {}
+    for cycle in candidates:
+        if not isinstance(cycle, dict):
+            raise _error("api_response")
+        number = cycle.get("lactation_number")
+        calving = _optional_timestamp(cycle.get("last_calving_date"))
+        if number is None or calving is None:
+            continue
+        if isinstance(number, bool) or not isinstance(number, int) or number < 1:
+            raise _error("api_response")
+        dry_off = _optional_timestamp(cycle.get("dry_off_date"))
+        if dry_off is not None and dry_off < calving:
+            # A timestamp before this calving cannot close the current cycle.
+            dry_off = None
+        result[(number, calving)] = ApiLactation(number, calving, dry_off)
+    return tuple(sorted(result.values(), key=lambda value: value.calving_utc))
 
 
 @dataclass(frozen=True)
@@ -304,6 +350,7 @@ class SmaxtecApiClient:
                     _text(item.get("official_id")),
                     _text(item.get("location") or item.get("group_id")),
                     item.get("archived", False),
+                    _lactations(item),
                 )
             )
         for item in _objects(organisation.get("animal_groups", [])):

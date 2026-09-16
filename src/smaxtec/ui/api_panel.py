@@ -509,7 +509,9 @@ class ApiPanel(QWidget):
                 "Cow collections automatically get a client-analysis.xlsx companion. "
                 "Study T0 is optional. If blank, the client-analysis workbook uses "
                 "From 00:00 as a clearly labelled period anchor to pivot readings. "
-                "Enter the actual per-cow T0 for treatment-relative studies.",
+                "Enter the actual per-cow T0 for treatment-relative studies. To fill "
+                "Tn, AN and Rn, set From at least 14 days before T0; to fill Rl, "
+                "Rback and RT120, set To at least 5 days after T0.",
                 "privacy",
             )
         )

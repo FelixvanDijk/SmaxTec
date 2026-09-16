@@ -500,6 +500,33 @@ Results. This deliberately defers the PDF's separate aligned/95%-limit pages fro
 the automatic file; revisit once the client approves the core table and supplies
 real events/product grouping. No treatment label is inferred from ASPI styling.
 
+## Decision 020: Carry animal lifecycle and derive remaining agreed client fields
+
+Status: implemented in source 0.10.2; synthetic verification complete, live/client
+acceptance pending.
+
+The official Public API v2 animal schema documents lifecycle `lactation_number`,
+ISO `last_calving_date`, optional `dry_off_date` and historical `cycles`. Parse those
+fields when the authorized cow catalogue is loaded, attach validated immutable cycles
+to `ApiEntity`, and copy them into each new target's collection-manifest record. Do
+not make another network request during workbook generation. This preserves the
+source at collection time, keeps the derived workbook offline/reproducible and leaves
+format-2 manifests without the additive field backward compatible.
+
+At T0, choose the latest lifecycle cycle whose calving is not later than T0 and whose
+dry-off is absent or later than T0. `Lact` is that cycle number; `DIM` is the farm-local
+calendar-date difference between T0 and calving. Continue the accepted Tn, AN, Rn, Rl
+and `%drop = 1-Rl/Rn` calculations from the exact mapped measurement series. Define
+the current Rback approximation as hours from the first Rl minimum in the five-day
+post-T0 window to the first later reading at/above pre-event Rn, and disclose it in
+the workbook because the client's original “Rl again” wording is ambiguous.
+
+Do not silently expand reviewed API dates to obtain these values. The queue explains
+that complete current fields require at least 14 days before T0 and five days after.
+Missing lifecycle, baseline coverage or recovery remains blank. Raw JSON/CSVs and
+the one-sheet layout are unchanged. Revisit Rback after explicit client confirmation
+and lifecycle semantics after a representative live collection is manually checked.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

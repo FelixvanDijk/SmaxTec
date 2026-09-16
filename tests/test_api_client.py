@@ -114,6 +114,18 @@ def test_catalog_and_measurement_request_preserve_exact_entity_identity_and_quer
                     "name": "57",
                     "official_id": "UK000000000057",
                     "archived": False,
+                    "lifecycle": {
+                        "lactation_number": 3,
+                        "last_calving_date": "2026-08-31T23:00:00Z",
+                        "dry_off_date": None,
+                        "cycles": [
+                            {
+                                "lactation_number": 2,
+                                "last_calving_date": "2025-09-02T08:00:00+00:00",
+                                "dry_off_date": "2026-07-01T08:00:00+00:00",
+                            }
+                        ],
+                    },
                 },
                 {
                     "_id": "animal-synthetic-657",
@@ -131,6 +143,9 @@ def test_catalog_and_measurement_request_preserve_exact_entity_identity_and_quer
     catalog = client.catalog(farm, False, Event())
     assert [animal.number for animal in catalog.animals] == ["57", "657"]
     animal = catalog.animals[0]
+    assert [cycle.number for cycle in animal.lactations] == [2, 3]
+    assert animal.lactations[-1].calving_utc == datetime(2026, 8, 31, 23, tzinfo=UTC)
+    assert animal.lactations[-1].dry_off_utc is None
     assert client.metrics(animal, Event())[0].code == "temp"
     result = client.data(
         animal,
