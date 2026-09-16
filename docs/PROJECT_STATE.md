@@ -1,19 +1,31 @@
 # Project state — start here each session
 
-Last updated: 2026-09-16. **Source preview 0.10.0 automatically creates a separate
-client-analysis.xlsx for usable cow collections, without changing the established
-direct-API raw responses, staging/tidy CSVs or descriptive workbook.** The optional
-per-cow Study T0 is reviewed with each queue row. With no T0, exact points are
+Last updated: 2026-09-16. **Source preview 0.10.1 makes the automatic
+client-analysis.xlsx a single, compact ASPI-style cow table**: exactly one worksheet,
+28 A:AB headers in the client's order, and one row per cow/case. The guided
+multi-sheet workbook and established direct-API raw responses, CSVs and descriptive
+workbook are unchanged. The optional per-cow Study T0 is reviewed with each queue
+row. With no T0, exact points are
 pivoted around farm-local From 00:00, labelled a **period anchor**, never claimed as
 treatment time. A representative saved direct-API collection confirms separate
 `temp_normal_index`, `temp_without_drink_cycles`, `act`, and `rum_index` pairs.
 Rumination seconds are converted to minutes in the derived workbook only. The
 normal-index clinical interpretation remains an inference requiring client review.
-The guided 0.9.0 builder remains
-available independently. All 426 offline tests pass; representative source pairs
-and the one-cow-row pivot were checked against a saved real collection, while
-clinical and installer
-acceptance are pending. See Decision 018 and `CLIENT_STUDY_WORKBOOK.md`.
+The guided 0.9.0 builder remains available independently. All 427 offline tests
+pass; a saved real collection
+regenerated as a one-sheet `client-analysis-2.xlsx` with seven cow rows and available
+T/AT/RT fields populated. Clinical and installer acceptance remain pending. See
+Decisions 018–019 and `CLIENT_STUDY_WORKBOOK.md`.
+
+0.10.1 verification: the targeted study/API suite passed (33 tests), all 427
+offline tests passed, Ruff lint/format and dependency checks passed. The real
+regenerated table has exactly one worksheet, TableStyleMedium2 row banding,
+28 client headers and seven populated cow rows; source CSV/raw bytes were not
+rewritten. PyInstaller assembled the full 0.10.1 Windows bundle locally; its
+`Start-Process` smoke was denied by this machine's existing unsigned-executable
+policy (`Access is denied`), so local packaged-launch proof is not claimed. The
+prepared source launcher remains usable; CI preview artifact and clean-machine
+acceptance still require separate checking after push.
 
 Source preview 0.9.0 added an opt-in client-example study
 workbook without changing the established 0.8.0 API download or audit files. Its
@@ -71,13 +83,15 @@ Do not invent calculations or clinical meanings in M4.
   derived rumination values divide source seconds by 60, with raw CSV unchanged.
   A missing T0 uses a labelled From-midnight period anchor for pivoting, not a
   treatment claim. Rback, Lact and DIM remain unavailable.
-- The generated study layout now includes an `Analysis` summary sheet in addition
-  to the 28-column client table, Normal values, exact T/RT sheets and three aligned
-  cow sheets. It places absolute and normal-relative T/A/R named-time-point means,
-  actual n, sample SD, lower/upper 95% limits and valid chart ranges together, as
-  the example's Analysis sheet intends. Drug-specific ASPI/Ketofen/ASPI LIQUID tabs
-  are not copied because no product assignment was supplied; claiming them would
-  misclassify cows. Source retention and QC stay intact.
+- Source 0.10.1 replaces **only the automatic XLSX presentation** with one
+  `Cow analysis` sheet matching the ASPI table's 28 exact headers, blue row stripes,
+  filter arrows and compact widths. It has no dashboard or extra workbook tabs;
+  source lineage remains in manifest/raw/CSVs. `To` is the client's spelling of
+  T0 temperature; a header note makes that distinction explicit. Talert/R20 are
+  still proxies, not actual alert counts. `%drop` displays `0.13` for 13%, matching
+  the example. The guided 0.9.0 builder retains normal/aligned/analysis/charts/QC.
+  Drug-specific ASPI/Ketofen/ASPI LIQUID labels are not assigned without product
+  data because doing so would misclassify cows.
 - Twelve obsolete GitHub Actions preview ZIP artifacts were explicitly removed on
   2026-09-15 to relieve storage pressure; only the working 0.8.0 and 0.7.0 previews
   remain. This deletion is irreversible for those ZIP files, but every source commit
@@ -274,7 +288,7 @@ Do not invent calculations or clinical meanings in M4.
   bounded downloads; `adapters/workbooks.py` owns read-only ZIP/XML B3 validation.
 - Study module map: `application/study_workbook.py` owns hashed collection loading,
   reviewed event/role settings, exact series selection, baseline/proxy calculations,
-  automatic exact-pair mapping, derived XLSX/chart/QC generation;
+  automatic exact-pair mapping, single-sheet client table and guided chart/QC generation;
   `ui/study_dialog.py` owns the retained guided event editor and cancellable worker.
   `ui/api_panel.py` owns optional queue T0 entry/review and Results file actions;
   `application/api_downloads.py` invokes the automatic companion after audit output
@@ -527,20 +541,21 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.10.0 Git/CI state and packaged launch limitation above. Use
+1. Check the 0.10.1 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
-   presentation rollback tag. The prepared source launcher includes automatic
-   client analysis and the guided study UI; the retained 0.8.0 artifact does not.
+   presentation rollback tag. The prepared source launcher includes the single-sheet
+   automatic client table and the guided study UI; the retained 0.8.0 artifact does not.
    Quota cleanup is complete, but upload success and recalculation are unverified.
 2. Read `API_DATA.md` and `CLIENT_STUDY_WORKBOOK.md`. The user's saved real
-   collection was checked read-only, then a separate `client-analysis-1.xlsx` was
-   generated outside Git; all seven cow rows had populated T0/T6/T24, AT6 and
-   RT0/RT24 values. Exact pair names are documented above. Run a future small
+   collection was checked read-only, then a separate one-sheet
+   `client-analysis-2.xlsx` was generated outside Git; all seven cow rows had
+   populated T0/T6/T24, AT6 and RT0/RT24 values. Exact pair names are documented
+   above. Run a future small
    collection across adequate prior baseline and later follow-up dates, with a
    known actual treatment/key-event T0 in each queue row. Preserve identifiers
    and data outside Git. Use Results' rebuild action for old collection folders.
-3. Compare `client-analysis.xlsx` and the guided `client-study.xlsx` main values,
-   Analysis summary, baseline sample counts, aligned sheets, charts and QC against
+3. Compare the one-sheet `client-analysis.xlsx` cow values and the guided
+   `client-study.xlsx` advanced Analysis/alignments/charts/QC against
    the client's example and reviewed manual
    calculations. Ask whether Rback means return to normal rumination, another
    threshold or literally repeating Rl; leave it blank until clarified. Confirm

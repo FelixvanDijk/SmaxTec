@@ -57,9 +57,18 @@ Client definitions:
   documented, accepted source is available. The current measurement API collection
   does not establish their values at time zero.
 
-The core A:AB layout stays close to the example. Add adjacent event/farm/date/status columns
-to make periods, metric units and lineage auditable. Provide a separate aligned sheet
-for each metric with cow/case columns side-by-side around time zero, per-offset n,
+The **automatic 0.10.1 companion** now matches the ASPI table's visible groundwork:
+one `Cow analysis` sheet, A:AB only, exact 28 headers including the example's
+`To` (T0 temperature) and `R120` spellings, one cow/case per row, a filterable
+blue-banded Excel table and decimal-fraction `%drop` display (`0.13`, not `13%`).
+Unavailable Lact/DIM/Rback remain empty. Talert and R20 remain proxies, explained
+in header comments; the To header also explains the period-anchor fallback. The
+automatic table has **no** additional source columns, normal/aligned/chart or QC
+worksheets. Provenance remains in the separate unchanged collection manifest/CSVs.
+
+The **guided `client-study.xlsx`** still adds adjacent event/farm/date/status columns
+and separate aligned/analysis/QC sheets for advanced studies. Its aligned sheet
+places cow/case columns side-by-side around time zero, per-offset n,
 mean, sample SD and 95% confidence limits; separate absolute/relative n is needed
 when some cows lack baselines. Both absolute and baseline-relative views are useful
 because the example analyses both. Use `1.96 * sample SD / sqrt(n)` for the normal
@@ -83,9 +92,10 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   `temp_without_drink_cycles/degree_celsius` supplies T. Unrecognized pairs stay in
   the
   original CSV/workbook, not used for client formulas.
-- An Analysis summary sheet follows the example's T/A/R absolute and normal-relative
-  time-point blocks. Each block shows actual available n, mean, sample SD, lower
-  and upper 95% limits with intact source-range charts; drug-specific subgroup
+- The guided workbook's Analysis summary follows the example's T/A/R absolute and
+  normal-relative time-point blocks with actual n, mean, sample SD, lower/upper
+  95% limits and charts. The automatic one-sheet companion deliberately stops at
+  the client cow table for this presentation milestone. Drug-specific subgroup
   blocks need reviewed product assignments before implementation.
   Never change authentication, API requests, raw responses, either CSV or the
   existing descriptive workbook. The manifest only gains optional T0 and derived-
@@ -96,16 +106,19 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   Do not infer meaning from a string fragment or merge units. The normal-temperature
   role is separate from temperature without drinking cycles. A role not present in
   the collection may remain unmapped; every dependent column/chart stays blank and
-  Definitions states this. At least one role must be mapped. The R20 differential
+  the guided Definitions states this. At least one role must be mapped. The R20 differential
   requires Celsius source units for both temperature roles and is blank without Tn.
 - Derive numeric/time values only when the source is unambiguous. Preserve raw input.
   For duplicate same-timestamp/metric/unit measurements, collapse *identical* values
-  in this derived workbook with an explicit QC count; conflicting values remain blank
-  and flagged. The audit CSV/raw responses are never deduplicated.
+  in the derived view; conflicting values remain blank. The guided workbook has
+  explicit QC counts; the automatic table relies on the unchanged audit collection
+  for detailed traceability. The audit CSV/raw responses are never deduplicated.
 - Use exact elapsed time in UTC for T/RT points and aligned rows, while displaying
   each cow's farm-local time zero. Reject ambiguous/nonexistent local time zero.
   Missing intervals, uncertain metric roles, truncated coverage, daily resolution,
-  invalid values and per-target failures remain visible in QC, not silently estimated.
+  invalid values and per-target failures are not silently estimated. The guided QC
+  shows them explicitly; the automatic table leaves unavailable fields blank and
+  requires the collection manifest/CSV for detailed audit.
 - The client must review real source metric codes/units, baseline adequacy, formula
   interpretations, Rback, thresholds, horizon, and aligned graph appearance before
   claiming clinical acceptance.

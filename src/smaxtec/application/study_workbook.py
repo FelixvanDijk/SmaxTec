@@ -57,6 +57,36 @@ CORE_HEADERS = (
     "RT96",
     "RT120",
 )
+AUTOMATIC_HEADERS = (
+    "No",
+    "Cow",
+    "Lact",
+    "DIM",
+    "Tn",
+    "Talert",
+    "To",
+    "T6",
+    "T12",
+    "T18",
+    "T24",
+    "R20",
+    "AN",
+    "AT0",
+    "AT6",
+    "AT12",
+    "AT18",
+    "AT24",
+    "Rn",
+    "Rl",
+    "%drop",
+    "Rback",
+    "RT0",
+    "RT24",
+    "RT48",
+    "RT72",
+    "RT96",
+    "R120",
+)
 REQUIRED_CSV = {
     "target_type",
     "target_id",
@@ -679,7 +709,10 @@ class StudyWorkbookService:
         quality: Counter[str],
         stop: Event,
     ) -> None:
-        workbook = xlsxwriter.Workbook(str(path), {"constant_memory": True})
+        # Excel tables are unavailable in XlsxWriter's constant-memory mode.
+        # The automatic view is bounded to 500 cow rows; keep streaming for the
+        # larger guided workbook with its many aligned/time-point sheets.
+        workbook = xlsxwriter.Workbook(str(path), {"constant_memory": not settings.automatic})
         workbook.set_properties({"title": "Client study workbook", "author": "SmaxTec Workbench"})
         title = workbook.add_format({"bold": True, "font_size": 22, "font_color": "#193E34"})
         header = workbook.add_format(
@@ -689,32 +722,73 @@ class StudyWorkbookService:
         integer = workbook.add_format({"num_format": "0"})
         percent = workbook.add_format({"num_format": "0.0%"})
         muted = workbook.add_format({"font_color": "#63776E", "text_wrap": True})
-        cases_sheet = workbook.add_worksheet("Client parameters")
+        cases_sheet = workbook.add_worksheet(
+            "Cow analysis" if settings.automatic else "Client parameters"
+        )
         cases_sheet.hide_gridlines(2)
-        cases_sheet.freeze_panes(3, 2)
-        cases_sheet.set_tab_color("#4C8854")
-        cases_sheet.set_column(0, 0, 7)
-        cases_sheet.set_column(1, 1, 15)
-        cases_sheet.set_column(2, 3, 10)
-        cases_sheet.set_column(4, 27, 13)
-        cases_sheet.set_column(28, 28, 24)
-        cases_sheet.set_column(29, 32, 20)
-        cases_sheet.write_string(
-            0,
-            0,
-            "Cow-by-cow study parameters"
-            if not settings.automatic
-            else "Client analysis · automatic companion",
-            title,
-        )
-        cases_sheet.write_string(
-            1,
-            0,
-            "One row per cow/case. T6 means exactly six elapsed hours. A missing study "
-            "T0 defaults to From 00:00 as a period anchor, NOT a treatment time. "
-            "See Definitions and QC.",
-            muted,
-        )
+        cases_sheet.freeze_panes(2 if settings.automatic else 3, 2)
+        cases_sheet.set_tab_color("#176384" if settings.automatic else "#4C8854")
+        cases_sheet.set_column(0, 0, 6 if settings.automatic else 7)
+        cases_sheet.set_column(1, 1, 9 if settings.automatic else 15)
+        cases_sheet.set_column(2, 3, 7 if settings.automatic else 10)
+        cases_sheet.set_column(4, 27, 8.5 if settings.automatic else 13)
+        if settings.automatic:
+            cases_sheet.set_column(11, 11, 7)
+            cases_sheet.set_column(20, 20, 8)
+            cases_sheet.set_row(1, 25)
+            cases_sheet.add_table(
+                1,
+                0,
+                1 + len(source.cases),
+                27,
+                {
+                    "name": "CowAnalysis",
+                    "style": "Table Style Medium 2",
+                    "columns": [{"header": name} for name in AUTOMATIC_HEADERS],
+                },
+            )
+            cases_sheet.write_comment(
+                1,
+                6,
+                "To is the client's label for T0 temperature, not the collection end "
+                "date. Without a supplied Study T0, exact time points use the cow's "
+                "farm-local From date at 00:00 as a period anchor, NOT treatment time.",
+            )
+            cases_sheet.write_comment(
+                1,
+                5,
+                "Proxy: maximum temperature without drinking cycles in the five "
+                "days before time zero; not an observed alert event.",
+            )
+            cases_sheet.write_comment(
+                1,
+                11,
+                f"Proxy: distinct temperature measurements above Tn + "
+                f"{settings.threshold_c:g} Celsius in the first "
+                f"{settings.followup_days} days; not an alert-event count.",
+            )
+            cases_sheet.write_comment(
+                1,
+                20,
+                "Stored as 1 - Rl/Rn; displayed as a decimal fraction (0.13 means "
+                "13%) to match the supplied ASPI sheet.",
+            )
+            cases_sheet.write_comment(
+                1,
+                18,
+                "Source rumination is in seconds. This derived client sheet divides "
+                "by 60 to display minutes. The source CSV remains unchanged.",
+            )
+        else:
+            cases_sheet.set_column(28, 28, 24)
+            cases_sheet.set_column(29, 32, 20)
+            cases_sheet.write_string(0, 0, "Cow-by-cow study parameters", title)
+            cases_sheet.write_string(
+                1,
+                0,
+                "One row per cow/case. T6 means exactly six elapsed hours. See Definitions and QC.",
+                muted,
+            )
         extra_headers = (
             "Farm-local time zero",
             "Farm",
@@ -722,14 +796,16 @@ class StudyWorkbookService:
             "Requested To",
             "Source case status",
         )
-        for column, name in enumerate(CORE_HEADERS + extra_headers):
-            cases_sheet.write_string(2, column, name, header)
-        cases_sheet.set_row(2, 34)
-        cases_sheet.autofilter(2, 0, 2 + len(source.cases), 32)
+        if not settings.automatic:
+            for column, name in enumerate(CORE_HEADERS + extra_headers):
+                cases_sheet.write_string(2, column, name, header)
+            cases_sheet.set_row(2, 34)
+            cases_sheet.autofilter(2, 0, 2 + len(source.cases), 32)
         events = dict(settings.events)
         case_baselines: dict[tuple, dict[str, float | None]] = {}
         missing: Counter[str] = Counter()
-        for row, case in enumerate(source.cases, 3):
+        first_data_row = 2 if settings.automatic else 3
+        for row, case in enumerate(source.cases, first_data_row):
             if stop.is_set():
                 raise ApiCancelled
             event = events[case.key]
@@ -796,7 +872,7 @@ class StudyWorkbookService:
                 for n in (0, 24, 48, 72, 96, 120)
             ]
             values: tuple[Any, ...] = (
-                row - 2,
+                row - first_data_row + 1,
                 case.cow,
                 None,
                 None,
@@ -825,6 +901,8 @@ class StudyWorkbookService:
             assert len(values) == 33
             if not anchored:
                 values = values[:2] + (None,) * 26 + values[28:]
+            if settings.automatic:
+                values = values[:28]
             for column, value in enumerate(values):
                 if value is None:
                     if column not in (2, 3, 21):
@@ -833,10 +911,17 @@ class StudyWorkbookService:
                         ] += 1
                     continue
                 if isinstance(value, int | float):
-                    fmt = percent if column == 20 else integer if column in (0, 11) else number
+                    if settings.automatic:
+                        integer_columns = (0, 11, 18, 19, 22, 23, 24, 25, 26, 27)
+                        fmt = integer if column in integer_columns else number
+                    else:
+                        fmt = percent if column == 20 else integer if column in (0, 11) else number
                     cases_sheet.write_number(row, column, value, fmt)
                 else:
                     cases_sheet.write_string(row, column, str(value))
+        if settings.automatic:
+            workbook.close()
+            return
         normal_sheet = workbook.add_worksheet("Normal values")
         normal_sheet.hide_gridlines(2)
         normal_sheet.freeze_panes(2, 2)

@@ -702,7 +702,7 @@ class ApiPanel(QWidget):
             (
                 "ANALYSE",
                 "Client analysis workbook",
-                "One row per cow, client-style parameters and aligned cohort sheets.",
+                "One sheet, one cow per row, in the client's 28-column order.",
                 self.open_client_workbook_button,
             ),
             (
@@ -1305,7 +1305,7 @@ class ApiPanel(QWidget):
             self.result_note.setText(
                 "The new workbook is beside the original collection. If Study T0 "
                 "was not supplied, its named hours use From 00:00 as a period anchor, "
-                "not a treatment event. Inspect Definitions and QC before analysis."
+                "not a treatment event. Earlier baselines may be blank if not downloaded."
             )
             self.status.setText("Client analysis ready. Open it from Results.")
         elif self._operation == "disconnect":
@@ -1344,7 +1344,8 @@ class ApiPanel(QWidget):
             + (" and Excel workbook are ready.\n" if result.workbook else " is ready.\n")
             + (
                 "Client analysis was also created. Missing study T0 used From 00:00 "
-                "as a period anchor, not a treatment event; inspect QC for coverage.\n"
+                "as a period anchor, not a treatment event. The one-sheet table "
+                "keeps unavailable fields blank.\n"
                 if result.client_workbook
                 else ""
             )

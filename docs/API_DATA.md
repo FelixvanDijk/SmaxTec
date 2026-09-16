@@ -160,9 +160,11 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   optional UTC study event and companion failure warning are additive metadata. It
   never stores credentials or bearer tokens. The original
   `measurements.csv` columns are unchanged from format 1 for compatibility.
-- `client-analysis.xlsx` follows the supplied 28-column cow analysis order and adds
-  normal-value, exact time-point, side-by-side alignment, absolute/relative cohort
-  Analysis, graph, Definitions and QC sheets. Without actual per-cow T0, it uses
+- `client-analysis.xlsx` now has one worksheet only: a compact, filterable,
+  blue-banded A:AB table in the supplied 28-column cow analysis order, one row per
+  cow/case. Header comments hold proxy/anchor/unit cautions without extra tabs.
+  The advanced guided `client-study.xlsx` retains aligned/charts/QC sheets.
+  Without actual per-cow T0, the automatic table uses
   farm-local From 00:00 as a clearly labelled period anchor, not a treatment time.
   A representative saved collection established exact source pairs
   `temp_normal_index/degree_celsius` (normal interpretation inferred),

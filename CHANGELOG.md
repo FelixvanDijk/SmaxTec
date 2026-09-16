@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.1 — 2026-09-16 (single-sheet client table)
+
+- Re-read the client's ASPI worksheet, screenshot and two-page parameter brief.
+  Replace the automatic companion's multi-tab presentation with one filterable
+  `Cow analysis` worksheet: exact 28-column ASPI-style header order, one cow/case
+  per row, compact widths and the example's blue-banded Excel table style.
+- Display the client's exact `Talert`, `To`, `R20`, `%drop` and `R120` labels.
+  Keep proxy, period-anchor and seconds-to-minutes explanations in header comments;
+  keep the visible table free of provenance columns and dashboards. `%drop` displays
+  as a decimal fraction like the example, not a percentage-formatted cell.
+- Reuse the existing exact T/AT/RT calculations and source-hash checks. Raw JSON,
+  audit/tidy CSVs, API collection semantics and the advanced guided multi-sheet
+  `client-study.xlsx` remain unchanged. A saved real collection regenerated with
+  one sheet and seven populated cow rows; client formula/clinical acceptance remains.
+- Add synthetic exact-header/style, one-sheet, event/period-anchor and 300-cow
+  regressions. The previous 0.10.0 commit remains on GitHub for rollback.
+
 ## 0.10.0 — 2026-09-16 (automatic client analysis companion)
 
 - Inspect all five client example worksheets, the two-page parameter brief,

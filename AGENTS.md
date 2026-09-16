@@ -88,8 +88,13 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.10.0 automatically adds `client-analysis.xlsx` to completed direct-API
-cow collections while retaining the advanced guided `client-study.xlsx` builder.
+Source 0.10.1 automatically adds a **single-sheet** `client-analysis.xlsx` to
+completed direct-API cow collections while retaining the advanced, multi-sheet
+guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row,
+exact client A:AB header order (`No`, `Cow`, ... `To`, ... `R120`), an Excel table,
+and no extra columns/sheets. `To` is the client's T0-temperature spelling, not
+the request end date. Header notes explain proxies, inferred mappings, and the
+period anchor without cluttering the visible table. Preserve the guided workbook.
 Every queue cow can carry an optional, strictly parsed farm-local Study T0. If absent,
 the automatic report uses that cow's From date at farm-local 00:00 as a **labelled
 period anchor**, never claiming it is treatment time. An actual event T0 remains

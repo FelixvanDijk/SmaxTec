@@ -14,6 +14,7 @@ from xlsxwriter.utility import xl_col_to_name
 from smaxtec.application.api_data import ApiError
 from smaxtec.application.api_downloads import ANALYSIS_HEADERS
 from smaxtec.application.study_workbook import (
+    AUTOMATIC_HEADERS,
     AutomaticStudyWorkbookService,
     StudySettings,
     StudySource,
@@ -230,22 +231,27 @@ def test_automatic_companion_defaults_to_labelled_From_anchor_and_pivots_exact_p
     assert output.name == "client-analysis.xlsx"
     with ZipFile(output) as archive:
         parameters = archive.read("xl/worksheets/sheet1.xml")
-        assert b"57" in parameters
-        assert _numeric_cell(parameters, "E4") is None  # No prior-week coverage.
-        assert _numeric_cell(parameters, "N4") is None  # No preceding 6h coverage.
-        assert _numeric_cell(parameters, "G4") == pytest.approx(40.0)
-        assert _numeric_cell(parameters, "H4") == pytest.approx(40.1)
-        assert _numeric_cell(parameters, "K4") == pytest.approx(40.2)
-        assert _numeric_cell(parameters, "O4") == pytest.approx(6)
-        assert _numeric_cell(parameters, "W4") == pytest.approx(400)  # Seconds -> minutes.
-        assert _numeric_cell(parameters, "X4") == pytest.approx(440)
-        assert b"period anchor" in parameters
-        definitions = archive.read("xl/worksheets/sheet10.xml")
-        assert b"temp_normal_index [degree_celsius]" in definitions
-        assert b"temp_without_drink_cycles [degree_celsius]" in definitions
-        assert b"act [act]" in definitions
-        assert b"rum_index [seconds]" in definitions
-        assert b"divided by 60 into minutes" in definitions
+        assert b"57" in archive.read("xl/sharedStrings.xml")
+        assert _numeric_cell(parameters, "A3") == 1
+        assert _numeric_cell(parameters, "E3") is None  # No prior-week coverage.
+        assert _numeric_cell(parameters, "N3") is None  # No preceding 6h coverage.
+        assert _numeric_cell(parameters, "G3") == pytest.approx(40.0)
+        assert _numeric_cell(parameters, "H3") == pytest.approx(40.1)
+        assert _numeric_cell(parameters, "K3") == pytest.approx(40.2)
+        assert _numeric_cell(parameters, "O3") == pytest.approx(6)
+        assert _numeric_cell(parameters, "W3") == pytest.approx(400)  # Seconds -> minutes.
+        assert _numeric_cell(parameters, "X3") == pytest.approx(440)
+        assert not any(name.startswith("xl/worksheets/sheet2") for name in archive.namelist())
+        table = ElementTree.fromstring(archive.read("xl/tables/table1.xml"))
+        ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        assert table.attrib["ref"] == "A2:AB3"
+        assert [
+            col.attrib["name"] for col in table.findall("m:tableColumns/m:tableColumn", ns)
+        ] == list(AUTOMATIC_HEADERS)
+        assert table.find("m:tableStyleInfo", ns).attrib["name"] == "TableStyleMedium2"
+        comments = archive.read("xl/comments1.xml")
+        assert b"period anchor" in comments and b"NOT treatment time" in comments
+        assert b"divides by 60" in comments
     assert hashlib.sha256((tmp_path / "analysis_ready.csv").read_bytes()).hexdigest() == source_hash
 
 
@@ -255,15 +261,33 @@ def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path
     assert output.name == "client-analysis.xlsx"
     with ZipFile(output) as archive:
         parameters = archive.read("xl/worksheets/sheet1.xml")
-        assert _numeric_cell(parameters, "E4") == pytest.approx(39.5)
-        assert _numeric_cell(parameters, "N4") == pytest.approx(6)
-        assert _numeric_cell(parameters, "O4") == pytest.approx(9)
-        assert _numeric_cell(parameters, "S4") == pytest.approx(500)
-        assert _numeric_cell(parameters, "T4") == pytest.approx(300)
-        assert _numeric_cell(parameters, "U4") == pytest.approx(0.4)
-        assert _numeric_cell(parameters, "W4") == pytest.approx(400)
-        assert _numeric_cell(parameters, "G4") == pytest.approx(40)
-        assert _numeric_cell(parameters, "H4") == pytest.approx(40.06)
+        assert _numeric_cell(parameters, "E3") == pytest.approx(39.5)
+        assert _numeric_cell(parameters, "N3") == pytest.approx(6)
+        assert _numeric_cell(parameters, "O3") == pytest.approx(9)
+        assert _numeric_cell(parameters, "S3") == pytest.approx(500)
+        assert _numeric_cell(parameters, "T3") == pytest.approx(300)
+        assert _numeric_cell(parameters, "U3") == pytest.approx(0.4)
+        root = ElementTree.fromstring(parameters)
+        ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        # The example displays 0.13 for 13%; do not Excel-format this as 13%.
+        assert root.find(".//m:c[@r='U3']", ns).get("s") == root.find(".//m:c[@r='E3']", ns).get(
+            "s"
+        )
+        assert _numeric_cell(parameters, "W3") == pytest.approx(400)
+        assert _numeric_cell(parameters, "G3") == pytest.approx(40)
+        assert _numeric_cell(parameters, "H3") == pytest.approx(40.06)
+
+
+def test_automatic_table_keeps_hundreds_of_cows_on_one_sheet(tmp_path):
+    _collection(tmp_path, cow_count=300, auto_pairs=True)
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+    with ZipFile(output) as archive:
+        table = ElementTree.fromstring(archive.read("xl/tables/table1.xml"))
+        assert table.attrib["ref"] == "A2:AB302"
+        sheet = archive.read("xl/worksheets/sheet1.xml")
+        assert _numeric_cell(sheet, "A3") == 1
+        assert _numeric_cell(sheet, "A302") == 300
+        assert not any(name.startswith("xl/worksheets/sheet2") for name in archive.namelist())
 
 
 def test_source_hash_role_and_daylight_saving_guardrails(tmp_path):

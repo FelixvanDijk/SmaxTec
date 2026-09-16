@@ -475,8 +475,32 @@ was adopted after the user's blank-output report to make generic collection pivo
 usable. Revisit after client review of normal-index meaning, event source and
 treatment timestamps and grouping labels are accepted by the client.
 
-## Data and workflow design to preserve
+## Decision 019: Make the automatic companion an exact, single-sheet client table
 
+Status: implemented in source 0.10.1; synthetic and saved-real-collection layout
+verification complete, client/clinical and package acceptance pending.
+
+The client rejected the 0.10.0 automatic companion's crowded multi-sheet layout and
+asked for the ASPI worksheet as groundwork: one cow/case per row, 28 exact A:AB
+headings, temperature then activity then rumination in that same row. Keep the
+calculation/source-hash path in `StudyWorkbookService`, but branch its **automatic**
+XLSX presentation to one `Cow analysis` worksheet with the supplied ASPI-style
+blue-banded Excel table. Stop after the core rows. Do not add dashboards, source
+columns, chart sheets or QC tabs to this automatic file now. Use header comments
+for the To/T0 spelling, From-midnight period-anchor warning, source-unit conversion
+and proxy definitions. Display `%drop` as a decimal fraction to match the example.
+
+The guided, multi-sheet `client-study.xlsx` remains unchanged for future advanced
+analysis. Raw JSON, `measurements.csv`, `analysis_ready.csv`, collection manifest,
+request dates and metric codes are unchanged. The automatic table uses ordinary
+XlsxWriter mode for the bounded 500-cow maximum because Excel table creation is
+unsupported in constant-memory mode; the guided multi-sheet builder continues to
+stream. An existing saved collection can be regenerated non-overwriting through
+Results. This deliberately defers the PDF's separate aligned/95%-limit pages from
+the automatic file; revisit once the client approves the core table and supplies
+real events/product grouping. No treatment label is inferred from ASPI styling.
+
+## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual
   start/end periods, farm timezone, metrics, chunk bounds and output hashes.
