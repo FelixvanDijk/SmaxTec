@@ -12,6 +12,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from threading import Event
 from typing import Protocol
+from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QItemSelectionModel, QStandardPaths, Qt, QThread, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
@@ -56,6 +57,10 @@ from smaxtec.application.api_data import (
 )
 from smaxtec.application.exports import parse_cow_numbers, parse_user_date
 from smaxtec.application.login import Credentials
+from smaxtec.application.study_workbook import (
+    AutomaticStudyWorkbookService,
+    parse_event_time,
+)
 from smaxtec.ui.widgets import date_entry, label
 
 
@@ -158,7 +163,7 @@ class ApiReviewDialog(QDialog):
     def __init__(self, request: ApiDownloadRequest, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Review your direct data download")
-        self.resize(1000, 640)
+        self.resize(1120, 640)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(12)
@@ -171,10 +176,10 @@ class ApiReviewDialog(QDialog):
                 "muted",
             )
         )
-        self.table = QTableWidget(len(request.targets), 7)
+        self.table = QTableWidget(len(request.targets), 8)
         self.table.setAccessibleName("All reviewed API targets and individual dates")
         self.table.setHorizontalHeaderLabels(
-            ["Farm", "Type", "Target", "From", "To", "Timezone", "Measurements"]
+            ["Farm", "Type", "Target", "From", "To", "Study T0", "Timezone", "Measurements"]
         )
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -188,6 +193,13 @@ class ApiReviewDialog(QDialog):
                 target.entity.label,
                 target.start_date.strftime("%d/%m/%Y"),
                 target.end_date.strftime("%d/%m/%Y"),
+                (
+                    target.study_event_utc.astimezone(
+                        ZoneInfo(target.entity.farm.timezone)
+                    ).strftime("%d/%m/%Y %H:%M")
+                    if target.study_event_utc
+                    else "Default: From 00:00 · period anchor"
+                ),
                 target.entity.farm.timezone,
                 ", ".join(target.metrics) or "All available for this target",
             )
@@ -199,6 +211,8 @@ class ApiReviewDialog(QDialog):
         formats = "Raw JSON + audit CSV + graph-ready CSV" + (
             " + polished Excel" if request.excel else ""
         )
+        if any(target.entity.kind == "animals" for target in request.targets):
+            formats += " + automatic client analysis"
         layout.addWidget(
             label(
                 f"{formats} · Resolution: {request.aggregation}\n"
@@ -256,6 +270,7 @@ class ApiPanel(QWidget):
         self._last_folder: Path | None = None
         self._last_analysis: Path | None = None
         self._last_workbook: Path | None = None
+        self._last_client_workbook: Path | None = None
         self._reviewing = False
         self.setObjectName("apiPanel")
         layout = QVBoxLayout(self)
@@ -485,12 +500,29 @@ class ApiPanel(QWidget):
         layout.setContentsMargins(0, 14, 0, 0)
         layout.setSpacing(10)
         self.queue_note = label(
-            "Add cows, groups or devices from Browse herd. Double-click any date to edit it.",
+            "Add targets from Browse. Double-click dates or optional study T0 to edit a row.",
             "muted",
         )
         layout.addWidget(self.queue_note)
+        layout.addWidget(
+            label(
+                "Cow collections automatically get a client-analysis.xlsx companion. "
+                "Study T0 is optional. If blank, the client-analysis workbook uses "
+                "From 00:00 as a clearly labelled period anchor to pivot readings. "
+                "Enter the actual per-cow T0 for treatment-relative studies.",
+                "privacy",
+            )
+        )
         self.queue = self._table(
-            ["Farm", "Type", "Target", "From · DD/MM/YYYY", "To · DD/MM/YYYY", "Measurements"],
+            [
+                "Farm",
+                "Type",
+                "Target",
+                "From · DD/MM/YYYY",
+                "To · DD/MM/YYYY",
+                "Study T0 · DD/MM/YYYY HH:MM",
+                "Measurements",
+            ],
             "API download queue with individual dates",
         )
         self.queue.setMinimumHeight(220)
@@ -649,6 +681,10 @@ class ApiPanel(QWidget):
         self.open_workbook_button = self._button(
             "Open Excel workbook", lambda: self._open_file(self._last_workbook, "workbook")
         )
+        self.open_client_workbook_button = self._button(
+            "Open client analysis",
+            lambda: self._open_file(self._last_client_workbook, "client analysis workbook"),
+        )
         self.open_button = self._button("Open collection folder", self._open_folder)
         file_rows = (
             (
@@ -662,6 +698,12 @@ class ApiPanel(QWidget):
                 "Excel workbook",
                 "Styled overview, measurement index and source data.",
                 self.open_workbook_button,
+            ),
+            (
+                "ANALYSE",
+                "Client analysis workbook",
+                "One row per cow, client-style parameters and aligned cohort sheets.",
+                self.open_client_workbook_button,
             ),
             (
                 "AUDIT",
@@ -683,6 +725,11 @@ class ApiPanel(QWidget):
                 "muted",
             ),
         )
+        self.auto_saved_button = self._button(
+            "Rebuild automatic analysis from saved collection…",
+            self._rebuild_automatic_saved,
+        )
+        study_actions.addWidget(self.auto_saved_button, alignment=Qt.AlignmentFlag.AlignLeft)
         study_buttons = QHBoxLayout()
         self.saved_study_button = self._button(
             "Choose saved collection…", lambda: self._open_study(None)
@@ -996,13 +1043,14 @@ class ApiPanel(QWidget):
                 target.entity.label,
                 target.start_date.strftime("%d/%m/%Y"),
                 target.end_date.strftime("%d/%m/%Y"),
+                "",
                 ", ".join(target.metrics) or "All available",
             )
             for column, value in enumerate(values):
-                cell = _item(value, editable=column in (3, 4))
+                cell = _item(value, editable=column in (3, 4, 5))
                 if column == 0:
                     cell.setData(Qt.ItemDataRole.UserRole, target.entity)
-                if column == 5:
+                if column == 6:
                     cell.setData(Qt.ItemDataRole.UserRole, target.metrics)
                 self.queue.setItem(row, column, cell)
         self._queue_changed()
@@ -1051,7 +1099,7 @@ class ApiPanel(QWidget):
         self.steps.setTabText(1, f"2  Download queue ({count:,})")
         self.queue_note.setText(
             f"{count:,} queued targets. Click rows to select one or many without Ctrl. "
-            "Double-click a From or To date to edit that row only."
+            "Double-click dates or optional study T0 (DD/MM/YYYY HH:MM) to edit that row only."
             if count
             else "Add cows, groups or devices from Browse herd, then assign measurements here."
         )
@@ -1072,7 +1120,10 @@ class ApiPanel(QWidget):
             start, end = self._shared_dates()
             # Validate every farm before mutating even one row.
             for row in range(self.queue.rowCount()):
-                ApiTarget(self.queue.item(row, 0).data(Qt.ItemDataRole.UserRole), start, end)
+                entity = self.queue.item(row, 0).data(Qt.ItemDataRole.UserRole)
+                event_text = self.queue.item(row, 5).text().strip()
+                event = parse_event_time(event_text, entity.farm.timezone) if event_text else None
+                ApiTarget(entity, start, end, study_event_utc=event)
         except ValueError as error:
             self.status.setText(_text(str(error)))
             return
@@ -1094,7 +1145,7 @@ class ApiPanel(QWidget):
             self.status.setText(str(error))
             return
         for row in rows:
-            cell = self.queue.item(row, 5)
+            cell = self.queue.item(row, 6)
             cell.setText(", ".join(metrics) or "All available")
             cell.setData(Qt.ItemDataRole.UserRole, metrics)
         self.status.setText(f"Measurements applied to {len(rows):,} selected queue rows.")
@@ -1104,11 +1155,16 @@ class ApiPanel(QWidget):
         targets: list[ApiTarget] = []
         for row in range(self.queue.rowCount()):
             try:
+                entity = self.queue.item(row, 0).data(Qt.ItemDataRole.UserRole)
+                event_text = self.queue.item(row, 5).text().strip()
                 target = ApiTarget(
-                    entity=self.queue.item(row, 0).data(Qt.ItemDataRole.UserRole),
+                    entity=entity,
                     start_date=parse_user_date(self.queue.item(row, 3).text(), "From date"),
                     end_date=parse_user_date(self.queue.item(row, 4).text(), "To date"),
-                    metrics=self.queue.item(row, 5).data(Qt.ItemDataRole.UserRole),
+                    metrics=self.queue.item(row, 6).data(Qt.ItemDataRole.UserRole),
+                    study_event_utc=(
+                        parse_event_time(event_text, entity.farm.timezone) if event_text else None
+                    ),
                 )
             except ValueError as error:
                 self.queue.selectRow(row)
@@ -1154,6 +1210,7 @@ class ApiPanel(QWidget):
         self.results.setRowCount(0)
         self._last_analysis = None
         self._last_workbook = None
+        self._last_client_workbook = None
         self.result_summary.setText("Collecting your data…")
         self.result_note.setText("Completed files will be kept if you cancel this collection.")
         self.steps.setCurrentIndex(2)
@@ -1239,6 +1296,18 @@ class ApiPanel(QWidget):
             )
         elif isinstance(result, ApiDownloadResult):
             self._show_result(result)
+        elif self._operation == "auto_saved" and isinstance(result, Path):
+            self._last_folder = result.parent
+            self._last_client_workbook = result
+            self.open_button.setToolTip(str(result.parent))
+            self.steps.setCurrentIndex(2)
+            self.result_summary.setText("Client analysis rebuilt")
+            self.result_note.setText(
+                "The new workbook is beside the original collection. If Study T0 "
+                "was not supplied, its named hours use From 00:00 as a period anchor, "
+                "not a treatment event. Inspect Definitions and QC before analysis."
+            )
+            self.status.setText("Client analysis ready. Open it from Results.")
         elif self._operation == "disconnect":
             self.status.setText("Disconnected. Credentials and API session were released.")
         # Normally finished follows this queued signal and refreshes controls. Keep
@@ -1250,6 +1319,7 @@ class ApiPanel(QWidget):
         self._last_folder = result.folder
         self._last_analysis = result.analysis_csv
         self._last_workbook = result.workbook
+        self._last_client_workbook = result.client_workbook
         self.open_button.setToolTip(str(result.folder))
         self.results.setRowCount(len(result.files))
         for row, entry in enumerate(result.files):
@@ -1272,6 +1342,12 @@ class ApiPanel(QWidget):
         self.result_note.setText(
             f"{saved:,} of {len(result.files):,} targets saved. Your graph-ready CSV"
             + (" and Excel workbook are ready.\n" if result.workbook else " is ready.\n")
+            + (
+                "Client analysis was also created. Missing study T0 used From 00:00 "
+                "as a period anchor, not a treatment event; inspect QC for coverage.\n"
+                if result.client_workbook
+                else ""
+            )
             + "\n".join(_text(warning) for warning in result.warnings)
         )
         self.status.setText(
@@ -1339,8 +1415,12 @@ class ApiPanel(QWidget):
         self.apply_metrics_button.setEnabled(not busy and bool(queue_rows) and metrics_ready)
         self.open_analysis_button.setEnabled(not busy and self._last_analysis is not None)
         self.open_workbook_button.setEnabled(not busy and self._last_workbook is not None)
+        self.open_client_workbook_button.setEnabled(
+            not busy and self._last_client_workbook is not None
+        )
         self.open_button.setEnabled(not busy and self._last_folder is not None)
         self.saved_study_button.setEnabled(not busy)
+        self.auto_saved_button.setEnabled(not busy)
         self.study_button.setEnabled(not busy and self._last_folder is not None)
         self.cancel_button.setVisible(self._worker is not None and self._operation != "disconnect")
         self.cancel_button.setEnabled(self._worker is not None and not self._cancelling)
@@ -1366,6 +1446,22 @@ class ApiPanel(QWidget):
             return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             self.status.setText(f"Open this {label_name} from the collection folder: {path.name}")
+
+    def _rebuild_automatic_saved(self) -> None:
+        if self.is_busy:
+            return
+        start = str(self._last_folder or Path(self.destination.text()))
+        chosen = QFileDialog.getExistingDirectory(
+            self, "Choose a saved direct-API cow collection", start
+        )
+        if not chosen:
+            return
+        folder = Path(chosen)
+        self._start(
+            "auto_saved",
+            lambda stop, progress: AutomaticStudyWorkbookService().create(folder, stop, progress),
+            "Checking the saved collection and rebuilding client analysis…",
+        )
 
     def _open_study(self, folder: Path | None) -> None:
         if self.is_busy:

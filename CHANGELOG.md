@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.10.0 — 2026-09-16 (automatic client analysis companion)
+
+- Inspect all five client example worksheets, the two-page parameter brief,
+  screenshots and a representative saved direct-API collection read-only. The
+  collection establishes exact pairs `temp_normal_index/degree_celsius`,
+  `temp_without_drink_cycles/degree_celsius`, `act/act`, `rum_index/seconds`.
+  Interpret normal index as normal temperature provisionally, with disclosed
+  `temp/degree_celsius` fallback and client review still required.
+- Add optional per-cow farm-local Study T0 to the direct-API queue and immutable
+  review. Validate exact date/time, DST and period containment without changing
+  the requested API range or existing raw/CSV/descriptive workbook outputs.
+- Automatically create non-overwriting `client-analysis.xlsx` beside usable cow
+  collections. Keep the guided `client-study.xlsx` flow independent for reviewed
+  metric roles, events and advanced windows. Without actual T0, pivot exact points
+  around a labelled farm-local From 00:00 **period anchor**, not a treatment time.
+  Convert source rumination seconds to minutes only in the derived workbook and
+  preserve raw/CSV values. Never substitute normal temperature for non-drinking-
+  cycle temperature.
+- Add Results action to rebuild automatic analysis from a completed saved collection,
+  without requesting API data again. The existing output remains untouched.
+- Add an Analysis cohort sheet in the example's absolute/normal-relative T/A/R
+  time-point style with actual n, mean, sample SD, lower/upper 95% limits and valid
+  charts. Retain the 28-column cow table, normal values, exact time points, three
+  side-by-side cow sheets, Definitions and QC.
+- Keep a successful direct collection usable if derived generation fails; record a
+  curated warning and its optional companion filename/hash in the manifest.
+  Add offline tests for automatic output, exact source mapping, T0 absence/presence,
+  UI association and soft-failure recovery.
+- Remove 12 obsolete GitHub Actions preview ZIPs after explicit user authorization,
+  retaining the two latest working 0.8.0/0.7.0 previews and all source history.
+  Actions quota recalculation and new downloadable artifact still need confirmation.
+
 ## 0.9.0 — 2026-09-15 (client-study preview)
 
 - Inspect the client's five-sheet analysis example and two-page parameter brief;

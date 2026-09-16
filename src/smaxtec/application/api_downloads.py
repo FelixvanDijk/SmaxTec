@@ -9,6 +9,7 @@ import os
 import re
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Iterator
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -629,6 +630,35 @@ class ApiDownloadService:
             "warnings": warnings,
         }
         _write_json(folder / "collection.json", manifest)
+        client_workbook = None
+        if (
+            not cancelled
+            and total_rows
+            and any(target.entity.kind == "animals" for target in request.targets)
+        ):
+            try:
+                from smaxtec.application.study_workbook import AutomaticStudyWorkbookService
+
+                client_workbook = AutomaticStudyWorkbookService().create(folder, stop, progress)
+            except Exception:
+                warnings.append(
+                    "The client analysis workbook could not be built from this collection. "
+                    "The original data is safe; use Create study workbook to review it."
+                )
+        try:
+            manifest["client_workbook"] = client_workbook.name if client_workbook else None
+            manifest["client_workbook_sha256"] = (
+                self._hash(client_workbook) if client_workbook else None
+            )
+            manifest["warnings"] = warnings
+            _write_json(folder / "collection.json", manifest)
+        except (OSError, ApiError):
+            warnings.append(
+                "The original collection is complete, but companion metadata could not "
+                "be added to its manifest. Keep the collection folder together."
+            )
+            with suppress(OSError):
+                (folder / ".collection.json.partial").unlink(missing_ok=True)
         progress(
             ApiProgress(
                 "Direct API collection ready.",
@@ -644,6 +674,7 @@ class ApiDownloadService:
             warnings=tuple(warnings),
             analysis_csv=analysis_path,
             workbook=excel_path if request.excel else None,
+            client_workbook=client_workbook,
         )
 
     def _target(
@@ -669,6 +700,11 @@ class ApiDownloadService:
             "from": target.start_date.isoformat(),
             "to": target.end_date.isoformat(),
             "requested_metrics": list(target.metrics),
+            "study_event_utc": (
+                target.study_event_utc.astimezone(UTC).isoformat()
+                if target.study_event_utc is not None
+                else None
+            ),
         }
         raw_files: list[dict[str, Any]] = []
         row_count = 0

@@ -2,10 +2,11 @@
 
 import csv
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from threading import Event
 from zipfile import ZipFile
 
+from smaxtec.application import api_downloads
 from smaxtec.application.api_data import (
     ApiDownloadRequest,
     ApiEntity,
@@ -71,6 +72,8 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     assert [entry.status for entry in result.files] == ["saved", "saved"]
     assert result.folder.parent == tmp_path
     assert result.folder.name.startswith("September-herd-data-")
+    assert result.client_workbook is not None
+    assert result.client_workbook.is_file()
 
     manifest = json.loads((result.folder / "collection.json").read_text("utf-8"))
     assert manifest["format_version"] == 2
@@ -86,6 +89,8 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     assert manifest["extras"]["farm-synthetic-001"]["health_index"]["records"] == 1
     assert manifest["analysis_csv"] == "analysis_ready.csv"
     assert len(manifest["analysis_csv_sha256"]) == 64
+    assert manifest["client_workbook"] == result.client_workbook.name
+    assert len(manifest["client_workbook_sha256"]) == 64
 
     with (result.folder / "measurements.csv").open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -162,6 +167,73 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     assert "password" not in serialized.casefold()
     assert "api-token" not in serialized.casefold()
     assert progress[-1].message == "Direct API collection ready."
+
+
+def test_client_companion_failure_keeps_existing_collection_outputs(tmp_path, monkeypatch):
+    def fail_client_workbook(_self, _folder, _stop, _progress):
+        raise RuntimeError("synthetic companion failure")
+
+    monkeypatch.setattr(
+        "smaxtec.application.study_workbook.AutomaticStudyWorkbookService.create",
+        fail_client_workbook,
+    )
+    request = ApiDownloadRequest((target("57"),), tmp_path, "Synthetic data")
+    result = ApiDownloadService(FakeClient()).download(request, Event(), lambda _: None)
+    assert result.client_workbook is None
+    assert result.workbook.is_file()
+    assert result.analysis_csv.is_file()
+    assert (result.folder / "measurements.csv").is_file()
+    assert (result.folder / "collection.json").is_file()
+    assert "client analysis" in result.warnings[0].lower()
+    manifest = json.loads((result.folder / "collection.json").read_text("utf-8"))
+    assert manifest["client_workbook"] is None
+    assert manifest["warnings"] == list(result.warnings)
+
+
+def test_companion_manifest_refresh_failure_preserves_first_manifest(tmp_path, monkeypatch):
+    original_write = api_downloads._write_json
+    manifest_writes = 0
+
+    def fail_second_manifest(path, value):
+        nonlocal manifest_writes
+        if path.name == "collection.json":
+            manifest_writes += 1
+            if manifest_writes == 2:
+                raise OSError("synthetic manifest refresh failure")
+        return original_write(path, value)
+
+    monkeypatch.setattr(api_downloads, "_write_json", fail_second_manifest)
+    result = ApiDownloadService(FakeClient()).download(
+        ApiDownloadRequest((target("57"),), tmp_path, "Manifest fallback"),
+        Event(),
+        lambda _: None,
+    )
+    assert manifest_writes == 2
+    assert result.client_workbook.is_file()
+    assert result.analysis_csv.is_file()
+    assert "companion metadata" in result.warnings[-1].lower()
+    manifest = json.loads((result.folder / "collection.json").read_text("utf-8"))
+    assert manifest["format_version"] == 2
+    assert manifest["analysis_csv_sha256"]
+
+
+def test_reviewed_study_T0_is_metadata_not_a_different_api_range(tmp_path):
+    ordinary = target("57")
+    event = datetime(2026, 9, 1, 8, 10, tzinfo=UTC)
+    studied = ApiTarget(
+        ordinary.entity,
+        ordinary.start_date,
+        ordinary.end_date,
+        study_event_utc=event,
+    )
+    client = FakeClient()
+    request = ApiDownloadRequest((studied,), tmp_path, "Study event test")
+    result = ApiDownloadService(client).download(request, Event(), lambda _: None)
+    manifest = json.loads((result.folder / "collection.json").read_text("utf-8"))
+    assert manifest["targets"][0]["study_event_utc"] == event.isoformat()
+    assert result.client_workbook.is_file()
+    assert client.data_calls[0][2] == ordinary.utc_bounds()[0]
+    assert client.data_calls[0][3] == ordinary.utc_bounds()[1]
 
 
 def test_local_day_bounds_are_dst_safe_and_long_native_ranges_are_chunked(tmp_path):

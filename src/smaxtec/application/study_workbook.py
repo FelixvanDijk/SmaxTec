@@ -84,6 +84,7 @@ class StudyCase:
     to_date: str
     timezone: str
     status: str
+    event_utc: datetime | None = None
 
     @property
     def key(self) -> tuple[str, str, str, str]:
@@ -129,6 +130,11 @@ class StudySource:
                         str(entry["to"]),
                         str(entry["farm_timezone"]),
                         str(entry["status"]),
+                        (
+                            _manifest_event(entry["study_event_utc"])
+                            if entry.get("study_event_utc")
+                            else None
+                        ),
                     )
                 )
             if not cases or len(cases) > MAX_CASES:
@@ -196,6 +202,14 @@ def parse_event_time(text: str, timezone: str) -> datetime:
         ) from None
 
 
+def _manifest_event(text: str) -> datetime:
+    """Never interpret a timezone-free stored event in the computer's local zone."""
+    event = datetime.fromisoformat(text)
+    if event.tzinfo is None or event.utcoffset() is None:
+        raise ValueError("event timezone missing")
+    return event.astimezone(UTC)
+
+
 @dataclass(frozen=True)
 class StudySettings:
     events: tuple[tuple[tuple[str, str, str, str], datetime], ...]
@@ -212,6 +226,10 @@ class StudySettings:
     aligned_before_hours: int = 24
     aligned_after_hours: int = 120
     aligned_step_hours: int = 6
+    unanchored_cases: tuple[tuple[str, str, str, str], ...] = ()
+    provisional_cases: tuple[tuple[str, str, str, str], ...] = ()
+    rumination_minutes: bool = False
+    automatic: bool = False
 
     def validate(self, source: StudySource) -> None:
         cases = {case.key for case in source.cases}
@@ -220,7 +238,9 @@ class StudySettings:
             raise ValueError("Enter one time zero for every cow/case in the collection.")
         roles = (self.normal_temp, self.temperature, self.activity, self.rumination)
         selected = tuple(pair for pair in roles if pair is not None)
-        if not selected or any(pair not in source.pairs for pair in selected):
+        if (not selected and not self.automatic) or any(
+            pair not in source.pairs for pair in selected
+        ):
             raise ValueError(
                 "Choose at least one source code/unit pair from this collection. "
                 "Unmapped fields will remain blank."
@@ -231,7 +251,13 @@ class StudySettings:
             )
         if len(set(selected)) != len(selected):
             raise ValueError("Choose a distinct source measurement for each study role.")
-        celsius_units = {"c", "celsius", "°c", "℃", "degc", "degrees celsius"}
+        if not set(self.unanchored_cases).issubset(cases):
+            raise ValueError("An automatic study case is not part of this collection.")
+        if not set(self.provisional_cases).issubset(cases):
+            raise ValueError("A provisional study case is not part of this collection.")
+        if self.rumination_minutes and self.rumination != ("rum_index", "seconds"):
+            raise ValueError("Only rum_index/seconds may be converted to minutes here.")
+        celsius_units = {"c", "celsius", "°c", "℃", "degc", "degrees celsius", "degree_celsius"}
         if any(
             pair[1].strip().casefold() not in celsius_units
             for pair in (
@@ -302,7 +328,11 @@ class StudyWorkbookService:
         settings: StudySettings,
         stop: Event,
         progress: Callable[[ApiProgress], None],
+        *,
+        file_stem: str = "client-study",
     ) -> Path:
+        if file_stem not in {"client-study", "client-analysis"}:
+            raise ValueError("Unsupported study workbook name.")
         settings.validate(source)
         if stop.is_set():
             raise ApiCancelled
@@ -359,6 +389,8 @@ class StudyWorkbookService:
                 if value is None:
                     quality["non_numeric_value"] += 1
                     continue
+                if settings.rumination_minutes and pair == settings.rumination:
+                    value /= 60
                 bucket = raw[(key, pair)][stamp]
                 if value in bucket:
                     quality["identical_duplicate_collapsed"] += 1
@@ -376,12 +408,12 @@ class StudyWorkbookService:
         progress(ApiProgress("Calculating exact event-relative study values…", 1, 3))
         suffix = 0
         while True:
-            name = "client-study.xlsx" if suffix == 0 else f"client-study-{suffix}.xlsx"
+            name = f"{file_stem}.xlsx" if suffix == 0 else f"{file_stem}-{suffix}.xlsx"
             output = source.folder / name
             if not output.exists():
                 break
             suffix += 1
-        temporary = source.folder / f".client-study-{uuid4().hex}.partial.xlsx"
+        temporary = source.folder / f".{file_stem}-{uuid4().hex}.partial.xlsx"
         try:
             self._write(temporary, source, settings, series, conflicts, quality, stop)
             if stop.is_set():
@@ -407,6 +439,130 @@ class StudyWorkbookService:
         progress(ApiProgress("Client study workbook ready.", 3, 3))
         return output
 
+    def _analysis_summary(
+        self,
+        workbook,
+        cases,
+        events,
+        settings,
+        series,
+        baselines,
+        title,
+        header,
+        number,
+        muted,
+        stop,
+    ) -> None:
+        """Client-example-style absolute and normal-relative cohort blocks."""
+        groups = (
+            ("Temperature", "temperature", settings.temperature, (0, 6, 12, 18, 24), 5),
+            ("Activity", "activity", settings.activity, (0, 6, 12, 18, 24), 12),
+            ("Rumination", "rumination", settings.rumination, (0, 24, 48, 72, 96, 120), 21),
+        )
+        stats: dict[
+            tuple[str, str, int], tuple[int, float | None, float | None, float | None, float | None]
+        ] = {}
+        for _name, role, pair, offsets, _first_column in groups:
+            for offset in offsets:
+                absolute = []
+                relative = []
+                for case in cases:
+                    if stop.is_set():
+                        raise ApiCancelled
+                    if case.key in settings.unanchored_cases:
+                        continue
+                    stamp = events[case.key] + timedelta(hours=offset)
+                    if role == "activity":
+                        values = self._values(series, case, pair, stamp - timedelta(hours=6), stamp)
+                        value = mean(values) if values else None
+                    else:
+                        value = self._exact(series, case, pair, stamp)
+                    if value is None:
+                        continue
+                    absolute.append(value)
+                    baseline = baselines[case.key][role]
+                    if baseline is not None:
+                        relative.append(value - baseline)
+                stats[role, "absolute", offset] = _sample_stats(absolute)
+                stats[role, "relative", offset] = _sample_stats(relative)
+        sheet = workbook.add_worksheet("Analysis")
+        sheet.hide_gridlines(2)
+        sheet.set_column(0, 0, 23)
+        sheet.set_column(1, 27, 13)
+        sheet.write_string(0, 0, "All requested cows · cohort analysis", title)
+        sheet.write_string(
+            1,
+            0,
+            "Named hours are exact elapsed hours from each supplied T0. Activity is a "
+            "preceding 6-hour mean. Missing T0/source readings never enter the cohort.",
+            muted,
+        )
+        labels = ("n", "Mean", "Sample SD", "Lower 95%", "Upper 95%")
+        for start_row, variant in ((2, "absolute"), (10, "relative")):
+            for name, _role, _pair, offsets, first_column in groups:
+                sheet.write_string(
+                    start_row,
+                    first_column - 1,
+                    name + (" absolute" if variant == "absolute" else " vs normal"),
+                    header,
+                )
+                for column, offset in enumerate(offsets, first_column):
+                    sheet.write_number(start_row, column, offset, header)
+            for shift, text in enumerate(labels):
+                row = start_row + 1 + shift
+                for _name, role, _pair, offsets, first_column in groups:
+                    sheet.write_string(row, first_column - 1, text)
+                    for column, offset in enumerate(offsets, first_column):
+                        value = stats[role, variant, offset][shift]
+                        if value is not None:
+                            sheet.write_number(row, column, value, number)
+        for name, _role, pair, offsets, first_column in groups:
+            for start_row, label in ((3, "Absolute"), (11, "Relative")):
+                if pair is None or all(case.key in settings.unanchored_cases for case in cases):
+                    continue
+                chart = workbook.add_chart({"type": "line"})
+                for row, series_name, color in (
+                    (start_row + 1, "Mean", "#245D43"),
+                    (start_row + 3, "Lower 95%", "#80B25E"),
+                    (start_row + 4, "Upper 95%", "#80B25E"),
+                ):
+                    chart.add_series(
+                        {
+                            "name": series_name,
+                            "categories": [
+                                "Analysis",
+                                2 if start_row == 3 else 10,
+                                first_column,
+                                2 if start_row == 3 else 10,
+                                first_column + len(offsets) - 1,
+                            ],
+                            "values": [
+                                "Analysis",
+                                row,
+                                first_column,
+                                row,
+                                first_column + len(offsets) - 1,
+                            ],
+                            "line": {"color": color},
+                        }
+                    )
+                chart.set_title({"name": f"{name} · {label.lower()} mean and 95% limits"})
+                chart.set_x_axis({"name": "Elapsed hours from T0"})
+                chart.set_y_axis(
+                    {
+                        "name": "Study units: minutes"
+                        if role == "rumination" and settings.rumination_minutes
+                        else f"Source units: {pair[1]}"
+                    }
+                )
+                chart.set_legend({"position": "bottom"})
+                sheet.insert_chart(
+                    20 if start_row == 3 else 40,
+                    first_column - 1,
+                    chart,
+                    {"x_scale": 1.2, "y_scale": 1.1},
+                )
+
     @staticmethod
     def _graphs(workbook, cases, settings, title, muted) -> None:
         """One intact chart pair per metric, referenced from aligned summaries."""
@@ -420,6 +576,15 @@ class StudyWorkbookService:
             "Available-cow mean and 95% limits; relative plots subtract each cow's normal.",
             muted,
         )
+        if all(case.key in settings.unanchored_cases for case in cases):
+            sheet.write_string(
+                3,
+                0,
+                "No supplied study T0 yet. Enter the cow's treatment/key-event time "
+                "to calculate aligned cohort graphs.",
+                muted,
+            )
+            return
         stats_start = len(cases) + 1
         offsets = list(
             range(
@@ -440,7 +605,13 @@ class StudyWorkbookService:
                 ("Activity aligned", settings.activity[1] if settings.activity else "unmapped"),
                 (
                     "Rumination aligned",
-                    settings.rumination[1] if settings.rumination else "unmapped",
+                    (
+                        "minutes"
+                        if settings.rumination_minutes
+                        else settings.rumination[1]
+                        if settings.rumination
+                        else "unmapped"
+                    ),
                 ),
             )
         ):
@@ -528,12 +699,20 @@ class StudyWorkbookService:
         cases_sheet.set_column(4, 27, 13)
         cases_sheet.set_column(28, 28, 24)
         cases_sheet.set_column(29, 32, 20)
-        cases_sheet.write_string(0, 0, "Cow-by-cow study parameters", title)
+        cases_sheet.write_string(
+            0,
+            0,
+            "Cow-by-cow study parameters"
+            if not settings.automatic
+            else "Client analysis · automatic companion",
+            title,
+        )
         cases_sheet.write_string(
             1,
             0,
-            "One row per reviewed cow/case. T6 means exactly six elapsed hours; blanks "
-            "mean missing/unsupported, never a nearest reading. See Definitions and QC.",
+            "One row per cow/case. T6 means exactly six elapsed hours. A missing study "
+            "T0 defaults to From 00:00 as a period anchor, NOT a treatment time. "
+            "See Definitions and QC.",
             muted,
         )
         extra_headers = (
@@ -554,11 +733,24 @@ class StudyWorkbookService:
             if stop.is_set():
                 raise ApiCancelled
             event = events[case.key]
+            anchored = case.key not in settings.unanchored_cases
             day = timedelta(days=1)
             hour = timedelta(hours=1)
-            tn = self._values(series, case, settings.normal_temp, event - 7 * day, event)
-            an = self._values(series, case, settings.activity, event - 14 * day, event)
-            rn = self._values(series, case, settings.rumination, event - 7 * day, event)
+            tn = (
+                self._values(series, case, settings.normal_temp, event - 7 * day, event)
+                if anchored
+                else []
+            )
+            an = (
+                self._values(series, case, settings.activity, event - 14 * day, event)
+                if anchored
+                else []
+            )
+            rn = (
+                self._values(series, case, settings.rumination, event - 7 * day, event)
+                if anchored
+                else []
+            )
             tn_value, an_value, rn_value = (
                 mean(values) if values else None for values in (tn, an, rn)
             )
@@ -619,13 +811,20 @@ class StudyWorkbookService:
                 drop,
                 None,
                 *rumination,
-                event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M %Z"),
+                (
+                    event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M %Z")
+                    + (" · period anchor" if case.key in settings.provisional_cases else "")
+                    if anchored
+                    else "T0 not supplied"
+                ),
                 case.farm,
                 case.from_date,
                 case.to_date,
                 case.status,
             )
             assert len(values) == 33
+            if not anchored:
+                values = values[:2] + (None,) * 26 + values[28:]
             for column, value in enumerate(values):
                 if value is None:
                     if column not in (2, 3, 21):
@@ -653,7 +852,12 @@ class StudyWorkbookService:
             normal_sheet.write_string(
                 row,
                 1,
-                events[case.key].astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M"),
+                (
+                    events[case.key].astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M")
+                    + (" · period anchor" if case.key in settings.provisional_cases else "")
+                    if case.key not in settings.unanchored_cases
+                    else "T0 not supplied"
+                ),
             )
             for column, role in enumerate(("temperature", "activity", "rumination"), 2):
                 if base[role] is not None:
@@ -673,6 +877,9 @@ class StudyWorkbookService:
             number,
             muted,
             stop,
+            settings.unanchored_cases,
+            False,
+            settings.provisional_cases,
         )
         self._timepoint_sheet(
             workbook,
@@ -689,6 +896,9 @@ class StudyWorkbookService:
             number,
             muted,
             stop,
+            settings.unanchored_cases,
+            settings.rumination_minutes,
+            settings.provisional_cases,
         )
         for title_text, pair, role in (
             ("Temperature aligned", settings.temperature, "temperature"),
@@ -711,6 +921,19 @@ class StudyWorkbookService:
                 muted,
                 stop,
             )
+        self._analysis_summary(
+            workbook,
+            source.cases,
+            events,
+            settings,
+            series,
+            case_baselines,
+            title,
+            header,
+            number,
+            muted,
+            stop,
+        )
         self._graphs(workbook, source.cases, settings, title, muted)
         definitions = workbook.add_worksheet("Definitions")
         definitions.hide_gridlines(2)
@@ -726,7 +949,16 @@ class StudyWorkbookService:
             ),
             (
                 "Time zero",
-                "Explicit farm-local treatment/key-event time per cow; elapsed offsets use UTC.",
+                (
+                    "Each cow's optional queue T0 is the treatment/key-event time. "
+                    "Without it, From 00:00 is used as a labelled period anchor only; "
+                    "the resulting offsets are not treatment-relative. Elapsed offsets use UTC."
+                    if settings.automatic
+                    else (
+                        "Explicit farm-local treatment/key-event time per cow; "
+                        "elapsed offsets use UTC."
+                    )
+                ),
             ),
             (
                 "Normal temperature",
@@ -758,7 +990,12 @@ class StudyWorkbookService:
                 "Rumination",
                 (
                     f"{settings.rumination[0]} [{settings.rumination[1]}], "
-                    "previous 7 days baseline; Rl next 5 days."
+                    + (
+                        "divided by 60 into minutes in this derived workbook; "
+                        if settings.rumination_minutes
+                        else ""
+                    )
+                    + "previous 7 days baseline; Rl next 5 days."
                     if settings.rumination
                     else "Not mapped; R and RT points remain blank."
                 ),
@@ -817,6 +1054,8 @@ class StudyWorkbookService:
             {"missing_" + name: count for name, count in missing.items()}
         )
         all_quality["cow_cases"] = len(source.cases)
+        all_quality["cow_cases_without_T0"] = len(settings.unanchored_cases)
+        all_quality["cow_cases_using_period_anchor"] = len(settings.provisional_cases)
         all_quality["non_saved_cow_cases"] = sum(case.status != "saved" for case in source.cases)
         required_windows = (
             ("short_14d_activity_baseline", timedelta(days=14), timedelta()),
@@ -836,8 +1075,11 @@ class StudyWorkbookService:
         )
         for name, before, after in required_windows:
             all_quality[name] = sum(
-                events[case.key] - before < self._collection_start(case)
-                or events[case.key] + after > self._collection_end(case)
+                case.key not in settings.unanchored_cases
+                and (
+                    events[case.key] - before < self._collection_start(case)
+                    or events[case.key] + after > self._collection_end(case)
+                )
                 for case in source.cases
             )
         for row, (name, count) in enumerate(sorted(all_quality.items()), 3):
@@ -884,7 +1126,8 @@ class StudyWorkbookService:
                 row,
                 6,
                 "Yes"
-                if self._exact(series, case, settings.temperature, event) is not None
+                if case.key not in settings.unanchored_cases
+                and self._exact(series, case, settings.temperature, event) is not None
                 else "No",
             )
             qc.write_number(
@@ -980,6 +1223,8 @@ class StudyWorkbookService:
             absolute = []
             relative = []
             for column, case in enumerate(cases, 1):
+                if case.key in settings.unanchored_cases:
+                    continue
                 stamp = events[case.key] + timedelta(hours=offset)
                 if role == "activity":
                     values = self._values(series, case, pair, stamp - timedelta(hours=6), stamp)
@@ -1002,7 +1247,11 @@ class StudyWorkbookService:
             for column, value in enumerate((rel_avg, rel_sd, rel_low, rel_high), stats_start + 6):
                 if value is not None:
                     sheet.write_number(row, column, value, number)
-        if offsets:
+        if (
+            offsets
+            and pair is not None
+            and any(case.key not in settings.unanchored_cases for case in cases)
+        ):
             chart = workbook.add_chart({"type": "line"})
             for col, label, color in (
                 (stats_start + 1, "Mean", "#245D43"),
@@ -1019,7 +1268,13 @@ class StudyWorkbookService:
                 )
             chart.set_title({"name": f"{role.capitalize()} · mean and 95% limits"})
             chart.set_x_axis({"name": "Elapsed hours from time zero"})
-            chart.set_y_axis({"name": f"Source units: {pair[1] if pair else 'unmapped'}"})
+            chart.set_y_axis(
+                {
+                    "name": "Study units: minutes"
+                    if role == "rumination" and settings.rumination_minutes
+                    else f"Source units: {pair[1] if pair else 'unmapped'}"
+                }
+            )
             chart.set_legend({"position": "bottom"})
             sheet.insert_chart(2, stats_start + 11, chart, {"x_scale": 1.35, "y_scale": 1.25})
 
@@ -1039,6 +1294,9 @@ class StudyWorkbookService:
         number,
         muted,
         stop,
+        unanchored_cases=(),
+        settings_rumination_minutes=False,
+        provisional_cases=(),
     ) -> None:
         sheet = workbook.add_worksheet(name)
         sheet.hide_gridlines(2)
@@ -1047,11 +1305,14 @@ class StudyWorkbookService:
         sheet.set_column(1, 1, 23)
         sheet.set_column(2, 2 + horizon // step, 15)
         sheet.write_string(0, 0, name, title)
+        unit_label = pair[1] if pair else "unmapped"
+        if prefix == "RT" and pair == ("rum_index", "seconds") and settings_rumination_minutes:
+            unit_label = "minutes derived from seconds"
         sheet.write_string(
             1,
             0,
             f"Exact source {pair[0] if pair else 'unmapped'} "
-            f"[{pair[1] if pair else 'unmapped'}] points at the configured elapsed-hour "
+            f"[{unit_label}] points at the configured elapsed-hour "
             "steps; missing points remain blank.",
             muted,
         )
@@ -1068,9 +1329,73 @@ class StudyWorkbookService:
             sheet.write_string(
                 row,
                 1,
-                event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M"),
+                (
+                    event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M")
+                    + (" · period anchor" if case.key in provisional_cases else "")
+                    if case.key not in unanchored_cases
+                    else "T0 not supplied"
+                ),
             )
+            if case.key in unanchored_cases:
+                continue
             for column, offset in enumerate(offsets, 2):
                 value = self._exact(series, case, pair, event + timedelta(hours=offset))
                 if value is not None:
                     sheet.write_number(row, column, value, number)
+
+
+class AutomaticStudyWorkbookService:
+    """Add the client's cow-by-cow layout from observed metric pairs.
+
+    A missing treatment T0 uses From 00:00 solely as a labelled period anchor.
+    The collection's raw/tidy measurements remain unchanged.
+    """
+
+    SOURCE_PAIRS = {
+        "normal_temp": ("temp_normal_index", "degree_celsius"),
+        "normal_temp_fallback": ("temp", "degree_celsius"),
+        "temperature": ("temp_without_drink_cycles", "degree_celsius"),
+        "activity": ("act", "act"),
+        "rumination": ("rum_index", "seconds"),
+    }
+
+    def create(
+        self,
+        folder: Path,
+        stop: Event,
+        progress: Callable[[ApiProgress], None],
+    ) -> Path:
+        source = StudySource.load(folder, stop)
+        present = set(source.pairs)
+        events = []
+        provisional = []
+        for case in source.cases:
+            if case.event_utc is None:
+                provisional.append(case.key)
+                events.append((case.key, StudyWorkbookService._collection_start(case)))
+            else:
+                events.append((case.key, case.event_utc))
+        normal_pair = self.SOURCE_PAIRS["normal_temp"]
+        if normal_pair not in present:
+            normal_pair = self.SOURCE_PAIRS["normal_temp_fallback"]
+        settings = StudySettings(
+            events=tuple(events),
+            normal_temp=normal_pair if normal_pair in present else None,
+            temperature=(
+                self.SOURCE_PAIRS["temperature"]
+                if self.SOURCE_PAIRS["temperature"] in present
+                else None
+            ),
+            activity=self.SOURCE_PAIRS["activity"]
+            if self.SOURCE_PAIRS["activity"] in present
+            else None,
+            rumination=self.SOURCE_PAIRS["rumination"]
+            if self.SOURCE_PAIRS["rumination"] in present
+            else None,
+            provisional_cases=tuple(provisional),
+            rumination_minutes=self.SOURCE_PAIRS["rumination"] in present,
+            automatic=True,
+        )
+        return StudyWorkbookService().create(
+            source, settings, stop, progress, file_stem="client-analysis"
+        )

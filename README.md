@@ -5,14 +5,16 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.9.0 keeps the official smaXtec Public API as the primary workflow. Its spacious
+Version 0.10.0 keeps the official smaXtec Public API as the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
 queued target. Users can review the full queue and save direct raw JSON, a lossless
 technical CSV, a graph-ready tidy CSV and optional Excel data without waiting for email.
 The earlier browser/email workflow remains in a
-labelled legacy tab. An additional client-study workbook preview is available from a
-saved collection; broader canonical calculations and accepted analysis remain next.
+labelled legacy tab. Every completed cow collection now adds a client-style
+`client-analysis.xlsx` companion automatically. The guided study builder remains
+available for reviewed mapping and advanced options; broader canonical calculations
+and accepted analysis remain next.
 See [current status](docs/PROJECT_STATE.md) for verified evidence and remaining gates;
 implementation is not a claim that client acceptance or a production release is complete.
 
@@ -33,14 +35,17 @@ The app opens on **Direct data API**:
    for other farms or periods; the signed-in account card collapses to preserve space.
 4. In **Download queue**, select one, several or every row. Keep **all available**
    measurements, or find the codes shared by the selected targets, uncheck anything
-   unwanted, and apply that choice only to those rows. Edit any row's dates independently,
-   then choose resolution, optional farm health index, destination, name and XLSX output.
+   unwanted, and apply that choice only to those rows. Edit any row's dates independently.
+   For cow studies, optionally enter that cow's actual treatment/key-event **Study T0**
+   as `DD/MM/YYYY HH:MM` in its farm timezone. Then choose resolution, optional farm
+   health index, destination, name and XLSX output.
 5. Choose **Review & download**, inspect every target/date/metric row, and confirm.
    **Results** shows saved, partial, failed or cancelled targets and directly opens the
-   graph-ready CSV, polished workbook or complete audit folder.
+   graph-ready CSV, polished workbook, automatic client analysis or audit folder.
 
 Each run creates a unique folder. It contains the original API response chunks,
-`measurements.csv`, `analysis_ready.csv`, optional `<collection>.xlsx`, and a hashed
+`measurements.csv`, `analysis_ready.csv`, optional `<collection>.xlsx`, a cow-only
+`client-analysis.xlsx` companion when source measurements are usable, and a hashed
 `collection.json` manifest. Open `analysis_ready.csv` first for a readable one-observation-
 per-row table with identity, metric/unit, local and UTC times, value and provenance.
 The workbook starts with a branded collection overview, descriptive observation-count
@@ -49,7 +54,26 @@ column and value; technical lineage columns are merely hidden for readability an
 unhidden. The existing `measurements.csv` and raw JSON remain unchanged as the lossless audit path.
 See [Direct API data](docs/API_DATA.md) for the exact contract and known API ambiguities.
 
-## Create the client-study workbook preview
+## Automatic client analysis and guided study workbook
+
+Cow collections automatically create `client-analysis.xlsx` alongside the existing
+files. Its first sheet follows the client's 28-column cow/T/AT/RT parameter order;
+other sheets include normal values, exact time points, side-by-side cow alignment,
+an Analysis summary with mean/sample SD/95% limits, graphs, Definitions and QC. The
+automatic mapping uses the exact pairs in a representative saved collection:
+`temp_normal_index · degree_celsius` (normal-temperature interpretation pending
+client confirmation), `temp_without_drink_cycles · degree_celsius` for T fields,
+`act · act`, and `rum_index · seconds` converted to minutes only in this derived
+workbook. If normal index is absent, `temp · degree_celsius` is a disclosed fallback.
+When Study T0 is not supplied, the workbook pivots exact points around the cow's
+farm-local From date at 00:00, clearly labelled a **period anchor**, not treatment
+time. Earlier baseline windows and later follow-up windows may still be blank when
+outside the downloaded range. Enter actual T0 for treatment interpretation. The
+source CSVs and raw responses still contain every requested measurement.
+
+The guided builder remains available for exact role selection and advanced study
+windows. It writes a separate `client-study.xlsx` and never overwrites the automatic
+file.
 
 After downloading cow data, open **Results → Create study workbook**. You can also
 choose an earlier completed direct-API collection folder. Match the four source
@@ -64,7 +88,8 @@ The separate `client-study.xlsx` appears in that collection folder; repeated run
 get numbered names and leave all original API files untouched. Its main sheet has
 one row per cow in the client's T/AT/RT parameter order. Further sheets contain
 normal values, exact configurable timepoints, cow data aligned around their own
-time zero, absolute/relative mean and 95% confidence charts, and Definitions/QC.
+time zero, an Analysis summary, absolute/relative mean and 95% confidence charts,
+and Definitions/QC.
 **T6 always means an actual reading exactly six elapsed hours later**, even when
 the chosen download interval was hourly/daily; if there is no exact reading it
 stays blank. Talert and R20 are explicitly labelled estimates, while Lact, DIM and
@@ -139,13 +164,14 @@ or requested date period. Check these before later analysis.
 
 ## Download the packaged desktop preview
 
-The earlier successful [0.8.0 Windows build](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778)
-does **not** include the new study workbook. The [0.9.0 Windows checks](https://github.com/FelixvanDijk/SmaxTec/actions/runs/35019228025)
-passed tests, bundle build and packaged executable smoke, but GitHub rejected the
-artifact upload because this repository's Actions storage quota is full. There is
-therefore **no downloadable 0.9.0 ZIP yet**; use `Start SmaxTec.cmd` on this
-prepared development computer. After the quota issue is resolved, download the
-`SmaxTec-Workbench-windows-preview` artifact from a successful 0.9.0 run,
+The retained [0.8.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778)
+does **not** include automatic client analysis. The 0.9.0 Windows checks passed
+tests, bundle build and packaged executable smoke, but artifact upload was rejected
+by GitHub Actions storage quota. Twelve older temporary ZIP artifacts have been
+removed, retaining only the two latest working 0.8/0.7 previews; quota recovery
+and a downloadable 0.10.0 preview still need CI confirmation. For now, use
+`Start SmaxTec.cmd` on this prepared development computer. Once a successful
+0.10.0 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
 extract both the artifact wrapper and the included application ZIP, and open
 `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
@@ -153,7 +179,7 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; 0.8.0 passed
-independent Windows CI smoke tests. Consult current status for the 0.9.0 build
+independent Windows CI smoke tests. Consult current status for the 0.10.0 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
 installer remain release work. If the legacy Microsoft 365 route is retained, its

@@ -75,6 +75,7 @@ class ApiTarget:
     start_date: date
     end_date: date
     metrics: tuple[str, ...] = ()  # Empty means all metrics discovered for this entity.
+    study_event_utc: datetime | None = None
 
     def __post_init__(self) -> None:
         if self.entity.kind not in {"animals", "groups", "devices"}:
@@ -87,6 +88,13 @@ class ApiTarget:
             raise ValueError("The To date cannot be in the future for this farm.")
         if len(self.metrics) != len(set(self.metrics)):
             raise ValueError("Each metric may be selected only once.")
+        if self.study_event_utc is not None:
+            event = self.study_event_utc
+            if event.tzinfo is None or event.utcoffset() is None:
+                raise ValueError("The study T0 must include a timezone.")
+            lower, upper = self.utc_bounds()
+            if not lower <= event.astimezone(UTC) < upper:
+                raise ValueError("The study T0 must fall inside this cow's From/To period.")
 
     def utc_bounds(self) -> tuple[datetime, datetime]:
         """Whole farm-local days; exact half-open UTC range, including DST changes."""
@@ -147,3 +155,4 @@ class ApiDownloadResult:
     warnings: tuple[str, ...] = ()
     analysis_csv: Path | None = None
     workbook: Path | None = None
+    client_workbook: Path | None = None

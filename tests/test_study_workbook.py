@@ -14,6 +14,7 @@ from xlsxwriter.utility import xl_col_to_name
 from smaxtec.application.api_data import ApiError
 from smaxtec.application.api_downloads import ANALYSIS_HEADERS
 from smaxtec.application.study_workbook import (
+    AutomaticStudyWorkbookService,
     StudySettings,
     StudySource,
     StudyWorkbookService,
@@ -21,7 +22,15 @@ from smaxtec.application.study_workbook import (
 )
 
 
-def _collection(tmp_path, *, two_cows=True, second_without_normal=False, cow_count=None):
+def _collection(
+    tmp_path,
+    *,
+    two_cows=True,
+    second_without_normal=False,
+    cow_count=None,
+    auto_pairs=False,
+    auto_event=False,
+):
     event = datetime(2026, 9, 15, 8, 10, tzinfo=UTC)
     cows = (
         tuple(f"{index:03d}" for index in range(1, cow_count + 1))
@@ -45,11 +54,34 @@ def _collection(tmp_path, *, two_cows=True, second_without_normal=False, cow_cou
                 "to": "2026-10-05",
                 "farm_timezone": "Europe/London",
                 "status": "saved",
+                "study_event_utc": event.isoformat() if auto_event else None,
             }
         )
 
-        def add(metric, unit, offset_hours, value, *, target_id=target_id, cow=cow):
-            stamp = (event + timedelta(hours=offset_hours)).isoformat().replace("+00:00", "Z")
+        def add(
+            metric,
+            unit,
+            offset_hours,
+            value,
+            *,
+            target_id=target_id,
+            cow=cow,
+            timestamp=None,
+        ):
+            if auto_pairs:
+                metric, unit = {
+                    "normal_temp": ("temp_normal_index", "degree_celsius"),
+                    "temp_no_drink": ("temp_without_drink_cycles", "degree_celsius"),
+                    "activity": ("act", "act"),
+                    "rumination": ("rum_index", "seconds"),
+                }.get(metric, (metric, unit))
+                if metric == "rum_index":
+                    value *= 60
+            stamp = (
+                (timestamp or event + timedelta(hours=offset_hours))
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
             row = dict.fromkeys(ANALYSIS_HEADERS, "")
             row.update(
                 {
@@ -77,6 +109,18 @@ def _collection(tmp_path, *, two_cows=True, second_without_normal=False, cow_cou
         add("activity", "index", 3, 10)
         add("rumination", "minutes", 12, 300)
         add("temp_no_drink", "celsius", 6, 40.06)  # identical boundary duplicate
+        if auto_pairs:
+            start = datetime(2026, 8, 31, 23, tzinfo=UTC)
+            for offset, temperature, rumination in (
+                (0, 40.0, 400),
+                (6, 40.1, 420),
+                (24, 40.2, 440),
+            ):
+                stamp = start + timedelta(hours=offset)
+                add("temp_no_drink", "celsius", 0, temperature, timestamp=stamp)
+                add("normal_temp", "celsius", 0, 39.5, timestamp=stamp)
+                add("activity", "index", 0, 6, timestamp=stamp)
+                add("rumination", "minutes", 0, rumination, timestamp=stamp)
     csv_path = tmp_path / "analysis_ready.csv"
     with csv_path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=ANALYSIS_HEADERS)
@@ -131,12 +175,15 @@ def test_client_workbook_has_one_case_row_exact_hours_aligned_cows_and_qc(tmp_pa
             "Temperature aligned",
             "Activity aligned",
             "Rumination aligned",
+            "Analysis",
             "Study graphs",
             "Definitions",
             "QC and missing data",
         ):
             assert f'name="{name}"' in workbook_xml
-        assert len([name for name in archive.namelist() if name.startswith("xl/charts/chart")]) == 9
+        assert (
+            len([name for name in archive.namelist() if name.startswith("xl/charts/chart")]) == 15
+        )
         raw_sheet = archive.read("xl/worksheets/sheet1.xml")
         sheet = raw_sheet.decode("utf-8")
         assert '<c r="B4"' in sheet and '<c r="B5"' in sheet
@@ -159,7 +206,11 @@ def test_client_workbook_has_one_case_row_exact_hours_aligned_cows_and_qc(tmp_pa
         assert _numeric_cell(aligned, "F8") == pytest.approx(0)  # sample SD
         assert _numeric_cell(aligned, "I8") == pytest.approx(2)  # relative available cows
         assert _numeric_cell(aligned, "J8") == pytest.approx(0.5)  # mean vs baseline
-        qc = archive.read("xl/worksheets/sheet10.xml").decode("utf-8")
+        summary = archive.read("xl/worksheets/sheet8.xml")
+        assert _numeric_cell(summary, "F5") == pytest.approx(40)  # Cohort T0 mean.
+        assert _numeric_cell(summary, "M5") == pytest.approx(6)  # Cohort AT0 mean.
+        assert _numeric_cell(summary, "V5") == pytest.approx(400)  # Cohort RT0 mean.
+        qc = archive.read("xl/worksheets/sheet11.xml").decode("utf-8")
         assert "identical_duplicate_collapsed" in qc
         assert "Availability by cow/case" in qc
         assert all(
@@ -170,6 +221,49 @@ def test_client_workbook_has_one_case_row_exact_hours_aligned_cows_and_qc(tmp_pa
     assert (tmp_path / "analysis_ready.csv").is_file()
     another = StudyWorkbookService().create(source, _settings(source), Event(), lambda _: None)
     assert another.name == ("client-study-1.xlsx")
+
+
+def test_automatic_companion_defaults_to_labelled_From_anchor_and_pivots_exact_points(tmp_path):
+    _collection(tmp_path, two_cows=False, auto_pairs=True)
+    source_hash = hashlib.sha256((tmp_path / "analysis_ready.csv").read_bytes()).hexdigest()
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+    assert output.name == "client-analysis.xlsx"
+    with ZipFile(output) as archive:
+        parameters = archive.read("xl/worksheets/sheet1.xml")
+        assert b"57" in parameters
+        assert _numeric_cell(parameters, "E4") is None  # No prior-week coverage.
+        assert _numeric_cell(parameters, "N4") is None  # No preceding 6h coverage.
+        assert _numeric_cell(parameters, "G4") == pytest.approx(40.0)
+        assert _numeric_cell(parameters, "H4") == pytest.approx(40.1)
+        assert _numeric_cell(parameters, "K4") == pytest.approx(40.2)
+        assert _numeric_cell(parameters, "O4") == pytest.approx(6)
+        assert _numeric_cell(parameters, "W4") == pytest.approx(400)  # Seconds -> minutes.
+        assert _numeric_cell(parameters, "X4") == pytest.approx(440)
+        assert b"period anchor" in parameters
+        definitions = archive.read("xl/worksheets/sheet10.xml")
+        assert b"temp_normal_index [degree_celsius]" in definitions
+        assert b"temp_without_drink_cycles [degree_celsius]" in definitions
+        assert b"act [act]" in definitions
+        assert b"rum_index [seconds]" in definitions
+        assert b"divided by 60 into minutes" in definitions
+    assert hashlib.sha256((tmp_path / "analysis_ready.csv").read_bytes()).hexdigest() == source_hash
+
+
+def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path):
+    _collection(tmp_path, two_cows=False, auto_pairs=True, auto_event=True)
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+    assert output.name == "client-analysis.xlsx"
+    with ZipFile(output) as archive:
+        parameters = archive.read("xl/worksheets/sheet1.xml")
+        assert _numeric_cell(parameters, "E4") == pytest.approx(39.5)
+        assert _numeric_cell(parameters, "N4") == pytest.approx(6)
+        assert _numeric_cell(parameters, "O4") == pytest.approx(9)
+        assert _numeric_cell(parameters, "S4") == pytest.approx(500)
+        assert _numeric_cell(parameters, "T4") == pytest.approx(300)
+        assert _numeric_cell(parameters, "U4") == pytest.approx(0.4)
+        assert _numeric_cell(parameters, "W4") == pytest.approx(400)
+        assert _numeric_cell(parameters, "G4") == pytest.approx(40)
+        assert _numeric_cell(parameters, "H4") == pytest.approx(40.06)
 
 
 def test_source_hash_role_and_daylight_saving_guardrails(tmp_path):
@@ -213,7 +307,7 @@ def test_unavailable_metric_roles_remain_blank_without_guessing(tmp_path):
         assert '<c r="E4"' not in main  # No guessed normal temperature.
         assert '<c r="L4"' not in main  # R20 needs Tn.
         assert '<c r="H4"' in main  # Available exact temperature still works.
-        definitions = archive.read("xl/worksheets/sheet9.xml").decode("utf-8")
+        definitions = archive.read("xl/worksheets/sheet10.xml").decode("utf-8")
         assert "Not mapped" in definitions
 
 

@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 
+import pytest
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtWidgets import QAbstractItemView, QLineEdit
 
@@ -102,6 +103,43 @@ def test_queue_keeps_individual_dates_and_same_cow_different_periods(qtbot, tmp_
         (date(2026, 9, 5), date(2026, 9, 7)),
     ]
     assert [item.entity.number for item in request.targets] == ["57", "57"]
+
+
+def test_optional_study_T0_stays_with_its_cow_and_is_reviewed(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.cow_numbers.setPlainText("57")
+    panel._select_exact()
+    panel.shared_from.setText("01/09/2026")
+    panel.shared_to.setText("15/09/2026")
+    panel._add_selected()
+    panel.queue.item(0, 5).setText("14/09/2026 09:10")
+    target = panel.build_request().targets[0]
+    assert target.study_event_utc is not None
+    assert target.study_event_utc.isoformat() == "2026-09-14T08:10:00+00:00"
+    panel.queue.item(0, 5).setText("14/09/2024 09:10")
+    with pytest.raises(ValueError, match="inside"):
+        panel.build_request()
+
+
+def test_saved_collection_can_rebuild_auto_analysis_without_api_download(
+    qtbot, tmp_path, monkeypatch
+):
+    panel, _client, service = connected_panel(qtbot, tmp_path)
+    expected = tmp_path / "client-analysis-1.xlsx"
+    monkeypatch.setattr(
+        "smaxtec.ui.api_panel.QFileDialog.getExistingDirectory",
+        lambda *_args: str(tmp_path),
+    )
+    monkeypatch.setattr(
+        "smaxtec.ui.api_panel.AutomaticStudyWorkbookService.create",
+        lambda _self, _folder, _stop, _progress: expected,
+    )
+    panel._rebuild_automatic_saved()
+    qtbot.waitUntil(lambda: panel._last_client_workbook == expected)
+    qtbot.waitUntil(lambda: not panel.is_busy)
+    assert not service.requests
+    assert panel.result_summary.text() == "Client analysis rebuilt"
+    assert panel.open_client_workbook_button.isEnabled()
 
 
 def test_discovered_measurements_can_be_frozen_into_queue(qtbot, tmp_path):

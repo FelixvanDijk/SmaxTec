@@ -88,6 +88,23 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
+Source 0.10.0 automatically adds `client-analysis.xlsx` to completed direct-API
+cow collections while retaining the advanced guided `client-study.xlsx` builder.
+Every queue cow can carry an optional, strictly parsed farm-local Study T0. If absent,
+the automatic report uses that cow's From date at farm-local 00:00 as a **labelled
+period anchor**, never claiming it is treatment time. An actual event T0 remains
+necessary for event/treatment interpretation. Use exact source pairs found in a
+representative saved collection: `temp_normal_index/degree_celsius` (inferred normal
+temperature; client confirmation pending), `temp_without_drink_cycles/degree_celsius`
+for client T fields, `act/act` and `rum_index/seconds`. Convert rumination seconds
+to minutes only in the derived workbook; retain original units in raw/CSV. If normal
+index is absent, `temp/degree_celsius` is a disclosed fallback, not the T source.
+Preserve raw JSON, both CSVs,
+existing descriptive workbook, request semantics and the guided builder. A derived
+workbook failure must be a curated warning, not loss of the completed collection.
+Read `docs/CLIENT_STUDY_WORKBOOK.md` and `docs/API_DATA.md` before changing this path.
+The automatic report is synthetic-tested only, not a clinical or clean-machine release.
+
 Source 0.9.0 adds an **opt-in** client-study workbook after the existing direct-API
 collection. Read `docs/CLIENT_STUDY_WORKBOOK.md` before changing this derived view.
 The supplied analysis workbook/PDF define one cow/case per row, T0/T6/... exact

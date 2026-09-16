@@ -435,6 +435,46 @@ was rejected because it would imply unverified semantics. Revisit after real sou
 samples, reviewed mapping/units, baseline coverage, exact event timestamps and the
 client's acceptance of formulas/charts. See `CLIENT_STUDY_WORKBOOK.md`.
 
+## Decision 018: Generate a client companion automatically without inventing T0
+
+Status: implemented in source 0.10.0; synthetic verification complete, live and
+client acceptance pending.
+
+The current direct-API queue's From/To bounds cannot stand in for the client's
+treatment/key-event timestamp. Add optional `study_event_utc` to each immutable
+`ApiTarget`, entered as strict farm-local `DD/MM/YYYY HH:MM` in the queue and reviewed
+alongside that same cow/date/metric association. Validate timezone/DST and containment
+within its requested local days. Record the event only as collection metadata; it
+does not change measurement requests, API bounds, CSVs or raw data. An empty T0 is
+allowed so ordinary data collection remains a one-click reviewed workflow.
+
+After the collection manifest and audit outputs have been saved, the API worker
+builds `client-analysis.xlsx` from that local hashed collection. A representative
+saved collection established exact pairs `temp_normal_index/degree_celsius`,
+`temp_without_drink_cycles/degree_celsius`, `act/act`, and `rum_index/seconds`.
+Normal-index meaning is inferred from code/unit/stable baseline and needs client
+review; `temp/degree_celsius` is a disclosed fallback only when normal index is
+absent. Rumination seconds are divided by 60 for the client view, never the raw/CSV.
+Missing T0 uses the requested farm-local From date at 00:00 to pivot exact points,
+visibly labelled **period anchor** and not a treatment event. This is useful for
+generic download inspection, but true event studies require explicit T0. Other
+metrics remain preserved in the existing
+raw/tidy outputs, not silently repurposed. An `Analysis` sheet follows the sample's
+absolute/normal-relative cohort means, sample SD and 95% limits, with usable chart
+references, while the 28-column cow table and detailed aligned sheets remain.
+
+The derived-file failure is isolated: the previously completed direct collection
+stays usable, the manifest records a warning rather than reporting lost data, and
+users can use the existing guided builder from Results. `client-study.xlsx` remains
+independent and non-overwriting for explicit role mapping, actual events and advanced
+time windows. Alternatives rejected were taking From as T0, equating normal and
+non-drinking-cycle temperatures, and renaming drug-specific tabs ASPI/Ketofen without
+known product assignments; each would give a clinically misleading "exact replica".
+The earlier rejection of From as *treatment* T0 remains; a labelled period anchor
+was adopted after the user's blank-output report to make generic collection pivots
+usable. Revisit after client review of normal-index meaning, event source and
+treatment timestamps and grouping labels are accepted by the client.
+
 ## Data and workflow design to preserve
 
 

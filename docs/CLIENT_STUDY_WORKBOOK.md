@@ -1,9 +1,18 @@
-# Client study workbook contract (2026-09-15)
+# Client study workbook contract (2026-09-16)
 
 Sources inspected locally, read-only: the client-provided `Analysis sheet.xlsx` (five
 worksheets, 28-column ASPI and Ketofen tables, normal-value table, separate analysis
 with line charts and mean/SD/95% confidence summaries) and the two-page
 `parameters to be logged (given as an option).pdf`. Neither source file belongs in Git.
+The later representative saved direct-API collection was inspected read-only outside
+Git. It contains exact `temp_normal_index · degree_celsius`,
+`temp_without_drink_cycles · degree_celsius`, `act · act`, and
+`rum_index · seconds` pairs. `temp · degree_celsius` also exists, but is not the
+client's non-drinking-cycle T source. Normal-index meaning is inferred from its
+code/unit and stable observed values; vendor/client confirmation is pending.
+The example's ASPI/Ketofen/ASPI LIQUID tabs are treatment groups; smaXtec's
+measurement collection does not establish product/group assignment, so a downloaded
+collection must not relabel cows into those groups by guess.
 
 ## Source-of-truth layout and definitions
 
@@ -18,8 +27,10 @@ so reproduce the intent with valid chart sources rather than copying those error
 
 Client definitions:
 
-- **Time zero:** the user-supplied product administration/key event timestamp for
-  each cow. Date-range From/To is a collection boundary, not time zero.
+- **Time zero:** for clinical/event studies, the user-supplied product
+  administration/key-event timestamp for each cow. If omitted in the **automatic**
+  report, farm-local From 00:00 is a visibly labelled **period anchor** for generic
+  pivoting only; it must never be described as administration or an alert.
 - **Tn:** mean of the source **normal temperature** metric over `[T0-7d,T0)`.
 - **Talert proxy:** maximum **temperature without drinking cycles** over
   `[T0-5d,T0)`. It is not an actual alert measurement and must be labelled proxy.
@@ -37,6 +48,8 @@ Client definitions:
   a percentage (for example, `0.4` displays `40%`). This matches the example's
   `1-(Rl/Rn)` formula and percentage semantics.
 - **RT0/RT24/...:** absolute source rumination at exactly the named elapsed hour.
+  The automatic report converts `rum_index/seconds` to minutes using `/60` to align
+  with the example's values; the audit CSV and guided builder keep their source units.
 - **Rback:** withheld pending clarification. The PDF says time until the series
   first hits Rl *again* after dropping to Rl, which is internally ambiguous; do
   not substitute an unapproved return-to-normal definition.
@@ -55,9 +68,30 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
 
 ## Safety and acceptance boundary
 
-- Produce a separate, opt-in workbook from a completed local direct-API collection.
-  Never change current authentication, download, raw, staging CSV, tidy CSV, manifest
-  or original workbook. Never read/write client files inside the repository.
+- Produce two separate companions from a completed local direct-API collection:
+  automatic `client-analysis.xlsx` for each usable cow collection, and the retained
+  guided `client-study.xlsx` when the user explicitly requests advanced role/event
+  mapping. Both are non-overwriting and derived from the hashed tidy CSV.
+- The queue optionally records one strict farm-local T0 per cow/case. It is reviewed
+  with the cow's From/To before data collection. When absent, the automatic workbook
+  uses farm-local From 00:00 as a **period anchor** and fills available exact T/AT/RT
+  columns. This is not a substitute for a real clinical key event; baseline and
+  follow-up columns may be blank if the requested period lacks coverage.
+- In the automatic report, map exact source pairs present in the representative
+  collection. `temp_normal_index/degree_celsius` is provisionally the normal role,
+  with disclosed `temp/degree_celsius` fallback if missing; neither is used for T.
+  `temp_without_drink_cycles/degree_celsius` supplies T. Unrecognized pairs stay in
+  the
+  original CSV/workbook, not used for client formulas.
+- An Analysis summary sheet follows the example's T/A/R absolute and normal-relative
+  time-point blocks. Each block shows actual available n, mean, sample SD, lower
+  and upper 95% limits with intact source-range charts; drug-specific subgroup
+  blocks need reviewed product assignments before implementation.
+  Never change authentication, API requests, raw responses, either CSV or the
+  existing descriptive workbook. The manifest only gains optional T0 and derived-
+  companion filename/hash/warning metadata; its original lineage fields remain.
+- Never read/write client files inside the repository. A derived-output error leaves
+  the successful original collection intact and visible with a warning.
 - Mapped metric roles must be chosen from the exact discovered `(code, source unit)` pairs.
   Do not infer meaning from a string fragment or merge units. The normal-temperature
   role is separate from temperature without drinking cycles. A role not present in

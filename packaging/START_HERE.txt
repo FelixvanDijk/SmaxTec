@@ -1,4 +1,4 @@
-SmaxTec Workbench — desktop preview 0.9.0
+SmaxTec Workbench — desktop preview 0.10.0
 
 1. Extract the complete ZIP into a folder on your computer.
 2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
@@ -10,14 +10,28 @@ SmaxTec Workbench — desktop preview 0.9.0
 7. Open Download queue and select one, several or every queued row. Use all available
    measurements, or find the codes common to the selected targets, check the ones you
    need and apply them only to those selected rows.
-8. Edit individual dates and choose resolution, optional weekly farm health index,
-   output folder/name and optional Excel.
+8. Edit individual dates. If this is a cow treatment/key-event study, optionally enter
+   that cow's Study T0 as DD/MM/YYYY HH:MM in the farm's timezone. Then choose
+   resolution, optional weekly farm health index, output folder/name and optional Excel.
 9. Choose Review & download. Inspect every target/date/measurement row, then confirm.
 10. Results shows each saved, partial, failed or cancelled target. Open the graph-ready
-    CSV, presentation workbook or complete audit folder directly from that screen.
+    CSV, presentation workbook, automatic client analysis or complete audit folder
+    directly from that screen.
 11. Choose Disconnect or close the app to release the in-memory API session.
 
-CLIENT STUDY WORKBOOK PREVIEW
+AUTOMATIC CLIENT ANALYSIS AND GUIDED STUDY PREVIEW
+
+Completed cow collections with usable measurements also create client-analysis.xlsx
+automatically. It follows the client's one-row-per-cow T/AT/RT order and includes
+normal values, an Analysis summary, aligned cow sheets, graphs, Definitions and QC.
+The automatic mapping uses exact source codes found in a saved collection:
+temp_normal_index/degree_celsius (normal-temperature interpretation pending client
+confirmation), temp_without_drink_cycles/degree_celsius for T, act/act and
+rum_index/seconds. Rumination is shown in minutes in this derived workbook, while
+the raw CSV remains seconds. If Study T0 is blank, exact measurements are aligned
+around that cow's From date at farm-local 00:00, labelled a PERIOD ANCHOR, not a
+treatment time. Enter actual T0 for treatment studies; baseline/follow-up fields
+may be blank if outside the collected range.
 
 In Results choose Create study workbook, or Choose saved collection for an earlier
 complete API collection. Match the source codes/units for normal temperature,

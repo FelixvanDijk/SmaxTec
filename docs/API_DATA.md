@@ -81,6 +81,8 @@ The **Direct data API** workspace is the default tab:
    then add one or many selected targets to the queue.
 5. Edit From/To independently in any queue row. The same target with a different
    period remains a separate request. **Apply Browse dates to all** is explicit.
+   For cow studies, optionally enter an individual farm-local **Study T0** as
+   `DD/MM/YYYY HH:MM`; it is metadata for analysis, not an API range filter.
 6. Choose native, 10-minute, hourly or daily resolution; optionally include the
    documented weekly farm health index; choose destination, collection name and Excel.
 7. Review every farm/target/date/timezone/measurement association, then download.
@@ -125,6 +127,7 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   measurements.csv
   analysis_ready.csv
   <collection>.xlsx                 # when selected
+  client-analysis.xlsx              # usable cow collections, automatic companion
   raw/
     cow-57-YYYYMMDD-YYYYMMDD-metadata.json
     cow-57-YYYYMMDD-YYYYMMDD-part-0001.json
@@ -153,8 +156,19 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   deleted, and can be unhidden. Additional measurement sheets are created before
   Excel's row limit. The chart is descriptive inventory, not a clinical conclusion.
 - `collection.json` format 2 records target statuses, file paths, row counts and SHA-256
-  hashes for both CSV views. It never stores credentials or bearer tokens. The original
+  hashes for both CSV views and, when built, the derived client workbook. Each cow's
+  optional UTC study event and companion failure warning are additive metadata. It
+  never stores credentials or bearer tokens. The original
   `measurements.csv` columns are unchanged from format 1 for compatibility.
+- `client-analysis.xlsx` follows the supplied 28-column cow analysis order and adds
+  normal-value, exact time-point, side-by-side alignment, absolute/relative cohort
+  Analysis, graph, Definitions and QC sheets. Without actual per-cow T0, it uses
+  farm-local From 00:00 as a clearly labelled period anchor, not a treatment time.
+  A representative saved collection established exact source pairs
+  `temp_normal_index/degree_celsius` (normal interpretation inferred),
+  `temp_without_drink_cycles/degree_celsius`, `act/act`, and `rum_index/seconds`.
+  Rumination converts to minutes in the derived workbook, not the source CSV.
+  Original API rows remain in the tidy/audit outputs. See `CLIENT_STUDY_WORKBOOK.md`.
 
 Raw/CSV files are written through exclusive partial files and atomically published.
 Cancellation keeps completed chunks and marks the interrupted target `partial`; targets

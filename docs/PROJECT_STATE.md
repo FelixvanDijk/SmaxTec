@@ -1,7 +1,22 @@
 # Project state — start here each session
 
-Last updated: 2026-09-15. **Source preview 0.9.0 adds an opt-in client-example study
-workbook without changing the established 0.8.0 API download or audit files.** Its
+Last updated: 2026-09-16. **Source preview 0.10.0 automatically creates a separate
+client-analysis.xlsx for usable cow collections, without changing the established
+direct-API raw responses, staging/tidy CSVs or descriptive workbook.** The optional
+per-cow Study T0 is reviewed with each queue row. With no T0, exact points are
+pivoted around farm-local From 00:00, labelled a **period anchor**, never claimed as
+treatment time. A representative saved direct-API collection confirms separate
+`temp_normal_index`, `temp_without_drink_cycles`, `act`, and `rum_index` pairs.
+Rumination seconds are converted to minutes in the derived workbook only. The
+normal-index clinical interpretation remains an inference requiring client review.
+The guided 0.9.0 builder remains
+available independently. All 426 offline tests pass; representative source pairs
+and the one-cow-row pivot were checked against a saved real collection, while
+clinical and installer
+acceptance are pending. See Decision 018 and `CLIENT_STUDY_WORKBOOK.md`.
+
+Source preview 0.9.0 added an opt-in client-example study
+workbook without changing the established 0.8.0 API download or audit files. Its
 metric/event mapping, one-row-per-cow parameters, exact event-relative time points,
 aligned cow values and 95% confidence charts have synthetic offline verification.
 Real collection mapping, adequacy, client calculation/graph acceptance and release
@@ -40,6 +55,34 @@ Do not invent calculations or clinical meanings in M4.
 
 ## M5/M6 client-study workbook preview and acceptance boundaries
 
+- Source 0.10.0 adds one optional Study T0 (`DD/MM/YYYY HH:MM` in farm-local time)
+  to each cow's reviewed direct-API queue row, stored as immutable UTC metadata.
+  Date filters, API requests and raw/tidy source rows are unchanged. A completed
+  usable cow collection automatically produces a separate `client-analysis.xlsx`
+  and exposes an **Open client analysis** Results action; the guided builder still
+  produces `client-study.xlsx` when requested. The manifest records optional T0,
+  derived file/hash and any nonfatal companion error.
+- A representative saved collection, inspected read-only outside Git, contains exact
+  `temp_normal_index/degree_celsius`, `temp_without_drink_cycles/degree_celsius`,
+  `act/act`, and `rum_index/seconds` pairs. The normal-index meaning is inferred
+  from code, unit and observed baseline stability, not independently vendor-
+  confirmed. `temp/degree_celsius` is a disclosed fallback only if normal index is
+  absent; it is never substituted for T/temperature-without-drink-cycles. The
+  derived rumination values divide source seconds by 60, with raw CSV unchanged.
+  A missing T0 uses a labelled From-midnight period anchor for pivoting, not a
+  treatment claim. Rback, Lact and DIM remain unavailable.
+- The generated study layout now includes an `Analysis` summary sheet in addition
+  to the 28-column client table, Normal values, exact T/RT sheets and three aligned
+  cow sheets. It places absolute and normal-relative T/A/R named-time-point means,
+  actual n, sample SD, lower/upper 95% limits and valid chart ranges together, as
+  the example's Analysis sheet intends. Drug-specific ASPI/Ketofen/ASPI LIQUID tabs
+  are not copied because no product assignment was supplied; claiming them would
+  misclassify cows. Source retention and QC stay intact.
+- Twelve obsolete GitHub Actions preview ZIP artifacts were explicitly removed on
+  2026-09-15 to relieve storage pressure; only the working 0.8.0 and 0.7.0 previews
+  remain. This deletion is irreversible for those ZIP files, but every source commit
+  remains and can rebuild them. GitHub may take 6–12 hours to recalculate usage.
+
 - The client-provided `Analysis sheet.xlsx` has five worksheets. ASPI and Ketofen
   tables use 28 core columns with one cow/case per row. Its Normal values and
   Analysis sheets motivate the separate baseline, aligned and graph views; the
@@ -65,8 +108,10 @@ Do not invent calculations or clinical meanings in M4.
   available n per offset; missing/conflicting points remain blank, not estimated.
   Baseline/follow-up coverage shortfalls and duplicate counts appear in QC.
 - This is an analytical **preview**, not a general canonical master or a clinically
-  accepted report. No real API collection with reviewed metrics/time zero has yet
-  been supplied. Exact code/unit mapping, 10-minute/source timestamp behavior,
+  accepted report. A representative saved API collection has been inspected read-
+  only and confirms the exact source code/unit pairs and 10-minute time fields, but
+  no client-approved study event or clinical metric interpretation has been supplied.
+  Exact source meaning, timestamp behavior,
   date coverage, formulas, Rback meaning and chart appearance require client review.
   See `CLIENT_STUDY_WORKBOOK.md` for precise window contracts and source limitations.
 
@@ -229,11 +274,25 @@ Do not invent calculations or clinical meanings in M4.
   bounded downloads; `adapters/workbooks.py` owns read-only ZIP/XML B3 validation.
 - Study module map: `application/study_workbook.py` owns hashed collection loading,
   reviewed event/role settings, exact series selection, baseline/proxy calculations,
-  derived XLSX/chart/QC generation; `ui/study_dialog.py` owns the guided event editor
-  and cancellable worker. `ui/api_panel.py` links the workflow from Results only.
+  automatic exact-pair mapping, derived XLSX/chart/QC generation;
+  `ui/study_dialog.py` owns the retained guided event editor and cancellable worker.
+  `ui/api_panel.py` owns optional queue T0 entry/review and Results file actions;
+  `application/api_downloads.py` invokes the automatic companion after audit output
+  publication and isolates its failure from the direct collection.
 
 ## Verification and packaging evidence
 
+- 0.10.0 source: **424 offline tests passed** locally on 2026-09-15, including
+  automatic companion with/without T0, exact role mapping, client-layout/Analysis
+  chart checks, per-cow queue association and derived-output soft failure that
+  retains the direct collection. Ruff lint, format, `pip check` and source offline
+  smoke pass. Local PyInstaller assembled the complete 0.10.0 Windows bundle,
+  but this computer's existing policy again denied `Start-Process` of the unsigned
+  executable during packaged smoke (`Access is denied`); the build script cleaned
+  its validated temporary stage and did not publish a local archive. No real
+  cow-data request or clinical comparison was performed. A clean GitHub Windows
+  bundle smoke **and successful artifact upload** are still needed before a
+  downloadable 0.10.0 ZIP can be recommended to users.
 - 0.9.0 source: all **419 offline tests** passed locally on 2026-09-15. The new
   study tests check numerical client fields, UTC exact-hour selection, aligned
   sheets/valid charts, unmapped roles, source hash/DST, non-overwrite and Qt
@@ -249,9 +308,10 @@ Do not invent calculations or clinical meanings in M4.
   for source commit `7bef047` completed all **419 tests**, dependency/lint/format
   checks, bundle build and packaged executable smoke successfully, then failed
   **only** at `upload-artifact`: the repository's Actions artifact storage quota
-  was full. No 0.9.0 ZIP was published; 14 older preview artifacts remain intact
-  pending user approval for cleanup. GitHub says usage recalculation takes 6–12
-  hours after quota changes, so an immediate retry may still fail.
+  was full. No 0.9.0 ZIP was published. On 2026-09-15, after explicit user
+  approval, 12 obsolete preview ZIPs were removed; only the latest working 0.8.0
+  and 0.7.0 artifacts remain. GitHub says usage recalculation takes 6–12 hours
+  after quota changes, so an immediate retry may still fail.
 - 0.8.0 source: all **410 tests**, dependency integrity, Ruff, formatting and focused
   API/export/UI checks pass locally. Synthetic workbook regression proves the existing
   measurement sheet and technical columns remain while the summary chart, measurement
@@ -467,18 +527,21 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.9.0 Git/CI state and packaged launch limitation above. Use
+1. Check the 0.10.0 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
-   presentation rollback tag. The prepared source launcher includes the new study UI;
-   the 0.8.0 artifact does not. GitHub upload for 0.9.0 is currently blocked by
-   Actions artifact storage quota; do not delete older artifacts without approval.
-2. Read `API_DATA.md` and `CLIENT_STUDY_WORKBOOK.md`; run one small direct cow
-   collection including the desired normal temperature, temperature without drinking
-   cycles, activity and rumination codes at 10-minute resolution across adequate
-   baseline/follow-up dates. Record the observed codes/units/UTC times and one known
-   administration time for explicit role mapping. Keep identifiers/data outside Git.
-3. Compare the generated main parameter values, baseline sample counts, aligned
-   sheets, six charts and QC against the client's example and reviewed manual
+   presentation rollback tag. The prepared source launcher includes automatic
+   client analysis and the guided study UI; the retained 0.8.0 artifact does not.
+   Quota cleanup is complete, but upload success and recalculation are unverified.
+2. Read `API_DATA.md` and `CLIENT_STUDY_WORKBOOK.md`. The user's saved real
+   collection was checked read-only, then a separate `client-analysis-1.xlsx` was
+   generated outside Git; all seven cow rows had populated T0/T6/T24, AT6 and
+   RT0/RT24 values. Exact pair names are documented above. Run a future small
+   collection across adequate prior baseline and later follow-up dates, with a
+   known actual treatment/key-event T0 in each queue row. Preserve identifiers
+   and data outside Git. Use Results' rebuild action for old collection folders.
+3. Compare `client-analysis.xlsx` and the guided `client-study.xlsx` main values,
+   Analysis summary, baseline sample counts, aligned sheets, charts and QC against
+   the client's example and reviewed manual
    calculations. Ask whether Rback means return to normal rumination, another
    threshold or literally repeating Rl; leave it blank until clarified. Confirm
    Talert/R20 proxies and 95% interval interpretation before any clinical use.
