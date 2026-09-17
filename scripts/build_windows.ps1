@@ -9,6 +9,11 @@ $taskPython = Join-Path $taskRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $taskPython)) {
     throw 'Create the developer environment first; see docs/DEVELOPMENT.md.'
 }
+$taskProjectFile = Join-Path $taskRoot 'pyproject.toml'
+$taskVersion = (& $taskPython -c "import sys, tomllib; print(tomllib.load(open(sys.argv[1], 'rb'))['project']['version'])" $taskProjectFile).Trim()
+if (-not $taskVersion) {
+    throw 'Could not determine the application version for the preview archive.'
+}
 $taskPreviousBrowserPath = $env:PLAYWRIGHT_BROWSERS_PATH
 $taskTempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 $taskStage = Join-Path $taskTempRoot ('smaxtec-build-' + [guid]::NewGuid().ToString('N'))
@@ -44,7 +49,7 @@ try {
     if (-not $SkipArchive) {
         $taskPublishedDist = Join-Path $taskRoot 'dist'
         New-Item -ItemType Directory -Path $taskPublishedDist -Force | Out-Null
-        $taskArchive = Join-Path $taskRoot 'dist\SmaxTec-Workbench-0.10.1-windows-x64.zip'
+        $taskArchive = Join-Path $taskPublishedDist "SmaxTec-Workbench-$taskVersion-windows-x64.zip"
         Compress-Archive -LiteralPath $taskBundle -DestinationPath $taskArchive -Force
         Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256
     }

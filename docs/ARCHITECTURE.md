@@ -532,6 +532,27 @@ Missing lifecycle, baseline coverage or recovery remains blank. Raw JSON/CSVs an
 the one-sheet layout are unchanged. Revisit Rback after explicit client confirmation
 and lifecycle semantics after a representative live collection is manually checked.
 
+## Decision 021: Preserve the client table and add automatic cohort alignment
+
+Status: implemented in source 0.11.0; synthetic verification complete, client
+acceptance pending.
+
+Keep the established `Cow analysis` A:AB table unchanged as the first worksheet.
+Add a separate `Aligned data` worksheet rather than widening or restructuring that
+client-facing table. Use each immutable cow/case T0, offsets from -24 to +120 hours
+at six-hour steps, exact temperature and rumination points, and preceding-six-hour
+activity means. Place cow/case series side by side and derive actual n, mean and
+normal 95% confidence limits from the available observations at each offset. Charts
+reference those summary columns, never a second independently calculated dataset.
+
+Allow one shared farm-local T0 to be applied to selected queue rows or the full queue,
+but validate every target's own timezone and period before mutating any cell. Preserve
+individual editing and the final row-by-row review. Interpret the client's literal
+Rback wording as elapsed hours from first Rl to the first later observed value at or
+above Rl; state the discrete-series implication and revisit after client review.
+Raw JSON, CSVs, descriptive workbook, API request bounds and guided study workbook
+remain unchanged.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

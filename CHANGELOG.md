@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0 — 2026-09-17 (shared T0 and aligned cohort view)
+
+- Add a strict shared Study T0 control to the direct-API queue. The user can apply
+  one farm-local `DD/MM/YYYY HH:MM` value to selected rows or the entire queue,
+  while retaining independent editable T0 values on every row. Every target is
+  validated before any row is changed.
+- Preserve the existing 28-column `Cow analysis` table and add an `Aligned data`
+  worksheet to the automatic companion. Temperature, six-hour mean activity and
+  rumination are aligned from -24 to +120 hours around each cow's own T0, with cows
+  side by side, actual n, mean, lower/upper 95% confidence limits and three charts.
+- Implement the client's literal Rback wording as elapsed hours from the first Rl
+  minimum to the first later observed rumination reading at or above Rl in the
+  five-day window. This discrete-series interpretation is documented in the workbook
+  and remains subject to client confirmation.
+- Add regression coverage for all-or-nothing shared-T0 application, unchanged
+  A:AB client-table layout, populated Rback, cow-aligned values, confidence limits
+  and valid chart references. All 432 offline tests pass.
+
 ## 0.10.3 — 2026-09-17 (farm-loading regression fix)
 
 - Fix the 0.10.2 regression where an unexpected optional animal `lifecycle` shape

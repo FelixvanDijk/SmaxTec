@@ -232,7 +232,7 @@ def test_client_workbook_has_one_case_row_exact_hours_aligned_cows_and_qc(tmp_pa
     assert another.name == ("client-study-1.xlsx")
 
 
-def test_automatic_companion_defaults_to_labelled_From_anchor_and_pivots_exact_points(tmp_path):
+def test_automatic_companion_adds_aligned_data_beside_the_unchanged_cow_table(tmp_path):
     _collection(tmp_path, two_cows=False, auto_pairs=True)
     source_hash = hashlib.sha256((tmp_path / "analysis_ready.csv").read_bytes()).hexdigest()
     output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
@@ -247,9 +247,12 @@ def test_automatic_companion_defaults_to_labelled_From_anchor_and_pivots_exact_p
         assert _numeric_cell(parameters, "H3") == pytest.approx(40.1)
         assert _numeric_cell(parameters, "K3") == pytest.approx(40.2)
         assert _numeric_cell(parameters, "O3") == pytest.approx(6)
+        assert _numeric_cell(parameters, "V3") == pytest.approx(6)
         assert _numeric_cell(parameters, "W3") == pytest.approx(400)  # Seconds -> minutes.
         assert _numeric_cell(parameters, "X3") == pytest.approx(440)
-        assert not any(name.startswith("xl/worksheets/sheet2") for name in archive.namelist())
+        workbook_xml = archive.read("xl/workbook.xml")
+        assert b'name="Cow analysis"' in workbook_xml
+        assert b'name="Aligned data"' in workbook_xml
         table = ElementTree.fromstring(archive.read("xl/tables/table1.xml"))
         ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
         assert table.attrib["ref"] == "A2:AB3"
@@ -260,7 +263,33 @@ def test_automatic_companion_defaults_to_labelled_From_anchor_and_pivots_exact_p
         comments = archive.read("xl/comments1.xml")
         assert b"period anchor" in comments and b"NOT treatment time" in comments
         assert b"divides by 60" in comments
+        aligned = archive.read("xl/worksheets/sheet2.xml")
+        assert _numeric_cell(aligned, "A9") == 0
+        assert _numeric_cell(aligned, "C9") == pytest.approx(40)
+        assert _numeric_cell(aligned, "F9") == pytest.approx(40)
+        assert _numeric_cell(aligned, "C60") == pytest.approx(6)
+        assert _numeric_cell(aligned, "C109") == pytest.approx(400)
+        assert len([name for name in archive.namelist() if name.startswith("xl/charts/chart")]) == 3
     assert hashlib.sha256((tmp_path / "analysis_ready.csv").read_bytes()).hexdigest() == source_hash
+
+
+def test_automatic_aligned_sheet_places_cows_side_by_side_with_confidence_limits(tmp_path):
+    _collection(tmp_path, auto_pairs=True, auto_event=True)
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+    with ZipFile(output) as archive:
+        aligned = archive.read("xl/worksheets/sheet2.xml")
+        assert _numeric_cell(aligned, "A9") == 0
+        assert _numeric_cell(aligned, "B9") == 2
+        assert _numeric_cell(aligned, "C9") == pytest.approx(40)
+        assert _numeric_cell(aligned, "D9") == pytest.approx(40)
+        assert _numeric_cell(aligned, "E9") == pytest.approx(40)
+        assert _numeric_cell(aligned, "F9") == pytest.approx(40)
+        assert _numeric_cell(aligned, "G9") == pytest.approx(40)
+        assert all(
+            b"#REF!" not in archive.read(name)
+            for name in archive.namelist()
+            if name.startswith("xl/charts/chart")
+        )
 
 
 def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path):
@@ -277,7 +306,7 @@ def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path
         assert _numeric_cell(parameters, "S3") == pytest.approx(500)
         assert _numeric_cell(parameters, "T3") == pytest.approx(300)
         assert _numeric_cell(parameters, "U3") == pytest.approx(0.4)
-        assert _numeric_cell(parameters, "V3") == pytest.approx(88)
+        assert _numeric_cell(parameters, "V3") == pytest.approx(12)
         root = ElementTree.fromstring(parameters)
         ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
         # The example displays 0.13 for 13%; do not Excel-format this as 13%.
@@ -315,7 +344,7 @@ def test_automatic_table_keeps_hundreds_of_cows_on_one_sheet(tmp_path):
         sheet = archive.read("xl/worksheets/sheet1.xml")
         assert _numeric_cell(sheet, "A3") == 1
         assert _numeric_cell(sheet, "A302") == 300
-        assert not any(name.startswith("xl/worksheets/sheet2") for name in archive.namelist())
+        assert "xl/worksheets/sheet2.xml" in archive.namelist()
 
 
 def test_source_hash_role_and_daylight_saving_guardrails(tmp_path):

@@ -729,21 +729,19 @@ class StudyWorkbookService:
         return max(eligible, key=lambda item: item.calving_utc, default=None)
 
     @staticmethod
-    def _recovery_hours(
+    def _rback_hours(
         series: dict,
         case: StudyCase,
         pair: tuple[str, str] | None,
         start: datetime,
         end: datetime,
-        normal: float | None,
     ) -> float | None:
-        """Hours from the first post-event minimum until recovery to normal.
+        """Hours from the first Rl minimum to the next observed Rl-level reading.
 
-        The client's wording for Rback is ambiguous.  This explicit approximation
-        considers the first occurrence of Rl in the five-day Rl window, then finds
-        the first later observed value at or above the pre-event Rn baseline.
+        Measurements are discrete, so "hit the Rl level again" is represented by
+        the first later observation at or above the observed minimum.
         """
-        if pair is None or normal is None or normal <= 0:
+        if pair is None:
             return None
         points = series.get((case.key, pair), ())
         first = bisect_left(points, start, key=lambda point: point.time)
@@ -755,9 +753,143 @@ class StudyWorkbookService:
         low_index = next(index for index, point in enumerate(window) if point.value == low)
         low_time = window[low_index].time
         for point in window[low_index + 1 :]:
-            if point.value >= normal:
+            if point.value >= low:
                 return (point.time - low_time).total_seconds() / 3600
         return None
+
+    def _automatic_aligned_sheet(
+        self,
+        workbook,
+        source: StudySource,
+        settings: StudySettings,
+        series: dict,
+        events: dict,
+        title,
+        header,
+        number,
+        integer,
+        muted,
+        stop: Event,
+    ) -> None:
+        """Put T/A/R cow traces and cohort confidence limits on one extra sheet."""
+        sheet = workbook.add_worksheet("Aligned data")
+        sheet.hide_gridlines(2)
+        sheet.set_tab_color("#4C8854")
+        sheet.set_column(0, 0, 15)
+        sheet.set_column(1, 1, 8)
+        sheet.set_column(2, 4, 14)
+        if source.cases:
+            sheet.set_column(5, 4 + len(source.cases), 18)
+        offsets = list(range(-24, 121, 6))
+        block_height = len(offsets) + 25
+        metrics = (
+            (
+                "Temperature aligned",
+                settings.temperature,
+                "Exact temperature without drinking cycles at each six-hour offset.",
+                "temperature",
+            ),
+            (
+                "Activity aligned",
+                settings.activity,
+                "Mean activity in the six hours ending at each offset.",
+                "activity",
+            ),
+            (
+                "Rumination aligned",
+                settings.rumination,
+                "Exact rumination at each six-hour offset; seconds are displayed as minutes.",
+                "rumination",
+            ),
+        )
+        event_by_case = events
+        for block_index, (name, pair, description, role) in enumerate(metrics):
+            start_row = block_index * block_height
+            header_row = start_row + 2
+            event_row = start_row + 3
+            data_row = start_row + 4
+            sheet.write_string(start_row, 0, name, title)
+            sheet.write_string(
+                start_row + 1,
+                0,
+                description + " Hour 0 is each cow's own Study T0; labelled period anchors "
+                "remain non-clinical.",
+                muted,
+            )
+            headings = ("Hours from T0", "n", "Mean", "Lower 95%", "Upper 95%") + tuple(
+                f"Cow {case.cow} · case {case.index}" for case in source.cases
+            )
+            for column, text in enumerate(headings):
+                sheet.write_string(header_row, column, text, header)
+            sheet.write_string(event_row, 0, "Farm-local T0", header)
+            for column, case in enumerate(source.cases, 5):
+                event = event_by_case[case.key]
+                text = event.astimezone(ZoneInfo(case.timezone)).strftime("%d/%m/%Y %H:%M %Z")
+                if case.key in settings.provisional_cases:
+                    text += " · period anchor"
+                sheet.write_string(event_row, column, text, muted)
+            for offset_index, offset in enumerate(offsets):
+                if stop.is_set():
+                    raise ApiCancelled
+                row = data_row + offset_index
+                sheet.write_number(row, 0, offset, integer)
+                observed = []
+                for column, case in enumerate(source.cases, 5):
+                    event = event_by_case[case.key]
+                    stamp = event + timedelta(hours=offset)
+                    if role == "activity":
+                        values = self._values(series, case, pair, stamp - timedelta(hours=6), stamp)
+                        value = mean(values) if values else None
+                    else:
+                        value = self._exact(series, case, pair, stamp)
+                    if value is not None:
+                        sheet.write_number(row, column, value, number)
+                        observed.append(value)
+                n, average, _sd, low, high = _sample_stats(observed)
+                sheet.write_number(row, 1, n, integer)
+                for column, value in enumerate((average, low, high), 2):
+                    if value is not None:
+                        sheet.write_number(row, column, value, number)
+            chart = workbook.add_chart({"type": "line"})
+            for column, label, color, width in (
+                (2, "Mean", "#245D43", 2.25),
+                (3, "Lower 95%", "#80B25E", 1),
+                (4, "Upper 95%", "#80B25E", 1),
+            ):
+                chart.add_series(
+                    {
+                        "name": label,
+                        "categories": ["Aligned data", data_row, 0, data_row + len(offsets) - 1, 0],
+                        "values": [
+                            "Aligned data",
+                            data_row,
+                            column,
+                            data_row + len(offsets) - 1,
+                            column,
+                        ],
+                        "line": {"color": color, "width": width},
+                    }
+                )
+            chart.set_title({"name": f"{name} · mean and 95% confidence limits"})
+            chart.set_x_axis({"name": "Hours from T0"})
+            chart.set_y_axis(
+                {
+                    "name": (
+                        "Minutes"
+                        if role == "rumination" and settings.rumination_minutes
+                        else pair[1]
+                        if pair
+                        else "Unmapped"
+                    )
+                }
+            )
+            chart.set_legend({"position": "bottom"})
+            sheet.insert_chart(
+                data_row + len(offsets) + 2,
+                0,
+                chart,
+                {"x_scale": 1.55, "y_scale": 1.15},
+            )
 
     def _write(
         self,
@@ -868,9 +1000,9 @@ class StudyWorkbookService:
             cases_sheet.write_comment(
                 1,
                 21,
-                "Recovery approximation: elapsed hours from the first Rl minimum "
-                "until the first later rumination reading that reaches or exceeds "
-                "Rn. Blank if Rn or a recovery reading is unavailable.",
+                "Client Rback definition: elapsed hours from the first Rl minimum "
+                "until the first later observed rumination reading at or above the "
+                "Rl level. Blank only when no later reading exists in the five-day window.",
             )
         else:
             cases_sheet.set_column(28, 28, 24)
@@ -947,13 +1079,12 @@ class StudyWorkbookService:
                 if lactation is not None
                 else None
             )
-            rback = self._recovery_hours(
+            rback = self._rback_hours(
                 series,
                 case,
                 settings.rumination,
                 event,
                 event + 5 * day,
-                rn_value,
             )
             temps = [
                 self._exact(series, case, settings.temperature, event + n * hour)
@@ -1028,6 +1159,19 @@ class StudyWorkbookService:
                 else:
                     cases_sheet.write_string(row, column, str(value))
         if settings.automatic:
+            self._automatic_aligned_sheet(
+                workbook,
+                source,
+                settings,
+                series,
+                events,
+                title,
+                header,
+                number,
+                integer,
+                muted,
+                stop,
+            )
             workbook.close()
             return
         normal_sheet = workbook.add_worksheet("Normal values")
@@ -1210,9 +1354,8 @@ class StudyWorkbookService:
             ),
             (
                 "Rback",
-                "Approximation in hours: elapsed time from the first Rl minimum in "
-                "the five days after time zero until the first later rumination "
-                "reading at or above the pre-event Rn baseline.",
+                "Hours from the first Rl minimum in the five days after time zero "
+                "until the first later observed rumination reading at or above Rl.",
             ),
             (
                 "Lact / DIM",

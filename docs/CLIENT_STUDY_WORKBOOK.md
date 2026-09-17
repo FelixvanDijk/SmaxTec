@@ -50,26 +50,32 @@ Client definitions:
 - **RT0/RT24/...:** absolute source rumination at exactly the named elapsed hour.
   The automatic report converts `rum_index/seconds` to minutes using `/60` to align
   with the example's values; the audit CSV and guided builder keep their source units.
-- **Rback:** current disclosed approximation in hours: elapsed time from the first
-  occurrence of Rl in `[T0,T0+5d)` to the first later rumination reading at or above
-  pre-event Rn. It stays blank when Rn or a recovery reading is unavailable. The
-  client's phrase “hits Rl again” remains ambiguous, so this return-to-normal
-  interpretation still requires explicit client acceptance.
+- **Rback:** disclosed discrete-series interpretation of the client's literal wording:
+  elapsed hours from the first occurrence of Rl in `[T0,T0+5d)` to the first later
+  observed rumination reading at or above Rl. It stays blank only when no later
+  observation exists in the five-day window. Because every later observation will
+  normally be at/above the observed minimum, this interpretation requires explicit
+  client acceptance before clinical use.
 - **Lact/DIM:** new collections preserve the official animal `lifecycle` and its
   historical `cycles`. Lact is the latest cycle whose calving is at/before T0 and
   whose dry-off is absent/after T0. DIM is the farm-local calendar-date difference
   between T0 and that cycle's calving timestamp. Both remain blank for older
   collections without lifecycle metadata or when T0 is outside a lactating cycle.
 
-The **automatic 0.10.2 companion** matches the ASPI table's visible groundwork:
-one `Cow analysis` sheet, A:AB only, exact 28 headers including the example's
+The **automatic 0.11.0 companion** preserves the ASPI table's visible groundwork:
+the first `Cow analysis` sheet is A:AB only, with the exact 28 headers including the example's
 `To` (T0 temperature) and `R120` spellings, one cow/case per row, a filterable
 blue-banded Excel table and decimal-fraction `%drop` display (`0.13`, not `13%`).
 Lact/DIM and Rback use the documented/approximated rules above when inputs are
 available. Talert and R20 remain proxies, explained in header comments; the To
 header also explains the period-anchor fallback. The
-automatic table has **no** additional source columns, normal/aligned/chart or QC
-worksheets. Provenance remains in the separate unchanged collection manifest/CSVs.
+automatic table has no additional source columns. A separate `Aligned data` worksheet
+contains temperature, activity and rumination blocks from -24 to +120 hours in six-hour
+steps. Cow/case columns are side by side; each row also contains actual n, mean and
+normal 95% confidence limits (`mean ± 1.96 * sample SD / sqrt(n)`, blank for n < 2),
+with one valid cohort chart per metric. Activity is the mean of the preceding six-hour
+window; temperature and rumination are exact-offset readings. Provenance remains in
+the separate unchanged collection manifest/CSVs.
 
 The **guided `client-study.xlsx`** still adds adjacent event/farm/date/status columns
 and separate aligned/analysis/QC sheets for advanced studies. Its aligned sheet
@@ -86,8 +92,9 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   automatic `client-analysis.xlsx` for each usable cow collection, and the retained
   guided `client-study.xlsx` when the user explicitly requests advanced role/event
   mapping. Both are non-overwriting and derived from the hashed tidy CSV.
-- The queue optionally records one strict farm-local T0 per cow/case. It is reviewed
-  with the cow's From/To before data collection. When absent, the automatic workbook
+- The queue optionally records one strict farm-local T0 per cow/case. A shared value
+  can be applied atomically to selected rows or the full queue, while individual cells
+  remain editable. It is reviewed with the cow's From/To before data collection. When absent, the automatic workbook
   uses farm-local From 00:00 as a **period anchor** and fills available exact T/AT/RT
   columns. This is not a substitute for a real clinical key event; baseline and
   follow-up columns may be blank if the requested period lacks coverage.
@@ -102,8 +109,8 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   original CSV/workbook, not used for client formulas.
 - The guided workbook's Analysis summary follows the example's T/A/R absolute and
   normal-relative time-point blocks with actual n, mean, sample SD, lower/upper
-  95% limits and charts. The automatic one-sheet companion deliberately stops at
-  the client cow table for this presentation milestone. Drug-specific subgroup
+  95% limits and charts. The automatic companion now adds the bounded aligned cohort
+  view while leaving the client cow table unchanged. Drug-specific subgroup
   blocks need reviewed product assignments before implementation.
   Never change authentication, API requests, raw responses, either CSV or the
   existing descriptive workbook. The manifest only gains optional T0 and derived-

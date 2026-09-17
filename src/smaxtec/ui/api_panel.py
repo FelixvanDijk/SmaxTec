@@ -539,6 +539,14 @@ class ApiPanel(QWidget):
         queue_actions.setContentsMargins(18, 14, 18, 14)
         queue_actions.setHorizontalSpacing(10)
         queue_actions.setVerticalSpacing(8)
+        self.shared_study_t0 = QLineEdit()
+        self.shared_study_t0.setAccessibleName("Shared API study time zero")
+        self.shared_study_t0.setPlaceholderText("DD/MM/YYYY HH:MM")
+        self.shared_study_t0.setMaxLength(16)
+        self.apply_t0_selected_button = self._button(
+            "Apply T0 to selected rows", self._apply_selected_t0
+        )
+        self.apply_t0_all_button = self._button("Apply T0 to entire queue", self._apply_all_t0)
         self.select_queue_button = self._button("Select every queued target", self._select_queue)
         self.clear_queue_selection_button = self._button(
             "Clear row selection", self.queue.clearSelection
@@ -546,13 +554,17 @@ class ApiPanel(QWidget):
         self.remove_button = self._button("Remove selected rows", self._remove_selected)
         self.clear_queue_button = self._button("Clear entire queue", self._clear_queue)
         self.apply_dates_button = self._button("Apply Browse dates to all", self._apply_dates)
-        queue_actions.addWidget(label("Selected rows", "fieldLabel"), 0, 0, 1, 2)
-        queue_actions.addWidget(self.select_queue_button, 1, 0)
-        queue_actions.addWidget(self.clear_queue_selection_button, 1, 1)
-        queue_actions.addWidget(self.remove_button, 2, 0)
-        queue_actions.addWidget(label("Whole queue", "fieldLabel"), 3, 0, 1, 2)
-        queue_actions.addWidget(self.apply_dates_button, 4, 0)
-        queue_actions.addWidget(self.clear_queue_button, 4, 1)
+        queue_actions.addWidget(label("Shared Study T0", "fieldLabel"), 0, 0, 1, 2)
+        queue_actions.addWidget(self.shared_study_t0, 1, 0, 1, 2)
+        queue_actions.addWidget(self.apply_t0_selected_button, 2, 0)
+        queue_actions.addWidget(self.apply_t0_all_button, 2, 1)
+        queue_actions.addWidget(label("Selected rows", "fieldLabel"), 3, 0, 1, 2)
+        queue_actions.addWidget(self.select_queue_button, 4, 0)
+        queue_actions.addWidget(self.clear_queue_selection_button, 4, 1)
+        queue_actions.addWidget(self.remove_button, 5, 0)
+        queue_actions.addWidget(label("Whole queue", "fieldLabel"), 6, 0, 1, 2)
+        queue_actions.addWidget(self.apply_dates_button, 7, 0)
+        queue_actions.addWidget(self.clear_queue_button, 7, 1)
         queue_actions.setColumnStretch(0, 1)
         queue_actions.setColumnStretch(1, 1)
         layout.addWidget(queue_tools)
@@ -1136,6 +1148,34 @@ class ApiPanel(QWidget):
             "The Browse From and To dates were explicitly applied to every queued target."
         )
 
+    def _apply_selected_t0(self) -> None:
+        self._apply_study_t0(self._selected_queue_rows(), "selected queue rows")
+
+    def _apply_all_t0(self) -> None:
+        self._apply_study_t0(tuple(range(self.queue.rowCount())), "queued targets")
+
+    def _apply_study_t0(self, rows: tuple[int, ...], destination: str) -> None:
+        text = self.shared_study_t0.text().strip()
+        if not rows:
+            self.status.setText("Select one or more queue rows before applying Study T0.")
+            return
+        if not text:
+            self.status.setText("Enter the shared Study T0 as DD/MM/YYYY HH:MM first.")
+            return
+        try:
+            for row in rows:
+                entity = self.queue.item(row, 0).data(Qt.ItemDataRole.UserRole)
+                start = parse_user_date(self.queue.item(row, 3).text(), "From date")
+                end = parse_user_date(self.queue.item(row, 4).text(), "To date")
+                event = parse_event_time(text, entity.farm.timezone)
+                ApiTarget(entity, start, end, study_event_utc=event)
+        except ValueError as error:
+            self.status.setText(_text(str(error)))
+            return
+        for row in rows:
+            self.queue.item(row, 5).setText(text)
+        self.status.setText(f"Study T0 applied to {len(rows):,} {destination}.")
+
     def _apply_metrics(self) -> None:
         rows = self._selected_queue_rows()
         if not rows:
@@ -1412,6 +1452,8 @@ class ApiPanel(QWidget):
         self.exact_button.setEnabled(not busy and self._catalog is not None)
         self.download_button.setEnabled(not busy and self._connected and queue_count > 0)
         self.apply_dates_button.setEnabled(not busy and queue_count > 0)
+        self.apply_t0_selected_button.setEnabled(not busy and bool(queue_rows))
+        self.apply_t0_all_button.setEnabled(not busy and queue_count > 0)
         metrics_ready = self.all_metrics.isChecked() or (
             bool(self._metrics_entities) and self._metrics_entities == queue_entities
         )

@@ -121,6 +121,41 @@ def test_optional_study_T0_stays_with_its_cow_and_is_reviewed(qtbot, tmp_path):
         panel.build_request()
 
 
+def test_shared_study_T0_can_apply_to_selected_rows_or_the_entire_queue(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.inventory.selectAll()
+    panel.shared_from.setText("01/09/2026")
+    panel.shared_to.setText("15/09/2026")
+    panel._add_selected()
+    panel.shared_study_t0.setText("14/09/2026 09:10")
+
+    panel.queue.selectRow(0)
+    panel._apply_selected_t0()
+    assert panel.queue.item(0, 5).text() == "14/09/2026 09:10"
+    assert panel.queue.item(1, 5).text() == ""
+
+    panel._apply_all_t0()
+    assert [panel.queue.item(row, 5).text() for row in range(2)] == [
+        "14/09/2026 09:10",
+        "14/09/2026 09:10",
+    ]
+    assert all(target.study_event_utc is not None for target in panel.build_request().targets)
+
+
+def test_shared_study_T0_validates_every_row_before_mutating(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.inventory.selectAll()
+    panel.shared_from.setText("01/09/2026")
+    panel.shared_to.setText("10/09/2026")
+    panel._add_selected()
+    panel.shared_study_t0.setText("14/09/2026 09:10")
+
+    panel._apply_all_t0()
+
+    assert [panel.queue.item(row, 5).text() for row in range(2)] == ["", ""]
+    assert "inside" in panel.status.text()
+
+
 def test_saved_collection_can_rebuild_auto_analysis_without_api_download(
     qtbot, tmp_path, monkeypatch
 ):

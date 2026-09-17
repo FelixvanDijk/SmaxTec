@@ -88,11 +88,12 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.10.3 automatically adds a **single-sheet** `client-analysis.xlsx` to
+Source 0.11.0 automatically adds `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
 guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row,
 exact client A:AB header order (`No`, `Cow`, ... `To`, ... `R120`), an Excel table,
-and no extra columns/sheets. `To` is the client's T0-temperature spelling, not
+and no extra columns. A separate additive `Aligned data` sheet contains T/A/R cows
+side by side, actual n, means, 95% confidence limits and charts. `To` is the client's T0-temperature spelling, not
 the request end date. Header notes explain proxies, inferred mappings, and the
 period anchor without cluttering the visible table. Preserve the guided workbook.
 Every queue cow can carry an optional, strictly parsed farm-local Study T0. If absent,
@@ -107,8 +108,10 @@ index is absent, `temp/degree_celsius` is a disclosed fallback, not the T source
 New API collections preserve documented animal lifecycle cycles so `Lact` selects
 the cycle containing T0 and `DIM` uses farm-local calendar days since calving.
 Calculate Tn/AN/Rn only from their specified pre-T0 windows, `%drop` as `1-Rl/Rn`,
-and Rback as the disclosed hours from first post-T0 Rl to the first later value
-at/above Rn. Older collections without lifecycle remain compatible and blank there.
+and Rback as the disclosed hours from first post-T0 Rl to the first later observed
+value at/above Rl. Older collections without lifecycle remain compatible and blank there.
+The queue retains individual Study T0 editing and also supports strict, all-or-nothing
+application of one shared farm-local T0 to selected rows or the complete queue.
 Never silently widen reviewed dates; tell users to cover 14 days before and five
 days after T0 for all current fields.
 Lifecycle metadata is optional enrichment: unsupported or malformed lifecycle
