@@ -572,6 +572,23 @@ Public API documents generic event IDs/categories but not an accepted temperatur
 type and timestamp contract for this saved collection, so do not silently substitute
 generic events for R20. Raw data and the aligned worksheet remain unchanged.
 
+## Decision 023: Persist a report-only aligned-data window
+
+Status: implemented in source 0.13.0; synthetic verification complete, client
+acceptance pending.
+
+Collect independent before/after magnitudes and Hours/Days units in the API Collection
+settings, convert once to integer hours, and carry those immutable values through final
+review and additive format-2 manifest metadata. Defaults are 24 hours before and 120
+hours after T0; older manifests use those defaults. Limit the combined window to 60
+days so report size stays bounded.
+
+The automatic workbook reads the persisted settings and applies one T0-centred offset
+grid to temperature, activity and rumination blocks and their charts. Retain the
+six-hour cadence and include a requested boundary that is not divisible by six. This
+is presentation configuration only: do not widen API From/To, change source files,
+alter `Cow analysis`, or affect the independently configured guided workbook.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

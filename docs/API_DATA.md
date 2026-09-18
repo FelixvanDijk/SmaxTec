@@ -159,9 +159,9 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   Excel's row limit. The chart is descriptive inventory, not a clinical conclusion.
 - `collection.json` format 2 records target statuses, file paths, row counts and SHA-256
   hashes for both CSV views and, when built, the derived client workbook. Each cow's
-  optional UTC study event, documented lifecycle lactation cycles and companion
-  failure warning are additive metadata. Older format-2 manifests without lifecycle
-  remain compatible. It
+  optional UTC study event, documented lifecycle lactation cycles, selected aligned-
+  sheet before/after hours and companion failure warning are additive metadata. Older
+  format-2 manifests without lifecycle or aligned settings remain compatible. It
   never stores credentials or bearer tokens. The original
   `measurements.csv` columns are unchanged from format 1 for compatibility.
 - `client-analysis.xlsx` keeps its compact, filterable, blue-banded first worksheet,
@@ -169,7 +169,9 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   after Rback and `RA1`–`RA5` are appended, giving A:AH.
   Header comments hold proxy/anchor/unit cautions. An additive `Aligned data`
   worksheet places cow T/A/R values side by side around their own T0 and supplies
-  actual n, mean, lower/upper 95% confidence limits and cohort charts.
+  actual n, mean, lower/upper 95% confidence limits and cohort charts. Its GUI-selected
+  before/after window accepts hours or days, defaults to -24/+120 hours, and is stored
+  as canonical hours without changing the reviewed API From/To range.
   The advanced guided `client-study.xlsx` retains aligned/charts/QC sheets.
   Without actual per-cow T0, the automatic table uses
   farm-local From 00:00 as a clearly labelled period anchor, not a treatment time.

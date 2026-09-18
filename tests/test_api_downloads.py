@@ -6,6 +6,8 @@ from datetime import UTC, date, datetime
 from threading import Event
 from zipfile import ZipFile
 
+import pytest
+
 from smaxtec.application import api_downloads
 from smaxtec.application.api_data import (
     ApiDownloadRequest,
@@ -94,6 +96,10 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     assert manifest["format_version"] == 2
     assert manifest["total_measurement_rows"] == 4
     assert manifest["cancelled"] is False
+    assert manifest["client_analysis"] == {
+        "aligned_before_hours": 24,
+        "aligned_after_hours": 120,
+    }
     assert len(manifest["targets"]) == 2
     assert manifest["targets"][0]["lactations"] == [
         {
@@ -361,6 +367,20 @@ def test_invalid_output_name_is_rejected_before_any_files_are_created(tmp_path):
     else:
         raise AssertionError("Reserved output name was accepted")
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    ((-1, 120), (24, 0), (False, 120), (24, True), (721, 720)),
+)
+def test_invalid_aligned_window_is_rejected(before, after, tmp_path):
+    with pytest.raises(ValueError, match="aligned-data window"):
+        ApiDownloadRequest(
+            (target(),),
+            tmp_path,
+            aligned_before_hours=before,
+            aligned_after_hours=after,
+        )
 
 
 def test_unwritable_destination_is_a_curated_output_error(tmp_path, monkeypatch):

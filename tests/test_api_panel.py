@@ -105,6 +105,25 @@ def test_queue_keeps_individual_dates_and_same_cow_different_periods(qtbot, tmp_
     assert [item.entity.number for item in request.targets] == ["57", "57"]
 
 
+def test_aligned_window_accepts_hours_or_days_without_changing_target_dates(qtbot, tmp_path):
+    panel, _client, _service = connected_panel(qtbot, tmp_path)
+    panel.cow_numbers.setPlainText("57")
+    panel._select_exact()
+    panel.shared_from.setText("01/09/2026")
+    panel.shared_to.setText("15/09/2026")
+    panel._add_selected()
+
+    panel.aligned_before.setValue(2)
+    panel.aligned_before_unit.setCurrentIndex(1)  # Days
+    panel.aligned_after.setValue(36)
+    request = panel.build_request()
+
+    assert request.aligned_before_hours == 48
+    assert request.aligned_after_hours == 36
+    assert request.targets[0].start_date == date(2026, 9, 1)
+    assert request.targets[0].end_date == date(2026, 9, 15)
+
+
 def test_optional_study_T0_stays_with_its_cow_and_is_reviewed(qtbot, tmp_path):
     panel, _client, _service = connected_panel(qtbot, tmp_path)
     panel.cow_numbers.setPlainText("57")

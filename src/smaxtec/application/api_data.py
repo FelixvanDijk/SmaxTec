@@ -133,6 +133,8 @@ class ApiDownloadRequest:
     aggregation: str = "native"
     excel: bool = True
     include_health_index: bool = False
+    aligned_before_hours: int = 24
+    aligned_after_hours: int = 120
 
     def __post_init__(self) -> None:
         if not self.targets or len(self.targets) > 5000:
@@ -141,6 +143,19 @@ class ApiDownloadRequest:
             raise ValueError("Choose a folder for the downloaded collection.")
         if self.aggregation not in {"native", "10minutes", "hourly", "daily"}:
             raise ValueError("Choose a supported measurement resolution.")
+        if (
+            isinstance(self.aligned_before_hours, bool)
+            or isinstance(self.aligned_after_hours, bool)
+            or not isinstance(self.aligned_before_hours, int)
+            or not isinstance(self.aligned_after_hours, int)
+            or self.aligned_before_hours < 0
+            or self.aligned_after_hours < 1
+            or self.aligned_before_hours + self.aligned_after_hours > 1_440
+        ):
+            raise ValueError(
+                "Choose an aligned-data window of up to 60 days in total, "
+                "with at least one hour after T0."
+            )
         if (
             not self.name.strip()
             or self.name != self.name.strip()

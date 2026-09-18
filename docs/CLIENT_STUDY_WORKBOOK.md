@@ -67,7 +67,7 @@ Client definitions:
   between T0 and that cycle's calving timestamp. Both remain blank for older
   collections without lifecycle metadata or when T0 is outside a lactating cycle.
 
-The **automatic 0.12.0 companion** preserves the ASPI table's visible groundwork:
+The **automatic 0.13.0 companion** preserves the ASPI table's visible groundwork:
 the first `Cow analysis` sheet keeps the original 28 columns, including the example's
 `To` (T0 temperature) and `R120` spellings, in order. It inserts `Rdown` after Rback
 and appends `RA1`–`RA5`, producing A:AH, one cow/case per row and a filterable
@@ -76,8 +76,11 @@ Lact/DIM, Rback, Rdown and RA1–RA5 use the documented rules above when inputs 
 available. Talert and R20 remain proxies, explained in header comments; the To
 header also explains the period-anchor fallback. The
 automatic table has no additional source columns. A separate `Aligned data` worksheet
-contains temperature, activity and rumination blocks from -24 to +120 hours in six-hour
-steps. Cow/case columns are side by side; each row also contains actual n, mean and
+contains temperature, activity and rumination blocks over the user-selected window
+(default -24 to +120 hours) at a six-hour cadence anchored to T0. The user can enter
+each boundary in hours or days before download; exact non-six-hour boundaries are also
+included. This choice applies only to the aligned sheet and does not widen API From/To.
+Cow/case columns are side by side; each row also contains actual n, mean and
 normal 95% confidence limits (`mean ± 1.96 * sample SD / sqrt(n)`, blank for n < 2),
 with one valid cohort chart per metric. Activity is the mean of the preceding six-hour
 window; temperature and rumination are exact-offset readings. Provenance remains in

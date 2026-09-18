@@ -109,6 +109,21 @@ MAX_CASES = 500
 MAX_OFFSETS = 241
 
 
+def _aligned_offsets(before_hours: int, after_hours: int, step_hours: int) -> list[int]:
+    """Return a T0-centred grid that never extends beyond the requested window.
+
+    Six-hour points stay anchored to T0. An exact boundary is included when the
+    chosen window is not divisible by the step, so a one-hour window still has a
+    useful pre/post point and the workbook visibly honours the user's choice.
+    """
+    before = {-hour for hour in range(step_hours, before_hours + 1, step_hours)}
+    after = set(range(step_hours, after_hours + 1, step_hours))
+    if before_hours:
+        before.add(-before_hours)
+    after.add(after_hours)
+    return sorted(before | {0} | after)
+
+
 @dataclass(frozen=True)
 class StudyCase:
     index: int
@@ -136,6 +151,8 @@ class StudySource:
     cases: tuple[StudyCase, ...]
     pairs: tuple[tuple[str, str], ...]
     resolution: str
+    aligned_before_hours: int = 24
+    aligned_after_hours: int = 120
 
     @classmethod
     def load(cls, folder: Path, stop: Event | None = None) -> StudySource:
@@ -199,6 +216,21 @@ class StudySource:
                         pairs.add((row["metric"], row["unit"]))
             if not pairs:
                 raise ValueError("no cow measurements")
+            client_analysis = manifest.get("client_analysis", {})
+            if not isinstance(client_analysis, dict):
+                raise ValueError("invalid client analysis settings")
+            aligned_before = client_analysis.get("aligned_before_hours", 24)
+            aligned_after = client_analysis.get("aligned_after_hours", 120)
+            if (
+                isinstance(aligned_before, bool)
+                or isinstance(aligned_after, bool)
+                or not isinstance(aligned_before, int)
+                or not isinstance(aligned_after, int)
+                or aligned_before < 0
+                or aligned_after < 1
+                or aligned_before + aligned_after > 1_440
+            ):
+                raise ValueError("invalid aligned data window")
         except ApiCancelled:
             raise
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
@@ -214,6 +246,8 @@ class StudySource:
             tuple(cases),
             tuple(sorted(pairs)),
             str(manifest.get("aggregation", "")),
+            aligned_before,
+            aligned_after,
         )
 
 
@@ -791,7 +825,11 @@ class StudyWorkbookService:
         sheet.set_column(2, 4, 14)
         if source.cases:
             sheet.set_column(5, 4 + len(source.cases), 18)
-        offsets = list(range(-24, 121, 6))
+        offsets = _aligned_offsets(
+            settings.aligned_before_hours,
+            settings.aligned_after_hours,
+            settings.aligned_step_hours,
+        )
         block_height = len(offsets) + 25
         metrics = (
             (
@@ -1783,6 +1821,8 @@ class AutomaticStudyWorkbookService:
             else None,
             provisional_cases=tuple(provisional),
             rumination_minutes=self.SOURCE_PAIRS["rumination"] in present,
+            aligned_before_hours=source.aligned_before_hours,
+            aligned_after_hours=source.aligned_after_hours,
             automatic=True,
         )
         return StudyWorkbookService().create(

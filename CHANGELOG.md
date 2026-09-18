@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.13.0 — 2026-09-18 (configurable aligned-data window)
+
+- Add clear **Before T0** and **After T0** controls to Collection settings, with an
+  independent Hours/Days selector for each boundary. Defaults remain 24 hours before
+  and 120 hours after.
+- Show the canonical hour window in final download review and preserve it in additive
+  `collection.json` client-analysis metadata. Legacy collections without these fields
+  retain the existing -24/+120-hour behavior.
+- Apply the choice only to the automatic `Aligned data` worksheet. API From/To dates,
+  source JSON, both CSVs, the descriptive workbook and `Cow analysis` remain unchanged.
+  All three aligned metric blocks and their charts use the same selected offsets.
+- Keep the six-hour T0-centred cadence and include an exact selected boundary when it
+  is not divisible by six. Reject malformed or combined windows over 60 days.
+
 ## 0.12.0 — 2026-09-18 (rumination recovery and daily averages)
 
 - Confirm and test that `Talert` is the maximum temperature-without-drinking-cycles

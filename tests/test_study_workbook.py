@@ -31,6 +31,7 @@ def _collection(
     cow_count=None,
     auto_pairs=False,
     auto_event=False,
+    aligned_window=None,
 ):
     event = datetime(2026, 9, 15, 8, 10, tzinfo=UTC)
     cows = (
@@ -144,6 +145,11 @@ def _collection(
         "analysis_csv_sha256": hashlib.sha256(csv_path.read_bytes()).hexdigest(),
         "targets": targets,
     }
+    if aligned_window is not None:
+        manifest["client_analysis"] = {
+            "aligned_before_hours": aligned_window[0],
+            "aligned_after_hours": aligned_window[1],
+        }
     (tmp_path / "collection.json").write_text(json.dumps(manifest), encoding="utf-8")
     return event
 
@@ -293,6 +299,34 @@ def test_automatic_aligned_sheet_places_cows_side_by_side_with_confidence_limits
             for name in archive.namelist()
             if name.startswith("xl/charts/chart")
         )
+
+
+def test_automatic_aligned_sheet_uses_collection_window_and_keeps_t0_centred(tmp_path):
+    _collection(
+        tmp_path,
+        two_cows=False,
+        auto_pairs=True,
+        auto_event=True,
+        aligned_window=(10, 13),
+    )
+    source = StudySource.load(tmp_path)
+    assert (source.aligned_before_hours, source.aligned_after_hours) == (10, 13)
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+
+    with ZipFile(output) as archive:
+        aligned = archive.read("xl/worksheets/sheet2.xml")
+        assert _numeric_cell(aligned, "A5") == -10
+        assert _numeric_cell(aligned, "A7") == 0
+        assert _numeric_cell(aligned, "A10") == 13
+        assert _numeric_cell(aligned, "A38") == 0  # Activity block.
+        assert _numeric_cell(aligned, "A69") == 0  # Rumination block.
+
+
+def test_legacy_collection_defaults_to_24_hours_before_and_120_after(tmp_path):
+    _collection(tmp_path, two_cows=False)
+    source = StudySource.load(tmp_path)
+    assert source.aligned_before_hours == 24
+    assert source.aligned_after_hours == 120
 
 
 def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path):

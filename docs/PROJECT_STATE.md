@@ -1,6 +1,23 @@
 # Project state — start here each session
 
-Last updated: 2026-09-18. **Source preview 0.12.0 corrects rumination timing and adds
+Last updated: 2026-09-18. **Source preview 0.13.0 adds a persisted, report-only aligned
+data window without changing the established download or cow-analysis pipeline.** The
+API Collection settings now let users independently choose how many Hours or Days to
+show before and after T0. Defaults remain -24/+120 hours. The immutable request and
+final review use canonical hours; `collection.json` stores them so rebuilding the
+automatic workbook is reproducible. All three `Aligned data` metric blocks and charts
+use the selected window. Legacy manifests retain the defaults. API From/To, raw JSON,
+both CSVs, the descriptive workbook, `Cow analysis` and guided workbook are unchanged.
+
+0.13.0 verification: all 440 offline tests pass; targeted tests cover Hours/Days GUI
+conversion, immutable request validation, manifest persistence, legacy defaults and
+consistent custom offsets across temperature/activity/rumination blocks. Ruff lint and
+format checks and dependency checks pass. PyInstaller assembled the complete 0.13.0
+bundle, but this computer's existing policy again denied launching the unsigned
+executable (`Access is denied`), so no local packaged-launch or archive claim is made.
+Live client acceptance remains pending.
+
+**Source preview 0.12.0 corrected rumination timing and added
 five daily rumination averages while preserving the established analysis pipeline.** One
 strict farm-local T0 can be applied atomically to selected queue rows or the complete
 queue; per-row editing remains available. Lifecycle remains best-effort enrichment
@@ -596,7 +613,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.12.0 Git/CI state and packaged launch limitation above. Use
+1. Check the 0.13.0 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
    presentation rollback tag. The prepared source launcher includes the expanded
    automatic client table, additive aligned cohort sheet and guided study UI; the

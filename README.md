@@ -5,7 +5,7 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.12.0 keeps the official smaXtec Public API as the primary workflow. Its spacious
+Version 0.13.0 keeps the official smaXtec Public API as the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
 queued target. Users can review the full queue and save direct raw JSON, a lossless
@@ -39,8 +39,11 @@ The app opens on **Direct data API**:
    For cow studies, optionally enter each cow's actual treatment/key-event **Study T0**
    as `DD/MM/YYYY HH:MM` in its farm timezone. Enter a shared value once and apply it
    to selected rows or the entire queue, or keep editing individual rows. Set From at least 14 days before T0
-   and To at least five days after it to cover the baseline/recovery fields. Then
-   choose resolution, optional farm health index, destination, name and XLSX output.
+   and To at least five days after it to cover the baseline/recovery fields. Choose how
+   many hours or days the automatic **Aligned data** sheet should show before and after
+   T0 (24 hours before and 120 hours after by default). This report-only choice does not
+   change downloaded dates. Then choose resolution, optional farm health index,
+   destination, name and XLSX output.
 5. Choose **Review & download**, inspect every target/date/metric row, and confirm.
    **Results** shows saved, partial, failed or cancelled targets and directly opens the
    graph-ready CSV, polished workbook, automatic client analysis or audit folder.
@@ -185,9 +188,9 @@ does **not** include automatic client analysis. The 0.9.0 Windows checks passed
 tests, bundle build and packaged executable smoke, but artifact upload was rejected
 by GitHub Actions storage quota. Twelve older temporary ZIP artifacts have been
 removed, retaining only the two latest working 0.8/0.7 previews; quota recovery
-and a downloadable 0.12.0 preview still need CI confirmation. For now, use
+and a downloadable 0.13.0 preview still need CI confirmation. For now, use
 `Start SmaxTec.cmd` on this prepared development computer. Once a successful
-0.12.0 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
+0.13.0 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
 extract both the artifact wrapper and the included application ZIP, and open
 `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
@@ -195,7 +198,7 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; 0.8.0 passed
-independent Windows CI smoke tests. Consult current status for the 0.12.0 build
+independent Windows CI smoke tests. Consult current status for the 0.13.0 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
 installer remain release work. If the legacy Microsoft 365 route is retained, its

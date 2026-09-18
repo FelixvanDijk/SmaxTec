@@ -625,6 +625,10 @@ class ApiDownloadService:
             "excel_sha256": self._hash(excel_path) if request.excel else None,
             "cancelled": cancelled,
             "total_measurement_rows": total_rows,
+            "client_analysis": {
+                "aligned_before_hours": request.aligned_before_hours,
+                "aligned_after_hours": request.aligned_after_hours,
+            },
             "targets": manifest_targets,
             "extras": extras,
             "warnings": warnings,

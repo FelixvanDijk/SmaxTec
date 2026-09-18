@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
@@ -216,6 +217,8 @@ class ApiReviewDialog(QDialog):
         layout.addWidget(
             label(
                 f"{formats} · Resolution: {request.aggregation}\n"
+                f"Aligned data only: {request.aligned_before_hours} hours before T0 "
+                f"to {request.aligned_after_hours} hours after T0.\n"
                 f"A new collection folder will be created inside {request.destination}.",
                 "muted",
             )
@@ -625,6 +628,45 @@ class ApiPanel(QWidget):
         self.health_index = QCheckBox("Include farm health index")
         settings_layout.addWidget(self.health_index, 2, 2, 1, 2)
         settings_layout.addWidget(label(EXTRAS_NOTE, "privacy"), 3, 0, 1, 4)
+        settings_layout.addWidget(label("Aligned data sheet window", "fieldLabel"), 4, 0, 1, 4)
+        self.aligned_before = QSpinBox()
+        self.aligned_before.setRange(0, 1_440)
+        self.aligned_before.setValue(24)
+        self.aligned_before.setAccessibleName("Time before T0 for aligned data")
+        self.aligned_before_unit = QComboBox()
+        self.aligned_before_unit.setAccessibleName("Unit for time before T0")
+        self.aligned_after = QSpinBox()
+        self.aligned_after.setRange(1, 1_440)
+        self.aligned_after.setValue(120)
+        self.aligned_after.setAccessibleName("Time after T0 for aligned data")
+        self.aligned_after_unit = QComboBox()
+        self.aligned_after_unit.setAccessibleName("Unit for time after T0")
+        for unit in (self.aligned_before_unit, self.aligned_after_unit):
+            unit.addItem("Hours", 1)
+            unit.addItem("Days", 24)
+        self.aligned_before_unit.currentIndexChanged.connect(
+            lambda: self._aligned_unit_changed(self.aligned_before, self.aligned_before_unit)
+        )
+        self.aligned_after_unit.currentIndexChanged.connect(
+            lambda: self._aligned_unit_changed(self.aligned_after, self.aligned_after_unit)
+        )
+        settings_layout.addWidget(label("Before T0", "muted", wrap=False), 5, 0)
+        settings_layout.addWidget(label("After T0", "muted", wrap=False), 5, 2)
+        settings_layout.addWidget(self.aligned_before, 6, 0)
+        settings_layout.addWidget(self.aligned_before_unit, 6, 1)
+        settings_layout.addWidget(self.aligned_after, 6, 2)
+        settings_layout.addWidget(self.aligned_after_unit, 6, 3)
+        settings_layout.addWidget(
+            label(
+                "Used only for the Aligned data sheet in automatic client analysis. "
+                "It does not change cow From/To dates or any downloaded API data.",
+                "privacy",
+            ),
+            7,
+            0,
+            1,
+            4,
+        )
         self.destination = QLineEdit()
         self.destination.setReadOnly(True)
         self.destination.setAccessibleName("API collection output folder")
@@ -635,9 +677,9 @@ class ApiPanel(QWidget):
         if documents and Path(documents).is_absolute():
             self.destination.setText(str(Path(documents) / "SmaxTec Workbench" / "API Collections"))
         self.browse_button = self._button("Browse…", self._browse)
-        settings_layout.addWidget(label("Save collections inside", "fieldLabel"), 4, 0, 1, 4)
-        settings_layout.addWidget(self.destination, 5, 0, 1, 3)
-        settings_layout.addWidget(self.browse_button, 5, 3)
+        settings_layout.addWidget(label("Save collections inside", "fieldLabel"), 8, 0, 1, 4)
+        settings_layout.addWidget(self.destination, 9, 0, 1, 3)
+        settings_layout.addWidget(self.browse_button, 9, 3)
         self.collection_name = QLineEdit("Herd data")
         self.collection_name.setAccessibleName("API collection name")
         self.collection_name.setPlaceholderText("Collection name")
@@ -647,10 +689,10 @@ class ApiPanel(QWidget):
         self.download_button = self._button(
             "Review & download", self._review_download, primary=True
         )
-        settings_layout.addWidget(label("Collection name", "fieldLabel"), 6, 0, 1, 2)
-        settings_layout.addWidget(self.collection_name, 7, 0, 1, 2)
-        settings_layout.addWidget(self.excel, 7, 2)
-        settings_layout.addWidget(self.download_button, 7, 3)
+        settings_layout.addWidget(label("Collection name", "fieldLabel"), 10, 0, 1, 2)
+        settings_layout.addWidget(self.collection_name, 11, 0, 1, 2)
+        settings_layout.addWidget(self.excel, 11, 2)
+        settings_layout.addWidget(self.download_button, 11, 3)
         settings_layout.setColumnStretch(0, 2)
         settings_layout.setColumnStretch(1, 2)
         settings_layout.setColumnStretch(2, 1)
@@ -662,13 +704,18 @@ class ApiPanel(QWidget):
                 "Choose a name above; a unique folder prevents overwriting earlier work.",
                 "privacy",
             ),
-            8,
+            12,
             0,
             1,
             4,
         )
         layout.addWidget(settings)
         return page
+
+    @staticmethod
+    def _aligned_unit_changed(value: QSpinBox, unit: QComboBox) -> None:
+        """Keep GUI input within the report's validated 60-day upper bound."""
+        value.setMaximum(60 if unit.currentData() == 24 else 1_440)
 
     def _build_results(self) -> QWidget:
         page = QWidget()
@@ -1222,6 +1269,12 @@ class ApiPanel(QWidget):
             aggregation=self.resolution.currentData(),
             excel=self.excel.isChecked(),
             include_health_index=self.health_index.isChecked(),
+            aligned_before_hours=(
+                self.aligned_before.value() * self.aligned_before_unit.currentData()
+            ),
+            aligned_after_hours=(
+                self.aligned_after.value() * self.aligned_after_unit.currentData()
+            ),
         )
 
     def _review_download(self) -> None:
