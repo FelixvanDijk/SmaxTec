@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.14.0 — 2026-09-18 (website Lact/DIM enrichment)
+
+- Add **Add Lact / DIM from website** after automatic client analysis is available.
+  Reuse the successful API credentials only in memory for the current connected
+  session, open a fresh isolated browser, sign in once and release it after the job.
+- Reuse the established exact farm selection and Animal number search. Open only the
+  confirmed row's accessible Show diagram link, read `Days in milk` and `Number of
+  lactations`, go back, and continue. Never invoke the export control.
+- Skip missing, disabled or incomplete diagrams and report those cows without failing
+  successful readings. Exact missing/ambiguous Animal numbers are also left blank.
+- Create a numbered, non-overwriting analysis workbook containing the available
+  website values. Preserve the existing workbook, manifest, raw JSON, CSVs, formulas,
+  aligned sheet and charts. Cell notes identify values as current website snapshots,
+  not historical values calculated at Study T0.
+
 ## 0.13.0 — 2026-09-18 (configurable aligned-data window)
 
 - Add clear **Before T0** and **After T0** controls to Collection settings, with an

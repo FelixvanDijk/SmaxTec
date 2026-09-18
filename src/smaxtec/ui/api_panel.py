@@ -56,8 +56,13 @@ from smaxtec.application.api_data import (
     ApiProgress,
     ApiTarget,
 )
-from smaxtec.application.exports import parse_cow_numbers, parse_user_date
-from smaxtec.application.login import Credentials
+from smaxtec.application.exports import ExportError, parse_cow_numbers, parse_user_date
+from smaxtec.application.lifecycle import LifecycleReader
+from smaxtec.application.lifecycle_enrichment import (
+    LifecycleEnrichmentResult,
+    LifecycleEnrichmentService,
+)
+from smaxtec.application.login import Credentials, LoginCancelled, LoginError, LoginProgress
 from smaxtec.application.study_workbook import (
     AutomaticStudyWorkbookService,
     parse_event_time,
@@ -82,6 +87,17 @@ class ApiDownloader(Protocol):
         stop: Event,
         progress: Callable[[ApiProgress], None],
     ) -> ApiDownloadResult: ...
+
+
+class LifecycleSession(LifecycleReader, Protocol):
+    def connect(
+        self,
+        credentials: Credentials,
+        progress: Callable[[LoginProgress], None],
+        stop: Event,
+    ) -> None: ...
+
+    def close(self) -> None: ...
 
 
 ApiJob = Callable[[Event, Callable[[ApiProgress], None]], object]
@@ -142,7 +158,7 @@ class _ApiWorker(QThread):
             if self._stop.is_set() and not isinstance(result, ApiDownloadResult):
                 raise ApiCancelled
             self.succeeded.emit(result)
-        except ApiCancelled:
+        except (ApiCancelled, LoginCancelled):
             self.cancelled.emit()
         except ApiError as error:
             self.failed.emit(ApiError(error.code, str(error)))
@@ -258,10 +274,12 @@ class ApiPanel(QWidget):
         *,
         client: ApiClient | None = None,
         service: ApiDownloader | None = None,
+        lifecycle_session_factory: Callable[[], LifecycleSession] | None = None,
     ) -> None:
         super().__init__(parent)
         self._client = client
         self._service = service
+        self._lifecycle_session_factory = lifecycle_session_factory
         self._worker: _ApiWorker | None = None
         self._operation = ""
         self._connected = False
@@ -274,6 +292,8 @@ class ApiPanel(QWidget):
         self._last_analysis: Path | None = None
         self._last_workbook: Path | None = None
         self._last_client_workbook: Path | None = None
+        self._credentials: Credentials | None = None
+        self._pending_credentials: Credentials | None = None
         self._reviewing = False
         self.setObjectName("apiPanel")
         layout = QVBoxLayout(self)
@@ -747,6 +767,7 @@ class ApiPanel(QWidget):
             "Open client analysis",
             lambda: self._open_file(self._last_client_workbook, "client analysis workbook"),
         )
+        self.add_lifecycle_button = self._button("Add Lact / DIM from website", self._add_lact_dim)
         self.open_button = self._button("Open collection folder", self._open_folder)
         file_rows = (
             (
@@ -766,6 +787,12 @@ class ApiPanel(QWidget):
                 "Client analysis workbook",
                 "One sheet, one cow per row, in the client's 28-column order.",
                 self.open_client_workbook_button,
+            ),
+            (
+                "ENRICH",
+                "Website Lact / DIM",
+                "Read available cow diagrams and create a new enriched analysis copy.",
+                self.add_lifecycle_button,
             ),
             (
                 "AUDIT",
@@ -824,6 +851,7 @@ class ApiPanel(QWidget):
         except ValueError as error:
             self.status.setText(str(error))
             return
+        self._pending_credentials = credentials
         self.password.clear()
 
         def connect_job(stop: Event, _progress: Callable[[ApiProgress], None]):
@@ -843,6 +871,8 @@ class ApiPanel(QWidget):
         if self._worker is not None:
             return
         self.password.clear()
+        self._credentials = None
+        self._pending_credentials = None
         self._connected = False
         self._catalog = None
         self._entities = ()
@@ -1348,6 +1378,8 @@ class ApiPanel(QWidget):
         if self._cancelling and not isinstance(result, ApiDownloadResult):
             return
         if self._operation == "connect" and isinstance(result, tuple):
+            self._credentials = self._pending_credentials
+            self._pending_credentials = None
             self._connected = True
             self.account_status.setText("Connected to smaXtec · direct data access")
             self.farm.blockSignals(True)
@@ -1404,6 +1436,30 @@ class ApiPanel(QWidget):
                 "not a treatment event. Earlier baselines may be blank if not downloaded."
             )
             self.status.setText("Client analysis ready. Open it from Results.")
+        elif self._operation == "lifecycle" and isinstance(result, LifecycleEnrichmentResult):
+            self._last_folder = result.workbook.parent
+            self._last_client_workbook = result.workbook
+            self.open_button.setToolTip(str(result.workbook.parent))
+            skipped = [reading for reading in result.readings if not reading.available]
+            skipped_text = ""
+            if skipped:
+                names = ", ".join(
+                    f"{reading.target.farm} / cow {reading.target.cow}" for reading in skipped[:8]
+                )
+                skipped_text = (
+                    f" {result.skipped:,} skipped ({names}"
+                    + (", …" if len(skipped) > 8 else "")
+                    + ") because a diagram or both values were unavailable."
+                )
+            self.steps.setCurrentIndex(2)
+            self.result_summary.setText("Lact and DIM enrichment complete")
+            self.result_note.setText(
+                f"Added website Lact/DIM snapshots for {result.added:,} cow"
+                f"{'s' if result.added != 1 else ''} in {result.workbook.name}."
+                + skipped_text
+                + " The earlier analysis workbook and collection source files are unchanged."
+            )
+            self.status.setText("Enriched client analysis ready. Open it from Results.")
         elif self._operation == "disconnect":
             self.status.setText("Disconnected. Credentials and API session were released.")
         # Normally finished follows this queued signal and refreshes controls. Keep
@@ -1454,13 +1510,22 @@ class ApiPanel(QWidget):
     def _on_failure(self, error: ApiError) -> None:
         self.status.setText(_text(str(error)))
         if self._operation == "connect":
+            self._pending_credentials = None
+            self._credentials = None
             self.account_status.setText("Could not connect to smaXtec")
         elif self._operation == "download":
             self.result_summary.setText("Collection needs attention")
             self.result_note.setText(_text(str(error)))
+        elif self._operation == "lifecycle":
+            self.result_summary.setText("Lact and DIM enrichment needs attention")
+            self.result_note.setText(
+                _text(str(error)) + " The existing analysis workbook was not changed."
+            )
 
     def _on_cancelled(self) -> None:
         if self._operation == "connect":
+            self._pending_credentials = None
+            self._credentials = None
             self.account_status.setText("Connect your smaXtec account")
             self.status.setText("Connection cancelled. Enter your password to try again.")
         else:
@@ -1517,6 +1582,13 @@ class ApiPanel(QWidget):
         self.open_client_workbook_button.setEnabled(
             not busy and self._last_client_workbook is not None
         )
+        self.add_lifecycle_button.setEnabled(
+            not busy
+            and self._connected
+            and self._credentials is not None
+            and self._last_folder is not None
+            and self._last_client_workbook is not None
+        )
         self.open_button.setEnabled(not busy and self._last_folder is not None)
         self.saved_study_button.setEnabled(not busy)
         self.auto_saved_button.setEnabled(not busy)
@@ -1545,6 +1617,46 @@ class ApiPanel(QWidget):
             return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             self.status.setText(f"Open this {label_name} from the collection folder: {path.name}")
+
+    def _add_lact_dim(self) -> None:
+        if (
+            self.is_busy
+            or not self._connected
+            or self._credentials is None
+            or self._last_folder is None
+            or self._last_client_workbook is None
+        ):
+            return
+        credentials = self._credentials
+        folder = self._last_folder
+        factory = self._lifecycle_session_factory
+
+        def lifecycle_job(stop: Event, progress: Callable[[ApiProgress], None]):
+            if factory is None:
+                from smaxtec.adapters.smaxtec.login import SmaxtecLoginSession
+
+                session: LifecycleSession = SmaxtecLoginSession()
+            else:
+                session = factory()
+            try:
+                session.connect(
+                    credentials,
+                    lambda item: progress(ApiProgress(item.message)),
+                    stop,
+                )
+                return LifecycleEnrichmentService().enrich(folder, session, stop, progress)
+            except LoginError as error:
+                raise ApiError("lifecycle_login", str(error)) from None
+            except ExportError as error:
+                raise ApiError("lifecycle_website", str(error)) from None
+            finally:
+                session.close()
+
+        self._start(
+            "lifecycle",
+            lifecycle_job,
+            "Opening a separate smaXtec browser to read Lact and DIM…",
+        )
 
     def _rebuild_automatic_saved(self) -> None:
         if self.is_busy:

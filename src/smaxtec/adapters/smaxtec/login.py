@@ -12,6 +12,7 @@ from playwright.sync_api import Browser, BrowserContext, Locator, Page, Playwrig
 from playwright.sync_api import Error as BrowserError
 from playwright.sync_api import TimeoutError as BrowserTimeout
 
+from smaxtec.application.api_data import ApiProgress
 from smaxtec.application.exports import (
     CowExport,
     ExportBatchResult,
@@ -23,6 +24,7 @@ from smaxtec.application.exports import (
     ExportStage,
     Farm,
 )
+from smaxtec.application.lifecycle import LifecycleReading, LifecycleTarget
 from smaxtec.application.login import (
     Credentials,
     FailureCode,
@@ -270,6 +272,124 @@ class SmaxtecLoginSession:
                 tuple(completed),
                 tuple(attempted),
             ) from None
+
+    def read_lact_dim(
+        self,
+        targets: tuple[LifecycleTarget, ...],
+        progress: Callable[[ApiProgress], None],
+        stop: Event,
+    ) -> tuple[LifecycleReading, ...]:
+        """Read current diagram values without requesting exports or mutating the site."""
+        readings: list[LifecycleReading] = []
+        try:
+            self._require_active_session()
+            grouped: dict[str, list[LifecycleTarget]] = {}
+            for target in targets:
+                grouped.setdefault(target.farm, []).append(target)
+            position = 0
+            for farm_name, farm_targets in grouped.items():
+                self._open_farm_animals(
+                    Farm(farm_name),
+                    lambda item, current=position: progress(
+                        ApiProgress(item.message, current, len(targets))
+                    ),
+                    stop,
+                )
+                for target in farm_targets:
+                    self._checkpoint(stop)
+                    position += 1
+                    progress(
+                        ApiProgress(
+                            f"Reading Lact and DIM for cow {target.cow}…",
+                            position - 1,
+                            len(targets),
+                        )
+                    )
+                    try:
+                        row = self._find_exact_cow(target.cow, stop)
+                    except ExportError as error:
+                        if error.code not in {
+                            ExportFailureCode.COW_NOT_FOUND,
+                            ExportFailureCode.COW_AMBIGUOUS,
+                        }:
+                            raise
+                        readings.append(LifecycleReading(target, detail=str(error)))
+                        progress(
+                            ApiProgress(
+                                f"Cow {target.cow} could not be matched exactly; skipped.",
+                                position,
+                                len(targets),
+                            )
+                        )
+                        continue
+                    reading = self._read_cow_diagram(target, row, stop)
+                    readings.append(reading)
+                    progress(
+                        ApiProgress(
+                            (
+                                f"Lact and DIM found for cow {target.cow}."
+                                if reading.available
+                                else f"Cow {target.cow} has no available diagram values; skipped."
+                            ),
+                            position,
+                            len(targets),
+                        )
+                    )
+            return tuple(readings)
+        except BrowserTimeout:
+            raise ExportError(
+                ExportFailureCode.SITE_UNAVAILABLE,
+                "The cow diagram took too long to respond. The existing analysis remains "
+                "unchanged; try the enrichment again.",
+            ) from None
+        except BrowserError:
+            raise self._workflow_browser_error() from None
+
+    def _read_cow_diagram(
+        self,
+        target: LifecycleTarget,
+        row: Locator,
+        stop: Event,
+    ) -> LifecycleReading:
+        assert self._page is not None
+        page = self._page
+        link = row.locator('[data-testid="tooltip"][aria-label="Show diagram"] a:visible')
+        if (
+            link.count() != 1
+            or link.get_attribute("aria-disabled") == "true"
+            or not link.get_attribute("href")
+        ):
+            return LifecycleReading(target, detail="Show diagram is unavailable for this cow.")
+        self._checkpoint(stop)
+        link.click()
+        page.wait_for_url(
+            re.compile(r".*/animals/[^/?]+/chart\?orgId="),
+            wait_until="domcontentloaded",
+        )
+        self._require_origin(self.settings.app_origin)
+        try:
+            dim = self._diagram_number("Days in milk")
+            lactation = self._diagram_number("Number of lactations")
+            if dim is None or lactation is None:
+                return LifecycleReading(
+                    target,
+                    detail="The diagram did not show both Lact and DIM values.",
+                )
+            return LifecycleReading(target, lactation=lactation, dim=dim)
+        finally:
+            page.go_back(wait_until="domcontentloaded")
+            page.wait_for_url(re.compile(r".*/animals\?orgId="), wait_until="domcontentloaded")
+            self._wait_workflow_visible(page.get_by_test_id("animalHeader"), stop)
+
+    def _diagram_number(self, accessible_name: str) -> int | None:
+        assert self._page is not None
+        field = self._page.locator(f'[aria-label="{accessible_name}"]:visible').get_by_test_id(
+            "sxText"
+        )
+        if field.count() != 1:
+            return None
+        matches = re.findall(r"\d+", field.inner_text().replace("\u00a0", " "))
+        return int(matches[0]) if len(matches) == 1 else None
 
     def _require_active_session(self) -> None:
         if not self._authenticated():

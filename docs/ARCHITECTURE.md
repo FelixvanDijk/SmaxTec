@@ -61,6 +61,9 @@ The request editor is in `ui/cow_editor.py`, scrollable immutable review in
 owns API discovery, immutable queue/review and its serialized cancellable worker;
 `application/api_data.py` defines its contracts, `application/api_downloads.py`
 writes collections, and `adapters/smaxtec/api.py` owns HTTP/token/catalog validation.
+`application/lifecycle.py` defines the small website-reading contract;
+`application/lifecycle_enrichment.py` validates those readings and requests a new
+non-overwriting workbook. Browser selectors remain in `adapters/smaxtec/login.py`.
 The window waits for API, website and collection workers before closing. Concrete service
 objects are lazy: opening the GUI does not read mail or create collection folders.
 
@@ -92,6 +95,12 @@ for the logical connected session so it can perform those user-triggered fresh
 sign-ins. Disconnect, application close or terminal worker failure releases the
 reference. Python does not guarantee zeroing immutable strings in memory. No
 credentials or browser storage are persisted by the app.
+
+The direct-API panel separately retains its successful credential value in memory
+until Disconnect/close for the explicit website Lact/DIM action. That action creates,
+uses and closes a fresh isolated Playwright session entirely inside one short-lived
+worker thread. It does not share Playwright objects with the legacy worker or persist
+browser storage.
 
 ## Decision 004: Serialized browser commands and dynamic farm discovery
 
@@ -588,6 +597,26 @@ grid to temperature, activity and rumination blocks and their charts. Retain the
 six-hour cadence and include a requested boundary that is not divisible by six. This
 is presentation configuration only: do not widen API From/To, change source files,
 alter `Cow analysis`, or affect the independently configured guided workbook.
+
+## Decision 024: Enrich missing Lact/DIM from read-only website diagrams
+
+Status: implemented in source 0.14.0 against synthetic website fixtures; live
+verification and client acceptance pending.
+
+Expose one explicit Results action only after automatic analysis exists. Reuse the
+successful direct-API credentials from memory, but create and close a fresh isolated
+browser in the action's worker. Follow the established login, exact farm selection,
+Animals navigation and exact Animal number search. Within the confirmed row, use the
+accessible `Show diagram` link and read only `Days in milk` and `Number of lactations`.
+Return through browser history before searching the next cow. Never click Export.
+
+Treat missing, disabled or incomplete diagram controls as an unavailable cow and
+continue. A changed login/farm/search boundary remains a curated job failure. Map
+values by farm plus Animal number and apply them to every matching collection case.
+Regenerate a numbered automatic workbook from the hashed source rather than rewriting
+the existing XLSX. The workbook notes must distinguish current scrape-time values from
+historical T0-derived lifecycle values. Do not mutate manifest/raw/CSV files, persist
+credentials/cookies, or claim that the website snapshot describes Lact/DIM at T0.
 
 ## Data and workflow design to preserve
 

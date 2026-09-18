@@ -66,8 +66,11 @@ Client definitions:
   whose dry-off is absent/after T0. DIM is the farm-local calendar-date difference
   between T0 and that cycle's calving timestamp. Both remain blank for older
   collections without lifecycle metadata or when T0 is outside a lactating cycle.
+  When those columns remain blank, the optional post-analysis website enrichment can
+  insert the current values displayed on each cow's diagram. Those are explicitly
+  noted as scrape-time snapshots and must not be interpreted as historical T0 values.
 
-The **automatic 0.13.0 companion** preserves the ASPI table's visible groundwork:
+The **automatic 0.14.0 companion** preserves the ASPI table's visible groundwork:
 the first `Cow analysis` sheet keeps the original 28 columns, including the example's
 `To` (T0 temperature) and `R120` spellings, in order. It inserts `Rdown` after Rback
 and appends `RA1`–`RA5`, producing A:AH, one cow/case per row and a filterable
@@ -101,6 +104,10 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   automatic `client-analysis.xlsx` for each usable cow collection, and the retained
   guided `client-study.xlsx` when the user explicitly requests advanced role/event
   mapping. Both are non-overwriting and derived from the hashed tidy CSV.
+- Website Lact/DIM enrichment is a separate explicit Results action after automatic
+  analysis exists. It creates another numbered automatic workbook, never edits the
+  prior workbook/source files, matches farm plus exact Animal number, skips unavailable
+  diagrams and marks inserted values as current website snapshots.
 - The queue optionally records one strict farm-local T0 per cow/case. A shared value
   can be applied atomically to selected rows or the full queue, while individual cells
   remain editable. It is reviewed with the cow's From/To before data collection. When absent, the automatic workbook

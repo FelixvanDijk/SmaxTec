@@ -88,7 +88,7 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.12.0 automatically adds `client-analysis.xlsx` to
+Source 0.14.0 automatically adds `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
 guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row and
 preserves the client's original columns through `R120`, adding `Rdown` beside Rback
@@ -119,6 +119,12 @@ Never silently widen reviewed dates; tell users to cover 14 days before and five
 days after T0 for all current fields.
 Lifecycle metadata is optional enrichment: unsupported or malformed lifecycle
 records must be skipped per cow and must never block farm/cow catalogue loading.
+When Lact/DIM remain blank, Results offers an explicit post-analysis website action.
+It reuses successful API credentials in memory only, creates a fresh isolated browser,
+reuses exact farm/Animal-number lookup, reads the accessible cow diagram Lact/DIM,
+and closes the browser. Disabled/incomplete diagrams remain blank. Generate a numbered
+new analysis workbook; never rewrite the prior workbook or API sources. Website values
+are current scrape-time snapshots, not historical T0 values, and must be labelled so.
 Preserve raw JSON, both CSVs,
 existing descriptive workbook, request semantics and the guided builder. A derived
 workbook failure must be a curated warning, not loss of the completed collection.

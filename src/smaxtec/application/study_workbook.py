@@ -12,7 +12,7 @@ import json
 import math
 from bisect import bisect_left
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -141,6 +141,26 @@ class StudyCase:
     @property
     def key(self) -> tuple[str, str, str, str]:
         return self.farm_id, self.target_id, self.from_date, self.to_date
+
+
+@dataclass(frozen=True)
+class StudyLifecycleOverride:
+    """Website diagram snapshot attached to one immutable collection case."""
+
+    key: tuple[str, str, str, str]
+    lactation: int
+    dim: int
+
+    def __post_init__(self) -> None:
+        if (
+            isinstance(self.lactation, bool)
+            or isinstance(self.dim, bool)
+            or not isinstance(self.lactation, int)
+            or not isinstance(self.dim, int)
+            or self.lactation < 0
+            or self.dim < 0
+        ):
+            raise ValueError("Website Lact and DIM values must be non-negative integers.")
 
 
 @dataclass(frozen=True)
@@ -318,6 +338,7 @@ class StudySettings:
     provisional_cases: tuple[tuple[str, str, str, str], ...] = ()
     rumination_minutes: bool = False
     automatic: bool = False
+    lifecycle_overrides: tuple[StudyLifecycleOverride, ...] = ()
 
     def validate(self, source: StudySource) -> None:
         cases = {case.key for case in source.cases}
@@ -369,6 +390,9 @@ class StudySettings:
                 raise ValueError("Choose positive time steps and a horizon of at most 60 days.")
         if self.aligned_before_hours < 0 or self.aligned_after_hours < 1:
             raise ValueError("Aligned time must include at least one post-event hour.")
+        override_keys = tuple(item.key for item in self.lifecycle_overrides)
+        if len(set(override_keys)) != len(override_keys) or not set(override_keys) <= cases:
+            raise ValueError("Website lifecycle values do not match this collection.")
         for case in source.cases:
             event = events[case.key]
             if event.tzinfo is None or event.utcoffset() is None:
@@ -1007,14 +1031,26 @@ class StudyWorkbookService:
                 1,
                 2,
                 "Lactation number returned by the smaXtec animal lifecycle for the "
-                "cycle containing time zero. Older collections may not contain it.",
+                "cycle containing time zero. Older collections may not contain it."
+                + (
+                    " Enriched rows instead use the current value shown on the cow's "
+                    "website diagram when enrichment was run."
+                    if settings.lifecycle_overrides
+                    else ""
+                ),
             )
             cases_sheet.write_comment(
                 1,
                 3,
                 "Days in milk at time zero: farm-local calendar days since that "
                 "lactation's calving date. Blank if lifecycle data is unavailable "
-                "or the cow was already dry.",
+                "or the cow was already dry."
+                + (
+                    " Enriched rows instead use the current DIM shown on the cow's "
+                    "website diagram when enrichment was run."
+                    if settings.lifecycle_overrides
+                    else ""
+                ),
             )
             cases_sheet.write_comment(
                 1,
@@ -1093,6 +1129,7 @@ class StudyWorkbookService:
             cases_sheet.set_row(2, 34)
             cases_sheet.autofilter(2, 0, 2 + len(source.cases), 32)
         events = dict(settings.events)
+        lifecycle_overrides = {item.key: item for item in settings.lifecycle_overrides}
         case_baselines: dict[tuple, dict[str, float | None]] = {}
         missing: Counter[str] = Counter()
         first_data_row = 2 if settings.automatic else 3
@@ -1145,6 +1182,21 @@ class StudyWorkbookService:
                 if lactation is not None
                 else None
             )
+            lifecycle_override = lifecycle_overrides.get(case.key)
+            lactation_number = (
+                lifecycle_override.lactation
+                if lifecycle_override is not None
+                else lactation.number
+                if lactation is not None
+                else None
+            )
+            dim_days = (
+                lifecycle_override.dim
+                if lifecycle_override is not None
+                else dim.days
+                if dim is not None
+                else None
+            )
             rback, rdown = self._rumination_timing_days(
                 series,
                 case,
@@ -1191,8 +1243,8 @@ class StudyWorkbookService:
             values: tuple[Any, ...] = (
                 row - first_data_row + 1,
                 case.cow,
-                lactation.number if lactation is not None else None,
-                dim.days if dim is not None else None,
+                lactation_number,
+                dim_days,
                 tn_value,
                 max(temps_pre) if temps_pre else None,
                 *temps,
@@ -1238,6 +1290,14 @@ class StudyWorkbookService:
                     else:
                         fmt = percent if column == 20 else integer if column in (0, 11) else number
                     cases_sheet.write_number(row, column, value, fmt)
+                    if settings.automatic and lifecycle_override is not None and column in (2, 3):
+                        cases_sheet.write_comment(
+                            row,
+                            column,
+                            "Current value read from this cow's smaXtec website diagram "
+                            "when Add Lact / DIM was run. This is a website snapshot, "
+                            "not a historical value calculated at Study T0.",
+                        )
                 else:
                     cases_sheet.write_string(row, column, str(value))
         if settings.automatic:
@@ -1791,6 +1851,8 @@ class AutomaticStudyWorkbookService:
         folder: Path,
         stop: Event,
         progress: Callable[[ApiProgress], None],
+        *,
+        lifecycle_values: Mapping[tuple[str, str], tuple[int, int]] | None = None,
     ) -> Path:
         source = StudySource.load(folder, stop)
         present = set(source.pairs)
@@ -1805,6 +1867,12 @@ class AutomaticStudyWorkbookService:
         normal_pair = self.SOURCE_PAIRS["normal_temp"]
         if normal_pair not in present:
             normal_pair = self.SOURCE_PAIRS["normal_temp_fallback"]
+        lifecycle_values = dict(lifecycle_values or {})
+        lifecycle_overrides = tuple(
+            StudyLifecycleOverride(case.key, *lifecycle_values[(case.farm, case.cow)])
+            for case in source.cases
+            if (case.farm, case.cow) in lifecycle_values
+        )
         settings = StudySettings(
             events=tuple(events),
             normal_temp=normal_pair if normal_pair in present else None,
@@ -1824,6 +1892,7 @@ class AutomaticStudyWorkbookService:
             aligned_before_hours=source.aligned_before_hours,
             aligned_after_hours=source.aligned_after_hours,
             automatic=True,
+            lifecycle_overrides=lifecycle_overrides,
         )
         return StudyWorkbookService().create(
             source, settings, stop, progress, file_stem="client-analysis"

@@ -77,6 +77,7 @@ def website():
             if site.mode == "duplicate-cow":
                 animals.append("57")
             data = json.dumps(animals)
+            disabled_diagram_cow = "257" if site.mode == "diagram-disabled" else ""
             body = f"""
                 <table>
                   <thead><tr data-testid="animalHeader">
@@ -99,6 +100,7 @@ def website():
                 </div>
                 <script>
                   const animals = {data};
+                  const disabledDiagramCow = {json.dumps(disabled_diagram_cow)};
                   const rows = document.getElementById('rows');
                   const footer = document.querySelector('[data-testid="animalFooter"]');
                   const dialog = document.getElementById('export-dialog');
@@ -116,6 +118,11 @@ def website():
                       <td data-testid="mark-link"><a><span data-testid="sxText">${{value}}</span></a></td>
                       <td><span data-testid="tooltip" aria-label="Export data">
                         <button data-testid="iconButton" data-cow="${{value}}">Export</button></span></td>
+                      <td><span data-testid="tooltip" aria-label="Show diagram">
+                        ${{value === disabledDiagramCow
+                          ? '<a aria-disabled="true">Diagram unavailable</a>'
+                          : `<a href="/animals/${{value}}/chart?orgId={org_id}">Diagram</a>`}}
+                        </span></td>
                     </tr>`).join('');
                     footer.textContent = found.length ? `1–${{found.length}} of ${{found.length}}` : '0–0 of 0';
                     document.querySelectorAll('[data-cow]').forEach(button => button.onclick = () => {{
@@ -135,6 +142,25 @@ def website():
                 </script>
             """
             return Handler.shell(body, org_id)
+
+        @staticmethod
+        def chart(org_id, cow):
+            values = {
+                "57": (7, 216),
+                "657": (2, 88),
+                "257": (4, 121),
+                "357": (3, 42),
+                "12": (5, 190),
+                "34": (1, 17),
+            }
+            lactation, dim = values.get(cow, (0, 0))
+            return Handler.shell(
+                '<span aria-label="Days in milk">'
+                f'<h6 data-testid="sxText">DIM&nbsp;&nbsp;<b>{dim}</b></h6></span>'
+                '<span aria-label="Number of lactations">'
+                f'<h6 data-testid="sxText">Lact.&nbsp;&nbsp;<b>{lactation}</b></h6></span>',
+                org_id,
+            )
 
         def do_GET(self):
             parsed = urlparse(self.path)
@@ -174,6 +200,9 @@ def website():
                 )
             elif parsed.path == "/animals":
                 self.html(self.animals(parse_qs(parsed.query).get("orgId", ["maes"])[0]))
+            elif parsed.path.startswith("/animals/") and parsed.path.endswith("/chart"):
+                cow = parsed.path.split("/")[2]
+                self.html(self.chart(parse_qs(parsed.query).get("orgId", ["maes"])[0], cow))
             else:
                 self.html("<h1>Not found</h1>")
 

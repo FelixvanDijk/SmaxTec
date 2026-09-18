@@ -186,6 +186,9 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   R20 is the `> Tn + 0.8 °C` measurement fallback because generic API events do not
   yet provide an accepted temperature-alert mapping in the collection contract.
   Original API rows remain in the tidy/audit outputs. See `CLIENT_STUDY_WORKBOOK.md`.
+  If lifecycle is absent, an explicit Results action can read current Lact/DIM from
+  exact website cow diagrams and generate a new numbered analysis workbook. It does
+  not change the collection manifest or any API source file.
 
 Raw/CSV files are written through exclusive partial files and atomically published.
 Cancellation keeps completed chunks and marks the interrupted target `partial`; targets
@@ -199,6 +202,9 @@ resume; rerun creates a new collection and does not overwrite the earlier one.
   server URL. Redirects are rejected.
 - Sign-in credentials and bearer token stay in process memory, are excluded from repr,
   and are released on Disconnect/close. Python cannot guarantee zeroing immutable strings.
+- The successful API credentials are also retained only until Disconnect/close so the
+  user-triggered Lact/DIM action can sign into the website without another prompt. Its
+  isolated browser is closed after every enrichment job; no cookies are persisted.
 - HTTP calls use a 45-second socket timeout, a 90-second overall response deadline,
   JSON/content-encoding checks and a 32 MiB response cap. Raw output files are capped.
 - Remote IDs/names/types are validated and catalogued under the signed-in farm before

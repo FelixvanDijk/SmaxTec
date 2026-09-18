@@ -11,6 +11,7 @@ from smaxtec.application.exports import (
     ExportStage,
     Farm,
 )
+from smaxtec.application.lifecycle import LifecycleTarget
 from smaxtec.application.login import Credentials, LoginCancelled
 
 SYNTHETIC_CREDENTIALS = Credentials("analyst@example.test", "synthetic-password")
@@ -110,6 +111,40 @@ def test_completed_requests_are_not_repeated_in_same_session(session, website):
     assert second.requested == ()
     assert second.skipped_as_already_attempted == request("57").entries
     assert len(website.exports) == 1
+
+
+def test_lact_dim_uses_exact_cow_diagrams_and_returns_to_search(session, website):
+    connect_and_discover(session)
+    targets = (
+        LifecycleTarget("Maes Gwyrdd LTD", "57"),
+        LifecycleTarget("Maes Gwyrdd LTD", "657"),
+    )
+    progress = []
+
+    readings = session.read_lact_dim(targets, progress.append, Event())
+
+    assert [(item.target.cow, item.lactation, item.dim) for item in readings] == [
+        ("57", 7, 216),
+        ("657", 2, 88),
+    ]
+    assert progress[-1].current == 2
+    assert website.exports == []
+
+
+def test_lact_dim_skips_a_disabled_diagram_and_continues(session, website):
+    connect_and_discover(session)
+    website.mode = "diagram-disabled"
+    targets = (
+        LifecycleTarget("Maes Gwyrdd LTD", "257"),
+        LifecycleTarget("Maes Gwyrdd LTD", "357"),
+    )
+
+    readings = session.read_lact_dim(targets, lambda _event: None, Event())
+
+    assert not readings[0].available
+    assert "unavailable" in readings[0].detail
+    assert (readings[1].lactation, readings[1].dim) == (3, 42)
+    assert website.exports == []
 
 
 def test_partial_failure_reports_completed_and_does_not_retry_attempts(session, website):

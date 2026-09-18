@@ -14,6 +14,8 @@ from smaxtec.application.api_data import (
     ApiFarm,
     ApiMetric,
 )
+from smaxtec.application.lifecycle import LifecycleReading, LifecycleTarget
+from smaxtec.application.lifecycle_enrichment import LifecycleEnrichmentResult
 from smaxtec.ui.api_panel import ApiPanel
 
 
@@ -59,10 +61,14 @@ class Service:
         )
 
 
-def connected_panel(qtbot, tmp_path):
+def connected_panel(qtbot, tmp_path, *, lifecycle_session_factory=None):
     client = Client()
     service = Service(tmp_path)
-    panel = ApiPanel(client=client, service=service)
+    panel = ApiPanel(
+        client=client,
+        service=service,
+        lifecycle_session_factory=lifecycle_session_factory,
+    )
     qtbot.addWidget(panel)
     panel.username.setText("analyst@example.test")
     panel.password.setText("synthetic-password")
@@ -196,6 +202,52 @@ def test_saved_collection_can_rebuild_auto_analysis_without_api_download(
     assert panel.open_client_workbook_button.isEnabled()
 
 
+def test_add_lact_dim_reuses_session_credentials_then_releases_them_on_disconnect(
+    qtbot, tmp_path, monkeypatch
+):
+    class WebsiteSession:
+        def __init__(self):
+            self.credentials = None
+            self.closed = False
+
+        def connect(self, credentials, progress, stop):
+            self.credentials = credentials
+
+        def close(self):
+            self.closed = True
+
+    website = WebsiteSession()
+    panel, _client, _service = connected_panel(
+        qtbot, tmp_path, lifecycle_session_factory=lambda: website
+    )
+    original = tmp_path / "client-analysis.xlsx"
+    enriched = tmp_path / "client-analysis-1.xlsx"
+    panel._last_folder = tmp_path
+    panel._last_client_workbook = original
+    panel._update_controls()
+    assert panel.add_lifecycle_button.isEnabled()
+
+    reading = LifecycleReading(LifecycleTarget("Synthetic Farm", "57"), 7, 216)
+    monkeypatch.setattr(
+        "smaxtec.ui.api_panel.LifecycleEnrichmentService.enrich",
+        lambda _self, folder, reader, stop, progress: LifecycleEnrichmentResult(
+            enriched, (reading,)
+        ),
+    )
+    panel._add_lact_dim()
+    qtbot.waitUntil(lambda: not panel.is_busy)
+
+    assert website.credentials.username == "analyst@example.test"
+    assert website.credentials.password == "synthetic-password"
+    assert website.closed
+    assert panel._last_client_workbook == enriched
+    assert panel.result_summary.text() == "Lact and DIM enrichment complete"
+
+    panel.disconnect()
+    qtbot.waitUntil(lambda: not panel.is_busy)
+    assert panel._credentials is None
+
+
 def test_discovered_measurements_can_be_frozen_into_queue(qtbot, tmp_path):
     panel, _client, _service = connected_panel(qtbot, tmp_path)
     panel.inventory.selectRow(0)
@@ -260,6 +312,7 @@ def test_failed_connection_keeps_real_error_and_does_not_report_disconnect(qtbot
     assert "Disconnected" not in panel.status.text()
     assert panel.account_status.text() == "Could not connect to smaXtec"
     assert not panel._connected
+    assert panel._credentials is None
     assert not panel.account_fields.isHidden()
     assert panel.connect_button.isEnabled()
     assert client.disconnected

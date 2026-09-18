@@ -363,6 +363,24 @@ def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path
         assert _numeric_cell(parameters, "H3") == pytest.approx(40.06)
 
 
+def test_website_lifecycle_snapshot_overrides_api_lifecycle_in_new_workbook(tmp_path):
+    _collection(tmp_path, two_cows=False, auto_pairs=True, auto_event=True)
+    output = AutomaticStudyWorkbookService().create(
+        tmp_path,
+        Event(),
+        lambda _: None,
+        lifecycle_values={("Synthetic Farm", "57"): (7, 216)},
+    )
+
+    with ZipFile(output) as archive:
+        parameters = archive.read("xl/worksheets/sheet1.xml")
+        assert _numeric_cell(parameters, "C3") == 7
+        assert _numeric_cell(parameters, "D3") == 216
+        comments = archive.read("xl/comments1.xml")
+        assert b"website snapshot" in comments
+        assert b"not a historical value" in comments
+
+
 def test_older_collection_without_lifecycle_remains_compatible(tmp_path):
     _collection(tmp_path, two_cows=False, auto_pairs=True, auto_event=True)
     manifest_path = tmp_path / "collection.json"

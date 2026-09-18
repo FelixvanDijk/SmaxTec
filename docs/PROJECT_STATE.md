@@ -1,6 +1,29 @@
 # Project state — start here each session
 
-Last updated: 2026-09-18. **Source preview 0.13.0 adds a persisted, report-only aligned
+Last updated: 2026-09-18. **Source preview 0.14.0 adds explicit website Lact/DIM
+enrichment without changing the successful direct-data collection.** Once automatic
+analysis exists, Results enables **Add Lact / DIM from website**. The action reuses the
+successful API credentials only in memory for the connected session, signs into a fresh
+isolated browser, matches farm and exact Animal number, opens the confirmed row's Show
+diagram link, reads `Number of lactations` and `Days in milk`, goes back and continues.
+Disabled/incomplete diagrams and exact missing/ambiguous cows remain blank and are
+reported as skipped. It never clicks Export. Available values create a numbered new
+`client-analysis` workbook; the earlier workbook, manifest, raw JSON and CSVs remain
+unchanged. Cell notes identify website values as current scrape-time snapshots, not
+historical values calculated at Study T0. Credentials and browser storage are released
+on Disconnect/close and after the short-lived browser job respectively.
+
+0.14.0 verification: all 446 offline tests pass. Synthetic website tests prove exact
+57-versus-657 lookup, accessible diagram extraction, browser-back continuation,
+disabled-diagram skipping and zero export calls. Application/UI tests cover lookup
+deduplication, partial enrichment, non-overwriting workbook regeneration, credential
+reuse/release and explicit snapshot comments. Ruff lint/format and dependency checks
+pass. PyInstaller assembled the complete 0.14.0 bundle, but this computer's existing
+policy again denied launching the unsigned executable (`Access is denied`), so no local
+packaged-launch or archive claim is made. Live website enrichment, client snapshot
+semantics and clean-machine execution remain acceptance gates.
+
+**Source preview 0.13.0 added a persisted, report-only aligned
 data window without changing the established download or cow-analysis pipeline.** The
 API Collection settings now let users independently choose how many Hours or Days to
 show before and after T0. Defaults remain -24/+120 hours. The immutable request and
@@ -613,7 +636,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.13.0 Git/CI state and packaged launch limitation above. Use
+1. Check the 0.14.0 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
    presentation rollback tag. The prepared source launcher includes the expanded
    automatic client table, additive aligned cohort sheet and guided study UI; the
