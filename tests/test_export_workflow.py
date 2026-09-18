@@ -147,6 +147,39 @@ def test_lact_dim_skips_a_disabled_diagram_and_continues(session, website):
     assert website.exports == []
 
 
+def test_lact_dim_waits_for_asynchronously_loaded_diagram_values(session, website):
+    connect_and_discover(session)
+    website.mode = "diagram-delayed"
+
+    readings = session.read_lact_dim(
+        (LifecycleTarget("Maes Gwyrdd LTD", "57"),),
+        lambda _event: None,
+        Event(),
+    )
+
+    assert (readings[0].lactation, readings[0].dim) == (7, 216)
+    assert website.exports == []
+
+
+def test_lact_dim_timeout_skips_only_that_cow_and_continues(session, website):
+    connect_and_discover(session)
+    website.mode = "diagram-missing-257"
+
+    readings = session.read_lact_dim(
+        (
+            LifecycleTarget("Maes Gwyrdd LTD", "257"),
+            LifecycleTarget("Maes Gwyrdd LTD", "357"),
+        ),
+        lambda _event: None,
+        Event(),
+    )
+
+    assert not readings[0].available
+    assert "both Lact and DIM" in readings[0].detail
+    assert (readings[1].lactation, readings[1].dim) == (3, 42)
+    assert website.exports == []
+
+
 def test_partial_failure_reports_completed_and_does_not_retry_attempts(session, website):
     connect_and_discover(session)
     website.mode = "reject-cow-257"

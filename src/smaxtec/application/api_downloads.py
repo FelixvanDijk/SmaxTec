@@ -628,6 +628,7 @@ class ApiDownloadService:
             "client_analysis": {
                 "aligned_before_hours": request.aligned_before_hours,
                 "aligned_after_hours": request.aligned_after_hours,
+                "aligned_display_unit": request.aligned_display_unit,
             },
             "targets": manifest_targets,
             "extras": extras,

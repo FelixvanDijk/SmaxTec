@@ -48,6 +48,7 @@ class LoginSettings:
     verification_timeout_ms: int = 60000
     challenge_timeout_ms: int = 120000
     export_confirmation_timeout_ms: int = 15000
+    diagram_value_timeout_ms: int = 10000
 
 
 def origin(url: str) -> str:
@@ -368,8 +369,7 @@ class SmaxtecLoginSession:
         )
         self._require_origin(self.settings.app_origin)
         try:
-            dim = self._diagram_number("Days in milk")
-            lactation = self._diagram_number("Number of lactations")
+            dim, lactation = self._wait_for_diagram_numbers(stop)
             if dim is None or lactation is None:
                 return LifecycleReading(
                     target,
@@ -380,6 +380,21 @@ class SmaxtecLoginSession:
             page.go_back(wait_until="domcontentloaded")
             page.wait_for_url(re.compile(r".*/animals\?orgId="), wait_until="domcontentloaded")
             self._wait_workflow_visible(page.get_by_test_id("animalHeader"), stop)
+
+    def _wait_for_diagram_numbers(self, stop: Event) -> tuple[int | None, int | None]:
+        """Poll the asynchronously populated diagram for at most ten seconds."""
+        deadline = monotonic() + self.settings.diagram_value_timeout_ms / 1000
+        while True:
+            self._checkpoint(stop)
+            dim = self._diagram_number("Days in milk")
+            lactation = self._diagram_number("Number of lactations")
+            if dim is not None and lactation is not None:
+                return dim, lactation
+            remaining_ms = int((deadline - monotonic()) * 1000)
+            if remaining_ms <= 0:
+                return None, None
+            assert self._page is not None
+            self._page.wait_for_timeout(min(500, remaining_ms))
 
     def _diagram_number(self, accessible_name: str) -> int | None:
         assert self._page is not None

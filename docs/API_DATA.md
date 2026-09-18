@@ -160,7 +160,8 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
 - `collection.json` format 2 records target statuses, file paths, row counts and SHA-256
   hashes for both CSV views and, when built, the derived client workbook. Each cow's
   optional UTC study event, documented lifecycle lactation cycles, selected aligned-
-  sheet before/after hours and companion failure warning are additive metadata. Older
+  sheet before/after hours, axis display unit and companion failure warning are
+  additive metadata. Older
   format-2 manifests without lifecycle or aligned settings remain compatible. It
   never stores credentials or bearer tokens. The original
   `measurements.csv` columns are unchanged from format 1 for compatibility.
@@ -171,7 +172,9 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   worksheet places cow T/A/R values side by side around their own T0 and supplies
   actual n, mean, lower/upper 95% confidence limits and cohort charts. Its GUI-selected
   before/after window accepts hours or days, defaults to -24/+120 hours, and is stored
-  as canonical hours without changing the reviewed API From/To range.
+  as canonical hours without changing the reviewed API From/To range. When both GUI
+  boundaries use Days, the manifest also preserves that display choice and the derived
+  sheet/chart show days; mixed-unit selections use hours.
   The advanced guided `client-study.xlsx` retains aligned/charts/QC sheets.
   Without actual per-cow T0, the automatic table uses
   farm-local From 00:00 as a clearly labelled period anchor, not a treatment time.

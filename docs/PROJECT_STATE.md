@@ -1,6 +1,23 @@
 # Project state — start here each session
 
-Last updated: 2026-09-18. **Source preview 0.14.0 adds explicit website Lact/DIM
+Last updated: 2026-09-18. **Source preview 0.14.1 fixes aligned-window presentation
+and asynchronous website Lact/DIM reads.** Five Days before/after T0 is still stored
+and calculated as exact -120/+120 canonical hours, but the reviewed Days choice is now
+persisted and the automatic sheet/chart display -5 to +5 days at the established
+six-hour (0.25-day) cadence. Mixed-unit and legacy selections remain hour-labelled.
+The website reader now tries both fields immediately and every 500 ms for up to ten
+seconds. It returns to Animals only after both values arrive or the deadline expires;
+an expired cow is left blank while later cows continue.
+
+0.14.1 verification: all 449 offline tests pass. New synthetic regressions cover values
+appearing after navigation, bounded missing-value timeout with next-cow continuation,
+Days/Hours request and manifest propagation, legacy defaults and a day-labelled -5/+5
+automatic workbook. Ruff lint/format checks pass. Live website and client workbook
+acceptance remain pending. PyInstaller assembled the complete 0.14.1 directory bundle,
+but the local unsigned-executable smoke launch was denied by the computer policy
+(`Access is denied`), so the build script correctly stopped before publishing an archive.
+
+**Source preview 0.14.0 added explicit website Lact/DIM
 enrichment without changing the successful direct-data collection.** Once automatic
 analysis exists, Results enables **Add Lact / DIM from website**. The action reuses the
 successful API credentials only in memory for the connected session, signs into a fresh
@@ -636,7 +653,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.14.0 Git/CI state and packaged launch limitation above. Use
+1. Check the 0.14.1 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
    presentation rollback tag. The prepared source launcher includes the expanded
    automatic client table, additive aligned cohort sheet and guided study UI; the

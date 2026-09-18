@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.14.1 — 2026-09-18 (aligned units and delayed diagram values)
+
+- Preserve the reviewed aligned-data display unit in the collection manifest. When
+  both boundaries are entered in Days, the automatic workbook and charts now show a
+  `Days from T0` axis (for example -5 to +5), while retaining the established six-hour
+  cadence as quarter-day points and exact hour-based calculations.
+- Read Lact/DIM immediately after diagram navigation, then poll every half second for
+  up to ten seconds because smaXtec populates those values asynchronously. If both
+  fields never appear, skip only that cow, return to Animals and continue the batch.
+- Add regressions for delayed values, bounded timeout/continuation, Hours/Days request
+  persistence, legacy defaults and day-labelled automatic analysis.
+
 ## 0.14.0 — 2026-09-18 (website Lact/DIM enrichment)
 
 - Add **Add Lact / DIM from website** after automatic client analysis is available.

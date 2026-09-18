@@ -99,6 +99,7 @@ def test_collection_preserves_raw_chunks_and_builds_csv_excel_and_hashed_manifes
     assert manifest["client_analysis"] == {
         "aligned_before_hours": 24,
         "aligned_after_hours": 120,
+        "aligned_display_unit": "hours",
     }
     assert len(manifest["targets"]) == 2
     assert manifest["targets"][0]["lactations"] == [

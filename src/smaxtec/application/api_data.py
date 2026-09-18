@@ -135,6 +135,7 @@ class ApiDownloadRequest:
     include_health_index: bool = False
     aligned_before_hours: int = 24
     aligned_after_hours: int = 120
+    aligned_display_unit: str = "hours"
 
     def __post_init__(self) -> None:
         if not self.targets or len(self.targets) > 5000:
@@ -156,6 +157,12 @@ class ApiDownloadRequest:
                 "Choose an aligned-data window of up to 60 days in total, "
                 "with at least one hour after T0."
             )
+        if self.aligned_display_unit not in {"hours", "days"}:
+            raise ValueError("Choose Hours or Days for the aligned-data axis.")
+        if self.aligned_display_unit == "days" and (
+            self.aligned_before_hours % 24 or self.aligned_after_hours % 24
+        ):
+            raise ValueError("A day-based aligned-data window must use whole days.")
         if (
             not self.name.strip()
             or self.name != self.name.strip()

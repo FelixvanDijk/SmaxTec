@@ -173,6 +173,7 @@ class StudySource:
     resolution: str
     aligned_before_hours: int = 24
     aligned_after_hours: int = 120
+    aligned_display_unit: str = "hours"
 
     @classmethod
     def load(cls, folder: Path, stop: Event | None = None) -> StudySource:
@@ -241,6 +242,7 @@ class StudySource:
                 raise ValueError("invalid client analysis settings")
             aligned_before = client_analysis.get("aligned_before_hours", 24)
             aligned_after = client_analysis.get("aligned_after_hours", 120)
+            aligned_display_unit = client_analysis.get("aligned_display_unit", "hours")
             if (
                 isinstance(aligned_before, bool)
                 or isinstance(aligned_after, bool)
@@ -249,6 +251,8 @@ class StudySource:
                 or aligned_before < 0
                 or aligned_after < 1
                 or aligned_before + aligned_after > 1_440
+                or aligned_display_unit not in {"hours", "days"}
+                or (aligned_display_unit == "days" and (aligned_before % 24 or aligned_after % 24))
             ):
                 raise ValueError("invalid aligned data window")
         except ApiCancelled:
@@ -268,6 +272,7 @@ class StudySource:
             str(manifest.get("aggregation", "")),
             aligned_before,
             aligned_after,
+            aligned_display_unit,
         )
 
 
@@ -334,6 +339,7 @@ class StudySettings:
     aligned_before_hours: int = 24
     aligned_after_hours: int = 120
     aligned_step_hours: int = 6
+    aligned_display_unit: str = "hours"
     unanchored_cases: tuple[tuple[str, str, str, str], ...] = ()
     provisional_cases: tuple[tuple[str, str, str, str], ...] = ()
     rumination_minutes: bool = False
@@ -390,6 +396,12 @@ class StudySettings:
                 raise ValueError("Choose positive time steps and a horizon of at most 60 days.")
         if self.aligned_before_hours < 0 or self.aligned_after_hours < 1:
             raise ValueError("Aligned time must include at least one post-event hour.")
+        if self.aligned_display_unit not in {"hours", "days"}:
+            raise ValueError("Aligned data must be displayed in hours or days.")
+        if self.aligned_display_unit == "days" and (
+            self.aligned_before_hours % 24 or self.aligned_after_hours % 24
+        ):
+            raise ValueError("A day-labelled aligned window must use whole-day boundaries.")
         override_keys = tuple(item.key for item in self.lifecycle_overrides)
         if len(set(override_keys)) != len(override_keys) or not set(override_keys) <= cases:
             raise ValueError("Website lifecycle values do not match this collection.")
@@ -854,6 +866,9 @@ class StudyWorkbookService:
             settings.aligned_after_hours,
             settings.aligned_step_hours,
         )
+        display_days = settings.aligned_display_unit == "days"
+        axis_heading = "Days from T0" if display_days else "Hours from T0"
+        axis_divisor = 24 if display_days else 1
         block_height = len(offsets) + 25
         metrics = (
             (
@@ -889,7 +904,7 @@ class StudyWorkbookService:
                 "remain non-clinical.",
                 muted,
             )
-            headings = ("Hours from T0", "n", "Mean", "Lower 95%", "Upper 95%") + tuple(
+            headings = (axis_heading, "n", "Mean", "Lower 95%", "Upper 95%") + tuple(
                 f"Cow {case.cow} · case {case.index}" for case in source.cases
             )
             for column, text in enumerate(headings):
@@ -905,7 +920,9 @@ class StudyWorkbookService:
                 if stop.is_set():
                     raise ApiCancelled
                 row = data_row + offset_index
-                sheet.write_number(row, 0, offset, integer)
+                sheet.write_number(
+                    row, 0, offset / axis_divisor, number if display_days else integer
+                )
                 observed = []
                 for column, case in enumerate(source.cases, 5):
                     event = event_by_case[case.key]
@@ -944,7 +961,7 @@ class StudyWorkbookService:
                     }
                 )
             chart.set_title({"name": f"{name} · mean and 95% confidence limits"})
-            chart.set_x_axis({"name": "Hours from T0"})
+            chart.set_x_axis({"name": axis_heading})
             chart.set_y_axis(
                 {
                     "name": (
@@ -1891,6 +1908,7 @@ class AutomaticStudyWorkbookService:
             rumination_minutes=self.SOURCE_PAIRS["rumination"] in present,
             aligned_before_hours=source.aligned_before_hours,
             aligned_after_hours=source.aligned_after_hours,
+            aligned_display_unit=source.aligned_display_unit,
             automatic=True,
             lifecycle_overrides=lifecycle_overrides,
         )

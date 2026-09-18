@@ -598,9 +598,15 @@ six-hour cadence and include a requested boundary that is not divisible by six. 
 is presentation configuration only: do not widen API From/To, change source files,
 alter `Cow analysis`, or affect the independently configured guided workbook.
 
+Source 0.14.1 preserves the reviewed display unit as well as canonical hours. If both
+boundaries use Days, write and chart offsets in days while keeping the six-hour grid
+as 0.25-day points. Mixed-unit and legacy manifests display hours. This removes the
+misleading -120/+120 presentation for an explicitly reviewed five-day window without
+changing its actual bounds or calculations.
+
 ## Decision 024: Enrich missing Lact/DIM from read-only website diagrams
 
-Status: implemented in source 0.14.0 against synthetic website fixtures; live
+Status: implemented in source 0.14.1 against synthetic website fixtures; live
 verification and client acceptance pending.
 
 Expose one explicit Results action only after automatic analysis exists. Reuse the
@@ -609,6 +615,11 @@ browser in the action's worker. Follow the established login, exact farm selecti
 Animals navigation and exact Animal number search. Within the confirmed row, use the
 accessible `Show diagram` link and read only `Days in milk` and `Number of lactations`.
 Return through browser history before searching the next cow. Never click Export.
+
+The real diagram populates values asynchronously after navigation. Attempt an immediate
+read, then poll both accessible fields every 500 ms for at most 10 seconds. Only return
+to Animals after both values are present or that deadline expires; on expiry, skip that
+cow and continue. Keep cancellation responsive between polls.
 
 Treat missing, disabled or incomplete diagram controls as an unavailable cow and
 continue. A changed login/farm/search boundary remains a curated job failure. Map

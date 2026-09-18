@@ -88,12 +88,14 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.14.0 automatically adds `client-analysis.xlsx` to
+Source 0.14.1 automatically adds `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
 guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row and
 preserves the client's original columns through `R120`, adding `Rdown` beside Rback
 and `RA1`–`RA5` at the end. A separate additive `Aligned data` sheet contains T/A/R cows
-side by side, actual n, means, 95% confidence limits and charts. `To` is the client's T0-temperature spelling, not
+side by side, actual n, means, 95% confidence limits and charts. Preserve the reviewed
+axis unit: all-Day boundaries display days while calculations retain canonical hours.
+`To` is the client's T0-temperature spelling, not
 the request end date. Header notes explain proxies, inferred mappings, and the
 period anchor without cluttering the visible table. Preserve the guided workbook.
 Every queue cow can carry an optional, strictly parsed farm-local Study T0. If absent,
@@ -121,8 +123,9 @@ Lifecycle metadata is optional enrichment: unsupported or malformed lifecycle
 records must be skipped per cow and must never block farm/cow catalogue loading.
 When Lact/DIM remain blank, Results offers an explicit post-analysis website action.
 It reuses successful API credentials in memory only, creates a fresh isolated browser,
-reuses exact farm/Animal-number lookup, reads the accessible cow diagram Lact/DIM,
-and closes the browser. Disabled/incomplete diagrams remain blank. Generate a numbered
+reuses exact farm/Animal-number lookup, and waits up to ten seconds for the asynchronously
+loaded accessible cow diagram Lact/DIM values before returning to Animals. It then
+closes the browser. Disabled/incomplete diagrams remain blank. Generate a numbered
 new analysis workbook; never rewrite the prior workbook or API sources. Website values
 are current scrape-time snapshots, not historical T0 values, and must be labelled so.
 Preserve raw JSON, both CSVs,

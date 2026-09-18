@@ -154,11 +154,24 @@ def website():
                 "34": (1, 17),
             }
             lactation, dim = values.get(cow, (0, 0))
-            return Handler.shell(
+            values_html = (
                 '<span aria-label="Days in milk">'
                 f'<h6 data-testid="sxText">DIM&nbsp;&nbsp;<b>{dim}</b></h6></span>'
                 '<span aria-label="Number of lactations">'
-                f'<h6 data-testid="sxText">Lact.&nbsp;&nbsp;<b>{lactation}</b></h6></span>',
+                f'<h6 data-testid="sxText">Lact.&nbsp;&nbsp;<b>{lactation}</b></h6></span>'
+            )
+            if site.mode == "diagram-delayed":
+                return Handler.shell(
+                    '<div id="delayed-values"></div>'
+                    "<script>setTimeout(() => {"
+                    f'document.getElementById("delayed-values").innerHTML={json.dumps(values_html)};'
+                    "}, 650);</script>",
+                    org_id,
+                )
+            if site.mode == "diagram-missing-257" and cow == "257":
+                return Handler.shell("<div>Diagram values are still unavailable</div>", org_id)
+            return Handler.shell(
+                values_html,
                 org_id,
             )
 
@@ -261,6 +274,7 @@ def session(website):
             verification_timeout_ms=1200,
             challenge_timeout_ms=1200,
             export_confirmation_timeout_ms=1000,
+            diagram_value_timeout_ms=1500,
         )
     )
     try:

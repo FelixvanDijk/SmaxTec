@@ -126,8 +126,17 @@ def test_aligned_window_accepts_hours_or_days_without_changing_target_dates(qtbo
 
     assert request.aligned_before_hours == 48
     assert request.aligned_after_hours == 36
+    assert request.aligned_display_unit == "hours"  # Mixed choices use one clear axis.
     assert request.targets[0].start_date == date(2026, 9, 1)
     assert request.targets[0].end_date == date(2026, 9, 15)
+
+    panel.aligned_after.setValue(5)
+    panel.aligned_after_unit.setCurrentIndex(1)  # Days
+    request = panel.build_request()
+
+    assert request.aligned_before_hours == 48
+    assert request.aligned_after_hours == 120
+    assert request.aligned_display_unit == "days"
 
 
 def test_optional_study_T0_stays_with_its_cow_and_is_reviewed(qtbot, tmp_path):

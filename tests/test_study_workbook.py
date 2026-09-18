@@ -32,6 +32,7 @@ def _collection(
     auto_pairs=False,
     auto_event=False,
     aligned_window=None,
+    aligned_unit="hours",
 ):
     event = datetime(2026, 9, 15, 8, 10, tzinfo=UTC)
     cows = (
@@ -149,6 +150,7 @@ def _collection(
         manifest["client_analysis"] = {
             "aligned_before_hours": aligned_window[0],
             "aligned_after_hours": aligned_window[1],
+            "aligned_display_unit": aligned_unit,
         }
     (tmp_path / "collection.json").write_text(json.dumps(manifest), encoding="utf-8")
     return event
@@ -322,11 +324,34 @@ def test_automatic_aligned_sheet_uses_collection_window_and_keeps_t0_centred(tmp
         assert _numeric_cell(aligned, "A69") == 0  # Rumination block.
 
 
+def test_automatic_aligned_sheet_displays_a_day_window_in_days(tmp_path):
+    _collection(
+        tmp_path,
+        two_cows=False,
+        auto_pairs=True,
+        auto_event=True,
+        aligned_window=(120, 120),
+        aligned_unit="days",
+    )
+    source = StudySource.load(tmp_path)
+    assert source.aligned_display_unit == "days"
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+
+    with ZipFile(output) as archive:
+        aligned = archive.read("xl/worksheets/sheet2.xml")
+        strings = archive.read("xl/sharedStrings.xml")
+        assert b"Days from T0" in strings
+        assert _numeric_cell(aligned, "A5") == -5
+        assert _numeric_cell(aligned, "A6") == pytest.approx(-4.75)
+        assert _numeric_cell(aligned, "A45") == 5
+
+
 def test_legacy_collection_defaults_to_24_hours_before_and_120_after(tmp_path):
     _collection(tmp_path, two_cows=False)
     source = StudySource.load(tmp_path)
     assert source.aligned_before_hours == 24
     assert source.aligned_after_hours == 120
+    assert source.aligned_display_unit == "hours"
 
 
 def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path):

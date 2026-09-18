@@ -230,11 +230,16 @@ class ApiReviewDialog(QDialog):
         )
         if any(target.entity.kind == "animals" for target in request.targets):
             formats += " + automatic client analysis"
+        aligned_divisor = 24 if request.aligned_display_unit == "days" else 1
+        aligned_before = request.aligned_before_hours // aligned_divisor
+        aligned_after = request.aligned_after_hours // aligned_divisor
         layout.addWidget(
             label(
                 f"{formats} · Resolution: {request.aggregation}\n"
-                f"Aligned data only: {request.aligned_before_hours} hours before T0 "
-                f"to {request.aligned_after_hours} hours after T0.\n"
+                f"Aligned data only: {aligned_before} "
+                f"{request.aligned_display_unit} before T0 to "
+                f"{aligned_after} "
+                f"{request.aligned_display_unit} after T0.\n"
                 f"A new collection folder will be created inside {request.destination}.",
                 "muted",
             )
@@ -1304,6 +1309,12 @@ class ApiPanel(QWidget):
             ),
             aligned_after_hours=(
                 self.aligned_after.value() * self.aligned_after_unit.currentData()
+            ),
+            aligned_display_unit=(
+                "days"
+                if self.aligned_before_unit.currentData() == 24
+                and self.aligned_after_unit.currentData() == 24
+                else "hours"
             ),
         )
 

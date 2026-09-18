@@ -70,7 +70,7 @@ Client definitions:
   insert the current values displayed on each cow's diagram. Those are explicitly
   noted as scrape-time snapshots and must not be interpreted as historical T0 values.
 
-The **automatic 0.14.0 companion** preserves the ASPI table's visible groundwork:
+The **automatic 0.14.1 companion** preserves the ASPI table's visible groundwork:
 the first `Cow analysis` sheet keeps the original 28 columns, including the example's
 `To` (T0 temperature) and `R120` spellings, in order. It inserts `Rdown` after Rback
 and appends `RA1`–`RA5`, producing A:AH, one cow/case per row and a filterable
@@ -81,8 +81,10 @@ header also explains the period-anchor fallback. The
 automatic table has no additional source columns. A separate `Aligned data` worksheet
 contains temperature, activity and rumination blocks over the user-selected window
 (default -24 to +120 hours) at a six-hour cadence anchored to T0. The user can enter
-each boundary in hours or days before download; exact non-six-hour boundaries are also
-included. This choice applies only to the aligned sheet and does not widen API From/To.
+each boundary in hours or days before download; when both use Days, the sheet and chart
+axis display days (for example -5 to +5) and six-hour points appear every 0.25 day.
+Mixed units use an hours axis. Exact non-six-hour boundaries are also included. This
+choice applies only to the aligned sheet and does not widen API From/To.
 Cow/case columns are side by side; each row also contains actual n, mean and
 normal 95% confidence limits (`mean ± 1.96 * sample SD / sqrt(n)`, blank for n < 2),
 with one valid cohort chart per metric. Activity is the mean of the preceding six-hour
@@ -107,7 +109,8 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
 - Website Lact/DIM enrichment is a separate explicit Results action after automatic
   analysis exists. It creates another numbered automatic workbook, never edits the
   prior workbook/source files, matches farm plus exact Animal number, skips unavailable
-  diagrams and marks inserted values as current website snapshots.
+  diagrams and marks inserted values as current website snapshots. Diagram values are
+  polled every half second for at most ten seconds before that cow is skipped.
 - The queue optionally records one strict farm-local T0 per cow/case. A shared value
   can be applied atomically to selected rows or the full queue, while individual cells
   remain editable. It is reviewed with the cow's From/To before data collection. When absent, the automatic workbook
