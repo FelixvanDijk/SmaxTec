@@ -164,8 +164,9 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   remain compatible. It
   never stores credentials or bearer tokens. The original
   `measurements.csv` columns are unchanged from format 1 for compatibility.
-- `client-analysis.xlsx` keeps its compact, filterable, blue-banded A:AB first
-  worksheet in the supplied 28-column cow analysis order, one row per cow/case.
+- `client-analysis.xlsx` keeps its compact, filterable, blue-banded first worksheet,
+  one row per cow/case. The supplied 28 columns retain their order; `Rdown` is inserted
+  after Rback and `RA1`–`RA5` are appended, giving A:AH.
   Header comments hold proxy/anchor/unit cautions. An additive `Aligned data`
   worksheet places cow T/A/R values side by side around their own T0 and supplies
   actual n, mean, lower/upper 95% confidence limits and cohort charts.
@@ -177,8 +178,11 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   `temp_without_drink_cycles/degree_celsius`, `act/act`, and `rum_index/seconds`.
   Rumination converts to minutes in the derived workbook, not the source CSV.
   New collections use the official animal lifecycle at T0 for Lact/DIM. Tn, AN and
-  Rn use the specified pre-T0 windows, `%drop` is `1-Rl/Rn`, and Rback is the disclosed
-  elapsed time from first Rl to the first later observed value at/above Rl.
+  Rn use the specified pre-T0 windows and `%drop` is `1-Rl/Rn`. Rback is elapsed days
+  from first Rl to the first later value at/above Rn; Rdown is days from T0 to first
+  Rl; RA1–RA5 are successive elapsed-day rumination means. Talert uses `[T0-5d,T0)`.
+  R20 is the `> Tn + 0.8 °C` measurement fallback because generic API events do not
+  yet provide an accepted temperature-alert mapping in the collection contract.
   Original API rows remain in the tidy/audit outputs. See `CLIENT_STUDY_WORKBOOK.md`.
 
 Raw/CSV files are written through exclusive partial files and atomically published.

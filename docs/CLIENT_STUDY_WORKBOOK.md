@@ -19,7 +19,9 @@ collection must not relabel cows into those groups by guess.
 The ASPI and Ketofen tables use one row per cow/case. Columns A:AB are `No`, `Cow`,
 `Lact`, `DIM`, `Tn`, `Talert`, `T0` (the example types this `To`), `T6`, `T12`, `T18`,
 `T24`, `R20`, `AN`, `AT0`, `AT6`, `AT12`, `AT18`, `AT24`, `Rn`, `Rl`, `%drop`, `Rback`,
-`RT0`, `RT24`, `RT48`, `RT72`, `RT96`, `RT120` (the example types `R120`).
+`RT0`, `RT24`, `RT48`, `RT72`, `RT96`, `RT120` (the example types `R120`). The
+automatic workbook preserves that order, inserts requested `Rdown` beside Rback,
+and appends `RA1`–`RA5`.
 `Normal values` separately repeats per-cow `Tn`, `AN`, `Rn`. The example's
 `Analysis` sheet shows absolute and baseline-relative temperature/activity/rumination
 means with 95% confidence bands; some existing chart references are broken (`#REF!`),
@@ -50,23 +52,27 @@ Client definitions:
 - **RT0/RT24/...:** absolute source rumination at exactly the named elapsed hour.
   The automatic report converts `rum_index/seconds` to minutes using `/60` to align
   with the example's values; the audit CSV and guided builder keep their source units.
-- **Rback:** disclosed discrete-series interpretation of the client's literal wording:
-  elapsed hours from the first occurrence of Rl in `[T0,T0+5d)` to the first later
-  observed rumination reading at or above Rl. It stays blank only when no later
-  observation exists in the five-day window. Because every later observation will
-  normally be at/above the observed minimum, this interpretation requires explicit
-  client acceptance before clinical use.
+- **Rback:** elapsed days from the first occurrence of Rl in `[T0,T0+5d)` to the
+  first later observed rumination reading at or above pre-event Rn. Recovery is
+  searched through the available requested period and stays blank if no recovery
+  is observed.
+- **Rdown:** elapsed days from T0 (the Rn starting point) to the first occurrence
+  of Rl in `[T0,T0+5d)`.
+- **RA1–RA5:** arithmetic mean of all valid rumination observations in consecutive
+  elapsed windows `[T0,T0+24h)`, `[T0+24h,T0+48h)`, through day five. The calculation
+  uses every available source interval and divides by its actual observation count.
 - **Lact/DIM:** new collections preserve the official animal `lifecycle` and its
   historical `cycles`. Lact is the latest cycle whose calving is at/before T0 and
   whose dry-off is absent/after T0. DIM is the farm-local calendar-date difference
   between T0 and that cycle's calving timestamp. Both remain blank for older
   collections without lifecycle metadata or when T0 is outside a lactating cycle.
 
-The **automatic 0.11.0 companion** preserves the ASPI table's visible groundwork:
-the first `Cow analysis` sheet is A:AB only, with the exact 28 headers including the example's
-`To` (T0 temperature) and `R120` spellings, one cow/case per row, a filterable
+The **automatic 0.12.0 companion** preserves the ASPI table's visible groundwork:
+the first `Cow analysis` sheet keeps the original 28 columns, including the example's
+`To` (T0 temperature) and `R120` spellings, in order. It inserts `Rdown` after Rback
+and appends `RA1`–`RA5`, producing A:AH, one cow/case per row and a filterable
 blue-banded Excel table and decimal-fraction `%drop` display (`0.13`, not `13%`).
-Lact/DIM and Rback use the documented/approximated rules above when inputs are
+Lact/DIM, Rback, Rdown and RA1–RA5 use the documented rules above when inputs are
 available. Talert and R20 remain proxies, explained in header comments; the To
 header also explains the period-anchor fallback. The
 automatic table has no additional source columns. A separate `Aligned data` worksheet

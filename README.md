@@ -5,7 +5,7 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.11.0 keeps the official smaXtec Public API as the primary workflow. Its spacious
+Version 0.12.0 keeps the official smaXtec Public API as the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
 queued target. Users can review the full queue and save direct raw JSON, a lossless
@@ -59,8 +59,9 @@ See [Direct API data](docs/API_DATA.md) for the exact contract and known API amb
 ## Automatic client analysis and guided study workbook
 
 Cow collections automatically create `client-analysis.xlsx` alongside the existing
-files. Its first sheet remains the filterable, blue-banded 28-column table in the
-client's ASPI-style order, with one cow/case per row. Its `To`
+files. Its first sheet remains the filterable, blue-banded client table with one
+cow/case per row. The original columns keep their order; `Rdown` now follows Rback
+and `RA1`–`RA5` finish the row. Its `To`
 header is the client's spelling of T0 temperature, not the request end date. Proxy
 and period-anchor explanations are attached as header notes, not extra tabs. The
 automatic mapping uses the exact pairs in a representative saved collection:
@@ -71,9 +72,11 @@ workbook. If normal index is absent, `temp · degree_celsius` is a disclosed fal
 New collections also preserve smaXtec's documented animal lifecycle cycles: `Lact`
 uses the cycle containing T0 and `DIM` is the farm-local calendar days since its
 calving date. Tn, AN and Rn are calculated over the client's seven-/fourteen-day
-pre-T0 windows; `%drop` is `1-Rl/Rn`. `Rback` is currently a clearly documented
-approximation in hours from the first post-T0 Rl minimum to the first later reading
-at or above Rl, following the client's literal wording for the discrete observations.
+pre-T0 windows; `%drop` is `1-Rl/Rn`. `Rback` is elapsed days from the first Rl
+minimum to recovery at/above Rn; `Rdown` is elapsed days from T0 to Rl. `RA1`–`RA5`
+are the mean rumination values in successive 24-hour windows after T0. Talert is the
+maximum in the exact five days before T0. R20 counts readings strictly above
+`Tn + 0.8 °C`; generic API events are not treated as alerts without a documented mapping.
 An additive `Aligned data` sheet places each cow beside the others from -24 to +120
 hours around its own T0 for temperature, six-hour mean activity and rumination. It
 includes actual n, mean and lower/upper 95% confidence limits plus three cohort charts.
@@ -105,7 +108,7 @@ and Definitions/QC.
 **T6 always means an actual reading exactly six elapsed hours later**, even when
 the chosen download interval was hourly/daily; if there is no exact reading it
 stays blank. Talert and R20 are explicitly labelled estimates. Lact/DIM use lifecycle
-metadata in new collections; Rback uses the disclosed Rl-level interpretation.
+metadata in new collections; Rback uses the disclosed recovery-to-Rn definition.
 Review the QC sheet before using the numbers. See
 [client study contract](docs/CLIENT_STUDY_WORKBOOK.md).
 This is a synthetic-tested analytical preview, not a clinically accepted report.
@@ -182,9 +185,9 @@ does **not** include automatic client analysis. The 0.9.0 Windows checks passed
 tests, bundle build and packaged executable smoke, but artifact upload was rejected
 by GitHub Actions storage quota. Twelve older temporary ZIP artifacts have been
 removed, retaining only the two latest working 0.8/0.7 previews; quota recovery
-and a downloadable 0.11.0 preview still need CI confirmation. For now, use
+and a downloadable 0.12.0 preview still need CI confirmation. For now, use
 `Start SmaxTec.cmd` on this prepared development computer. Once a successful
-0.11.0 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
+0.12.0 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
 extract both the artifact wrapper and the included application ZIP, and open
 `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
@@ -192,7 +195,7 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; 0.8.0 passed
-independent Windows CI smoke tests. Consult current status for the 0.11.0 build
+independent Windows CI smoke tests. Consult current status for the 0.12.0 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
 installer remain release work. If the legacy Microsoft 365 route is retained, its

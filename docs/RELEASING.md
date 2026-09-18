@@ -9,7 +9,7 @@
 The build runs checks, bundles the application with Chromium, starts the executable
 with Python removed from PATH and an unavailable external browser cache, and
 produces the current versioned archive (for example,
-`dist/SmaxTec-Workbench-0.11.0-windows-x64.zip`). The build reads the installed
+`dist/SmaxTec-Workbench-0.12.0-windows-x64.zip`). The build reads the installed
 source version so its archive name cannot silently drift from `pyproject.toml`.
 Assembly uses a fresh validated system-temporary staging directory, smoke-tests that
 exact bundle, then publishes only the versioned ZIP. This avoids stale files and does

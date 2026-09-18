@@ -88,11 +88,11 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.11.0 automatically adds `client-analysis.xlsx` to
+Source 0.12.0 automatically adds `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
-guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row,
-exact client A:AB header order (`No`, `Cow`, ... `To`, ... `R120`), an Excel table,
-and no extra columns. A separate additive `Aligned data` sheet contains T/A/R cows
+guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row and
+preserves the client's original columns through `R120`, adding `Rdown` beside Rback
+and `RA1`–`RA5` at the end. A separate additive `Aligned data` sheet contains T/A/R cows
 side by side, actual n, means, 95% confidence limits and charts. `To` is the client's T0-temperature spelling, not
 the request end date. Header notes explain proxies, inferred mappings, and the
 period anchor without cluttering the visible table. Preserve the guided workbook.
@@ -107,9 +107,12 @@ to minutes only in the derived workbook; retain original units in raw/CSV. If no
 index is absent, `temp/degree_celsius` is a disclosed fallback, not the T source.
 New API collections preserve documented animal lifecycle cycles so `Lact` selects
 the cycle containing T0 and `DIM` uses farm-local calendar days since calving.
-Calculate Tn/AN/Rn only from their specified pre-T0 windows, `%drop` as `1-Rl/Rn`,
-and Rback as the disclosed hours from first post-T0 Rl to the first later observed
-value at/above Rl. Older collections without lifecycle remain compatible and blank there.
+Calculate Tn/AN/Rn only from their specified pre-T0 windows and `%drop` as `1-Rl/Rn`.
+Rback is elapsed days from first post-T0 Rl to the first later observation at/above Rn;
+Rdown is elapsed days from T0 to first Rl. RA1–RA5 are successive 24-hour rumination
+means. Talert is the maximum in `[T0-5d,T0)` and R20 remains the strict `> Tn + 0.8 °C`
+measurement fallback until a typed API temperature-alert contract is established.
+Older collections without lifecycle remain compatible and blank there.
 The queue retains individual Study T0 editing and also supports strict, all-or-nothing
 application of one shared farm-local T0 to selected rows or the complete queue.
 Never silently widen reviewed dates; tell users to cover 14 days before and five

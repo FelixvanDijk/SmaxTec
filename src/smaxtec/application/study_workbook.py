@@ -80,12 +80,18 @@ AUTOMATIC_HEADERS = (
     "Rl",
     "%drop",
     "Rback",
+    "Rdown",
     "RT0",
     "RT24",
     "RT48",
     "RT72",
     "RT96",
     "R120",
+    "RA1",
+    "RA2",
+    "RA3",
+    "RA4",
+    "RA5",
 )
 REQUIRED_CSV = {
     "target_type",
@@ -729,33 +735,38 @@ class StudyWorkbookService:
         return max(eligible, key=lambda item: item.calving_utc, default=None)
 
     @staticmethod
-    def _rback_hours(
+    def _rumination_timing_days(
         series: dict,
         case: StudyCase,
         pair: tuple[str, str] | None,
         start: datetime,
-        end: datetime,
-    ) -> float | None:
-        """Hours from the first Rl minimum to the next observed Rl-level reading.
+        low_window_end: datetime,
+        recovery_end: datetime,
+        normal: float | None,
+    ) -> tuple[float | None, float | None]:
+        """Return (Rback, Rdown) in elapsed days around the first Rl minimum.
 
-        Measurements are discrete, so "hit the Rl level again" is represented by
-        the first later observation at or above the observed minimum.
+        Rdown is T0 to the first observed five-day minimum. Rback is that minimum
+        to the first later observation at or above the pre-event Rn baseline.
         """
-        if pair is None:
-            return None
+        if pair is None or normal is None or normal <= 0:
+            return None, None
         points = series.get((case.key, pair), ())
         first = bisect_left(points, start, key=lambda point: point.time)
-        last = bisect_left(points, end, key=lambda point: point.time)
+        last = bisect_left(points, low_window_end, key=lambda point: point.time)
         window = points[first:last]
-        if len(window) < 2:
-            return None
+        if not window:
+            return None, None
         low = min(point.value for point in window)
         low_index = next(index for index, point in enumerate(window) if point.value == low)
         low_time = window[low_index].time
-        for point in window[low_index + 1 :]:
-            if point.value >= low:
-                return (point.time - low_time).total_seconds() / 3600
-        return None
+        rdown = (low_time - start).total_seconds() / timedelta(days=1).total_seconds()
+        recovery_last = bisect_left(points, recovery_end, key=lambda point: point.time)
+        for point in points[first + low_index + 1 : recovery_last]:
+            if point.value >= normal:
+                rback = (point.time - low_time).total_seconds() / timedelta(days=1).total_seconds()
+                return rback, rdown
+        return None, rdown
 
     def _automatic_aligned_sheet(
         self,
@@ -923,7 +934,9 @@ class StudyWorkbookService:
         cases_sheet.set_column(0, 0, 6 if settings.automatic else 7)
         cases_sheet.set_column(1, 1, 9 if settings.automatic else 15)
         cases_sheet.set_column(2, 3, 7 if settings.automatic else 10)
-        cases_sheet.set_column(4, 27, 8.5 if settings.automatic else 13)
+        cases_sheet.set_column(
+            4, 33 if settings.automatic else 27, 8.5 if settings.automatic else 13
+        )
         if settings.automatic:
             cases_sheet.set_column(11, 11, 7)
             cases_sheet.set_column(20, 20, 8)
@@ -932,7 +945,7 @@ class StudyWorkbookService:
                 1,
                 0,
                 1 + len(source.cases),
-                27,
+                len(AUTOMATIC_HEADERS) - 1,
                 {
                     "name": "CowAnalysis",
                     "style": "Table Style Medium 2",
@@ -976,7 +989,8 @@ class StudyWorkbookService:
                 11,
                 f"Proxy: distinct temperature measurements above Tn + "
                 f"{settings.threshold_c:g} Celsius in the first "
-                f"{settings.followup_days} days; not an alert-event count.",
+                f"{settings.followup_days} days. The saved Public API collection "
+                "does not contain a reliably typed temperature-alert event stream.",
             )
             cases_sheet.write_comment(
                 1,
@@ -1000,10 +1014,24 @@ class StudyWorkbookService:
             cases_sheet.write_comment(
                 1,
                 21,
-                "Client Rback definition: elapsed hours from the first Rl minimum "
-                "until the first later observed rumination reading at or above the "
-                "Rl level. Blank only when no later reading exists in the five-day window.",
+                "Elapsed days from the first Rl minimum in the five days after T0 "
+                "until the first later observed rumination reading at or above Rn. "
+                "Recovery is searched through the available requested period.",
             )
+            cases_sheet.write_comment(
+                1,
+                22,
+                "Rdown: elapsed days from T0 (the Rn starting point) to the first "
+                "occurrence of Rl in the five days after T0.",
+            )
+            for column, day_number in enumerate(range(1, 6), 29):
+                cases_sheet.write_comment(
+                    1,
+                    column,
+                    f"RA{day_number}: arithmetic mean of every valid rumination "
+                    f"measurement in elapsed day {day_number} after T0. Source "
+                    "rumination seconds are displayed as minutes.",
+                )
         else:
             cases_sheet.set_column(28, 28, 24)
             cases_sheet.set_column(29, 32, 20)
@@ -1079,12 +1107,14 @@ class StudyWorkbookService:
                 if lactation is not None
                 else None
             )
-            rback = self._rback_hours(
+            rback, rdown = self._rumination_timing_days(
                 series,
                 case,
                 settings.rumination,
                 event,
                 event + 5 * day,
+                self._collection_end(case),
+                rn_value,
             )
             temps = [
                 self._exact(series, case, settings.temperature, event + n * hour)
@@ -1110,6 +1140,16 @@ class StudyWorkbookService:
                 self._exact(series, case, settings.rumination, event + n * hour)
                 for n in (0, 24, 48, 72, 96, 120)
             ]
+            rumination_daily_averages = []
+            for day_number in range(1, 6):
+                daily_values = self._values(
+                    series,
+                    case,
+                    settings.rumination,
+                    event + (day_number - 1) * day,
+                    event + day_number * day,
+                )
+                rumination_daily_averages.append(mean(daily_values) if daily_values else None)
             values: tuple[Any, ...] = (
                 row - first_data_row + 1,
                 case.cow,
@@ -1141,17 +1181,21 @@ class StudyWorkbookService:
             if not anchored:
                 values = values[:2] + (None,) * 26 + values[28:]
             if settings.automatic:
-                values = values[:28]
+                values = values[:22] + (rdown,) + values[22:28] + tuple(rumination_daily_averages)
             for column, value in enumerate(values):
                 if value is None:
-                    if column not in (2, 3, 21):
-                        missing[
-                            CORE_HEADERS[column] if column < 28 else extra_headers[column - 28]
-                        ] += 1
+                    ignored_missing = (2, 3, 21, 22) if settings.automatic else (2, 3, 21)
+                    if column not in ignored_missing:
+                        visible_headers = (
+                            AUTOMATIC_HEADERS
+                            if settings.automatic
+                            else CORE_HEADERS + extra_headers
+                        )
+                        missing[visible_headers[column]] += 1
                     continue
                 if isinstance(value, int | float):
                     if settings.automatic:
-                        integer_columns = (0, 2, 3, 11, 18, 19, 22, 23, 24, 25, 26, 27)
+                        integer_columns = (0, 2, 3, 11, 18, 19, 23, 24, 25, 26, 27, 28)
                         fmt = integer if column in integer_columns else number
                     else:
                         fmt = percent if column == 20 else integer if column in (0, 11) else number
@@ -1354,8 +1398,10 @@ class StudyWorkbookService:
             ),
             (
                 "Rback",
-                "Hours from the first Rl minimum in the five days after time zero "
-                "until the first later observed rumination reading at or above Rl.",
+                "Elapsed days from the first Rl minimum in the five days after time "
+                "zero until the first later observed rumination reading at or above "
+                "the pre-event Rn baseline. The automatic workbook searches through "
+                "the available requested period.",
             ),
             (
                 "Lact / DIM",

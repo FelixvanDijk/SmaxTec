@@ -116,7 +116,9 @@ def _collection(
             add("rumination", "minutes", offset, 500 if offset < 0 else 400 + offset)
         add("activity", "index", 3, 10)
         add("rumination", "minutes", 12, 300)
-        add("rumination", "minutes", 100, 510)
+        add("rumination", "minutes", 100, 490)
+        add("temp_no_drink", "celsius", -6 * 24, 45)  # Outside Talert's five days.
+        add("temp_no_drink", "celsius", 36, 40.3)  # Equal threshold is not "above".
         add("temp_no_drink", "celsius", 6, 40.06)  # identical boundary duplicate
         if auto_pairs:
             start = datetime(2026, 8, 31, 23, tzinfo=UTC)
@@ -247,15 +249,16 @@ def test_automatic_companion_adds_aligned_data_beside_the_unchanged_cow_table(tm
         assert _numeric_cell(parameters, "H3") == pytest.approx(40.1)
         assert _numeric_cell(parameters, "K3") == pytest.approx(40.2)
         assert _numeric_cell(parameters, "O3") == pytest.approx(6)
-        assert _numeric_cell(parameters, "V3") == pytest.approx(6)
-        assert _numeric_cell(parameters, "W3") == pytest.approx(400)  # Seconds -> minutes.
-        assert _numeric_cell(parameters, "X3") == pytest.approx(440)
+        assert _numeric_cell(parameters, "V3") is None  # No pre-anchor Rn baseline.
+        assert _numeric_cell(parameters, "W3") is None
+        assert _numeric_cell(parameters, "X3") == pytest.approx(400)  # Seconds -> minutes.
+        assert _numeric_cell(parameters, "Y3") == pytest.approx(440)
         workbook_xml = archive.read("xl/workbook.xml")
         assert b'name="Cow analysis"' in workbook_xml
         assert b'name="Aligned data"' in workbook_xml
         table = ElementTree.fromstring(archive.read("xl/tables/table1.xml"))
         ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
-        assert table.attrib["ref"] == "A2:AB3"
+        assert table.attrib["ref"] == "A2:AH3"
         assert [
             col.attrib["name"] for col in table.findall("m:tableColumns/m:tableColumn", ns)
         ] == list(AUTOMATIC_HEADERS)
@@ -306,14 +309,22 @@ def test_automatic_companion_fills_supported_fields_when_T0_is_supplied(tmp_path
         assert _numeric_cell(parameters, "S3") == pytest.approx(500)
         assert _numeric_cell(parameters, "T3") == pytest.approx(300)
         assert _numeric_cell(parameters, "U3") == pytest.approx(0.4)
-        assert _numeric_cell(parameters, "V3") == pytest.approx(12)
+        assert _numeric_cell(parameters, "F3") == pytest.approx(39)  # Highest in prior 5d.
+        assert _numeric_cell(parameters, "L3") == pytest.approx(4)  # > Tn + 0.8 C.
+        assert _numeric_cell(parameters, "V3") == pytest.approx(108 / 24)  # Rl to Rn, days.
+        assert _numeric_cell(parameters, "W3") == pytest.approx(0.5)  # T0 to Rl, days.
         root = ElementTree.fromstring(parameters)
         ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
         # The example displays 0.13 for 13%; do not Excel-format this as 13%.
         assert root.find(".//m:c[@r='U3']", ns).get("s") == root.find(".//m:c[@r='E3']", ns).get(
             "s"
         )
-        assert _numeric_cell(parameters, "W3") == pytest.approx(400)
+        assert _numeric_cell(parameters, "X3") == pytest.approx(400)
+        assert _numeric_cell(parameters, "AD3") == pytest.approx((400 + 406 + 300) / 3)
+        assert _numeric_cell(parameters, "AE3") == pytest.approx(424)
+        assert _numeric_cell(parameters, "AF3") == pytest.approx(448)
+        assert _numeric_cell(parameters, "AG3") == pytest.approx(472)
+        assert _numeric_cell(parameters, "AH3") == pytest.approx((496 + 490) / 2)
         assert _numeric_cell(parameters, "G3") == pytest.approx(40)
         assert _numeric_cell(parameters, "H3") == pytest.approx(40.06)
 
@@ -340,7 +351,7 @@ def test_automatic_table_keeps_hundreds_of_cows_on_one_sheet(tmp_path):
     output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
     with ZipFile(output) as archive:
         table = ElementTree.fromstring(archive.read("xl/tables/table1.xml"))
-        assert table.attrib["ref"] == "A2:AB302"
+        assert table.attrib["ref"] == "A2:AH302"
         sheet = archive.read("xl/worksheets/sheet1.xml")
         assert _numeric_cell(sheet, "A3") == 1
         assert _numeric_cell(sheet, "A302") == 300

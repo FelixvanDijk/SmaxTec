@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.12.0 — 2026-09-18 (rumination recovery and daily averages)
+
+- Confirm and test that `Talert` is the maximum temperature-without-drinking-cycles
+  observation in `[T0-5d,T0)`, excluding both older readings and T0 itself.
+- Retain `R20` as the strict count of distinct observations above `Tn + 0.8 °C`
+  in the first 20 days. The current Public API exposes generic events but does not
+  document a reliable temperature-alert event type/timestamp contract in saved
+  collections, so no event count is invented.
+- Correct `Rback` to elapsed **days** from the first five-day Rl minimum until the
+  first later observed rumination value at/above Rn, searching through the available
+  requested period. Add adjacent `Rdown`, elapsed days from T0 to that first Rl.
+- Extend only the automatic `Cow analysis` table with `RA1`–`RA5`, the arithmetic
+  mean of every valid rumination reading in each consecutive elapsed 24-hour window
+  after T0. Preserve the existing columns in their original order and append the five
+  daily averages at the end.
+- Regenerate and inspect a supplied 290,048-row saved collection non-destructively.
+  Its new 10-cow A:AH workbook has both worksheets, populated recovery/descent/daily
+  values, three valid charts and no broken chart references.
+
 ## 0.11.0 — 2026-09-17 (shared T0 and aligned cohort view)
 
 - Add a strict shared Study T0 control to the direct-API queue. The user can apply

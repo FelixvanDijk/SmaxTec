@@ -219,8 +219,8 @@ class StudyWorkbookDialog(QDialog):
             self._label(
                 "T6 always means exactly +6 elapsed hours, even if the download used hourly "
                 "or daily aggregation. Missing exact points remain blank with QC counts. "
-                "Talert/R20 are clearly labelled proxies; Lact, DIM and Rback stay blank "
-                "until their sources/definitions are confirmed.",
+                "Talert/R20 are clearly labelled proxies. Lact/DIM use available lifecycle; "
+                "Rback is recovery to Rn in elapsed days when the requested period contains it.",
                 "privacy",
             ),
             10,

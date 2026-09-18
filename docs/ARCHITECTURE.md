@@ -553,6 +553,25 @@ above Rl; state the discrete-series implication and revisit after client review.
 Raw JSON, CSVs, descriptive workbook, API request bounds and guided study workbook
 remain unchanged.
 
+## Decision 022: Correct recovery timing and append daily rumination means
+
+Status: implemented in source 0.12.0; synthetic and saved-collection verification
+complete, client acceptance pending.
+
+Preserve every established automatic-table column in order. Insert `Rdown` immediately
+after Rback, shift the RT columns without changing their meaning, and append `RA1`–`RA5`.
+Define Rl as the first minimum in `[T0,T0+5d)`. Rdown is elapsed days from T0 to that
+Rl timestamp. Rback is elapsed days from Rl to the first later observed rumination
+value at/above the pre-event Rn baseline; search through the reviewed downloaded
+period rather than stopping at the five-day Rl window. Each RAn is the arithmetic
+mean of valid observations in its consecutive elapsed 24-hour window after T0.
+
+Keep Talert as the maximum temperature-without-drinking-cycles observation in
+`[T0-5d,T0)`. Keep R20 as the strict count above `Tn + 0.8 °C` over 20 days. The
+Public API documents generic event IDs/categories but not an accepted temperature-alert
+type and timestamp contract for this saved collection, so do not silently substitute
+generic events for R20. Raw data and the aligned worksheet remain unchanged.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual
