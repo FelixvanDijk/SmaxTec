@@ -1,6 +1,28 @@
 # Project state — start here each session
 
-Last updated: 2026-09-18. **Source preview 0.14.1 fixes aligned-window presentation
+Last updated: 2026-09-19. **Source preview 0.14.2 keeps Native analysis exact while
+populating automatic client analysis from selected API aggregates.** Native T/RT and
+aligned point lookup is unchanged and still requires an exact timestamp. For 10-minute,
+hourly and daily automatic workbooks, a labelled T/RT/aligned point uses the aggregate
+at or immediately before that UTC instant only when it is inside one matching interval;
+no interpolation or stale nearest lookup is allowed. Native, 10-minute and hourly AT
+fields remain preceding-six-hour means. Daily data cannot reconstruct those windows,
+so AT/aligned activity uses the containing daily aggregate as a visible proxy. Raw/API
+requests, both CSVs, the descriptive workbook, manifest lineage and guided exact-point
+workbook are unchanged.
+
+0.14.2 verification: all 454 offline tests pass. Regressions cover exact Native
+population, refusal to substitute a nearby Native point, and populated 10-minute,
+hourly and daily automatic cow/aligned fields using synthetic API aggregates. The
+focused workbook/API/UI suite passes 58 tests; Ruff lint/format and dependency checks
+also pass. Selector/final-review guidance and workbook comments disclose the selected
+rule. Representative real aggregated output and client acceptance remain pending
+because no non-Native collection was available locally for inspection. PyInstaller
+assembled the complete 0.14.2 directory bundle, but this computer's policy denied the
+unsigned executable smoke launch (`Access is denied`), so the build script correctly
+stopped before publishing an archive and no packaged-launch claim is made.
+
+**Source preview 0.14.1 fixed aligned-window presentation
 and asynchronous website Lact/DIM reads.** Five Days before/after T0 is still stored
 and calculated as exact -120/+120 canonical hours, but the reviewed Days choice is now
 persisted and the automatic sheet/chart display -5 to +5 days at the established
@@ -653,7 +675,7 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.14.1 Git/CI state and packaged launch limitation above. Use
+1. Check the 0.14.2 Git/CI state and packaged launch limitation above. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
    presentation rollback tag. The prepared source launcher includes the expanded
    automatic client table, additive aligned cohort sheet and guided study UI; the

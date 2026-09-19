@@ -88,7 +88,7 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
-Source 0.14.1 automatically adds `client-analysis.xlsx` to
+Source 0.14.2 automatically adds `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
 guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row and
 preserves the client's original columns through `R120`, adding `Rdown` beside Rback
@@ -107,6 +107,13 @@ temperature; client confirmation pending), `temp_without_drink_cycles/degree_cel
 for client T fields, `act/act` and `rum_index/seconds`. Convert rumination seconds
 to minutes only in the derived workbook; retain original units in raw/CSV. If normal
 index is absent, `temp/degree_celsius` is a disclosed fallback, not the T source.
+Native resolution must retain exact T/RT lookup unchanged. In the automatic workbook
+only, 10-minute/hourly/daily T/RT points may use the API aggregate at or immediately
+before the labelled time when it falls strictly inside that aggregation interval.
+Never use an unbounded nearest point or interpolation. Native, 10-minute and hourly
+activity retain preceding-six-hour means; daily AT/aligned activity uses the containing
+daily aggregate as a visible proxy because six-hour windows cannot be reconstructed.
+The guided study workbook retains its exact-point semantics.
 New API collections preserve documented animal lifecycle cycles so `Lact` selects
 the cycle containing T0 and `DIM` uses farm-local calendar days since calving.
 Calculate Tn/AN/Rn only from their specified pre-T0 windows and `%drop` as `1-Rl/Rn`.

@@ -188,6 +188,12 @@ Each confirmed run creates a new non-overwriting folder beneath the chosen desti
   Rl; RA1–RA5 are successive elapsed-day rumination means. Talert uses `[T0-5d,T0)`.
   R20 is the `> Tn + 0.8 °C` measurement fallback because generic API events do not
   yet provide an accepted temperature-alert mapping in the collection contract.
+  Native analysis retains exact timepoint lookup. For automatic analysis of
+  10-minute/hourly/daily collections, T/RT and aligned point fields use the aggregate
+  at or immediately before the labelled UTC time only when it is inside one matching
+  aggregation interval. Daily AT/aligned activity fields use a disclosed containing-day
+  proxy because six-hour windows cannot be reconstructed from daily aggregates. Guided
+  study output remains exact. No aggregation-aware rule changes raw JSON or CSV rows.
   Original API rows remain in the tidy/audit outputs. See `CLIENT_STUDY_WORKBOOK.md`.
   If lifecycle is absent, an explicit Results action can read current Lact/DIM from
   exact website cow diagrams and generate a new numbered analysis workbook. It does
@@ -232,6 +238,10 @@ resume; rerun creates a new collection and does not overwrite the earlier one.
   expiry and partial-recovery behavior are specified and tested.
 - API availability, retention, rate limits and maximum synchronous period are not fully
   documented. The conservative chunks are a local safety choice, not a vendor limit.
+- The Public API documents supported aggregation names but not whether returned bucket
+  timestamps label the start or end of each interval. The automatic workbook treats
+  timestamps as bucket starts and bounds lookup to one interval; this must be checked
+  against representative 10-minute/hourly/daily client collections.
 - Direct download, dates and output must be client-tested with representative cows,
   groups, devices and longer periods. Corporate proxy behavior also remains a release gate.
 - `analysis_ready.csv` is a safer bridge into graphing, not yet the canonical validated

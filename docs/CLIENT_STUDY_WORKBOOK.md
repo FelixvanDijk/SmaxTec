@@ -36,22 +36,28 @@ Client definitions:
 - **Tn:** mean of the source **normal temperature** metric over `[T0-7d,T0)`.
 - **Talert proxy:** maximum **temperature without drinking cycles** over
   `[T0-5d,T0)`. It is not an actual alert measurement and must be labelled proxy.
-- **T0/T6/...:** source temperature without drinking cycles at exactly T0 + the
-  named number of elapsed hours. No nearest-sample substitution or silent meaning
-  change when the API aggregation is hourly/daily.
+- **T0/T6/...:** with Native input, source temperature without drinking cycles at
+  exactly T0 + the named elapsed hours. The automatic workbook maps 10-minute/hourly/
+  daily input to the API aggregate at or immediately before the labelled point only
+  when it is inside that bounded aggregation interval. It never interpolates or uses
+  an older nearest value. The guided workbook retains exact-point semantics.
 - **R20 proxy:** number of distinct, valid temperature-without-drinking-cycles
   measurements strictly above `Tn + configured Celsius differential` during
   `[T0,T0+configured days)`. It is not an alert-event count.
 - **AN:** mean source activity over `[T0-14d,T0)`.
 - **AT0:** mean source activity over `[T0-6h,T0)`; `AT6`: mean over `[T0,T0+6h)`;
-  later `ATn` windows are successive six-hour windows ending at named n.
+  later `ATn` windows are successive six-hour windows ending at named n. This remains
+  true for Native, 10-minute and hourly input. Daily input cannot reconstruct a
+  six-hour window, so the automatic workbook uses the aggregate for the day containing
+  the window endpoint as a visibly documented proxy.
 - **Rn:** mean source rumination over `[T0-7d,T0)`; **Rl:** minimum over
   `[T0,T0+5d)`; **%drop:** Excel stores `1-Rl/Rn` when Rn > 0 and formats it as
   a percentage (for example, `0.4` displays `40%`). This matches the example's
   `1-(Rl/Rn)` formula and percentage semantics.
-- **RT0/RT24/...:** absolute source rumination at exactly the named elapsed hour.
-  The automatic report converts `rum_index/seconds` to minutes using `/60` to align
-  with the example's values; the audit CSV and guided builder keep their source units.
+- **RT0/RT24/...:** Native input uses absolute source rumination at exactly the named
+  elapsed hour. The automatic aggregated-input rule is the same bounded bucket lookup
+  as T fields. The automatic report converts `rum_index/seconds` to minutes using `/60`
+  to align with the example's values; the audit CSV and guided builder keep source units.
 - **Rback:** elapsed days from the first occurrence of Rl in `[T0,T0+5d)` to the
   first later observed rumination reading at or above pre-event Rn. Recovery is
   searched through the available requested period and stays blank if no recovery
@@ -70,7 +76,7 @@ Client definitions:
   insert the current values displayed on each cow's diagram. Those are explicitly
   noted as scrape-time snapshots and must not be interpreted as historical T0 values.
 
-The **automatic 0.14.1 companion** preserves the ASPI table's visible groundwork:
+The **automatic 0.14.2 companion** preserves the ASPI table's visible groundwork:
 the first `Cow analysis` sheet keeps the original 28 columns, including the example's
 `To` (T0 temperature) and `R120` spellings, in order. It inserts `Rdown` after Rback
 and appends `RA1`–`RA5`, producing A:AH, one cow/case per row and a filterable
@@ -87,9 +93,10 @@ Mixed units use an hours axis. Exact non-six-hour boundaries are also included. 
 choice applies only to the aligned sheet and does not widen API From/To.
 Cow/case columns are side by side; each row also contains actual n, mean and
 normal 95% confidence limits (`mean ± 1.96 * sample SD / sqrt(n)`, blank for n < 2),
-with one valid cohort chart per metric. Activity is the mean of the preceding six-hour
-window; temperature and rumination are exact-offset readings. Provenance remains in
-the separate unchanged collection manifest/CSVs.
+with one valid cohort chart per metric. Native temperature/rumination remain exact and
+Native activity remains a preceding-six-hour mean. Aggregated inputs follow the bounded
+rules above, with visible sheet descriptions and header comments. Provenance remains
+in the separate unchanged collection manifest/CSVs.
 
 The **guided `client-study.xlsx`** still adds adjacent event/farm/date/status columns
 and separate aligned/analysis/QC sheets for advanced studies. Its aligned sheet
@@ -114,8 +121,8 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
 - The queue optionally records one strict farm-local T0 per cow/case. A shared value
   can be applied atomically to selected rows or the full queue, while individual cells
   remain editable. It is reviewed with the cow's From/To before data collection. When absent, the automatic workbook
-  uses farm-local From 00:00 as a **period anchor** and fills available exact T/AT/RT
-  columns. This is not a substitute for a real clinical key event; baseline and
+  uses farm-local From 00:00 as a **period anchor** and fills available T/AT/RT columns
+  under the selected resolution rule. This is not a substitute for a real clinical key event; baseline and
   follow-up columns may be blank if the requested period lacks coverage.
 - To cover every current baseline/recovery field, request From at least 14 days
   before T0 and To at least five days after T0. Workbench warns about this in the
@@ -147,12 +154,12 @@ offset, not a fixed herd count. n<2 has no interval, not a zero-width interval.
   in the derived view; conflicting values remain blank. The guided workbook has
   explicit QC counts; the automatic table relies on the unchanged audit collection
   for detailed traceability. The audit CSV/raw responses are never deduplicated.
-- Use exact elapsed time in UTC for T/RT points and aligned rows, while displaying
+- Use exact elapsed time in UTC for Native T/RT points and aligned rows, while displaying
   each cow's farm-local time zero. Reject ambiguous/nonexistent local time zero.
-  Missing intervals, uncertain metric roles, truncated coverage, daily resolution,
-  invalid values and per-target failures are not silently estimated. The guided QC
-  shows them explicitly; the automatic table leaves unavailable fields blank and
-  requires the collection manifest/CSV for detailed audit.
+  Aggregated automatic reports use only the bounded at-or-before bucket described above;
+  daily activity is explicitly a daily proxy. Missing buckets, uncertain metric roles,
+  truncated coverage, invalid values and per-target failures remain blank rather than
+  being interpolated. The guided workbook keeps exact-point behavior and QC.
 - The client must review real source metric codes/units, baseline adequacy, formula
   interpretations, the Rback approximation, thresholds, horizon, and aligned graph appearance before
   claiming clinical acceptance.

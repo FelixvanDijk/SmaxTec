@@ -629,6 +629,32 @@ the existing XLSX. The workbook notes must distinguish current scrape-time value
 historical T0-derived lifecycle values. Do not mutate manifest/raw/CSV files, persist
 credentials/cookies, or claim that the website snapshot describes Lact/DIM at T0.
 
+## Decision 025: Keep Native exact and make automatic analysis aggregation-aware
+
+Status: implemented in source 0.14.2 with synthetic coverage; representative aggregated
+API output and client acceptance pending.
+
+The automatic workbook previously applied exact timestamp lookup to every selected API
+resolution. Native often contains the requested T0/T6/RT points, while 10-minute,
+hourly and especially daily results are timestamped at aggregation boundaries, leaving
+otherwise valid client-analysis cells blank. Preserve the Native branch exactly: it
+still requires timestamp equality and must never adopt nearest/bucket substitution.
+The advanced guided workbook also retains exact-point semantics.
+
+For the automatic workbook only, resolve a non-Native T/RT or aligned point from the
+latest aggregate timestamp at or before the labelled UTC instant, and accept it only
+when its age is strictly less than the selected 10-minute, one-hour or one-day interval.
+This is a bounded bucket lookup, not interpolation or an unbounded nearest observation.
+Continue preceding-six-hour activity means for Native, 10-minute and hourly sources.
+A daily source cannot reconstruct six-hour activity windows, so use the daily aggregate
+covering each window endpoint as an explicit proxy in the automatic cow/aligned sheets.
+
+The Public API documents the aggregation enum but not whether timestamps label interval
+starts or ends. Workbench requests UTC aggregation and currently treats returned times
+as bucket starts. Keep this assumption visible in documentation and verify it against a
+representative saved result for every aggregate resolution. Raw JSON, audit/tidy CSVs,
+request bounds, aggregation selection and manifest lineage remain unchanged.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

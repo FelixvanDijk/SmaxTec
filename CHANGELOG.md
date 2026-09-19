@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.14.2 — 2026-09-19 (aggregation-aware client analysis)
+
+- Preserve the existing Native exact-point calculations unchanged and add a separate
+  automatic-report path for 10-minute, hourly and daily API aggregation.
+- Resolve aggregated T/RT and aligned points from the aggregate bucket at or immediately
+  before the labelled time, only when it lies inside that resolution's bounded interval.
+  Missing buckets remain blank; no interpolation or unbounded nearest-value lookup occurs.
+- Continue six-hour activity means for Native, 10-minute and hourly inputs. Daily input
+  cannot reconstruct six-hour windows, so automatic AT/aligned-activity fields use the
+  containing daily aggregate as an explicitly documented proxy.
+- Add resolution guidance to the selector and final review, plus workbook comments and
+  aligned-sheet descriptions that distinguish exact Native readings from aggregates.
+- Add synthetic safeguards for unchanged Native exact/missing behavior and populated
+  10-minute, hourly and daily cow/aligned analysis fields.
+
 ## 0.14.1 — 2026-09-18 (aligned units and delayed diagram values)
 
 - Preserve the reviewed aligned-data display unit in the collection manifest. When

@@ -233,9 +233,19 @@ class ApiReviewDialog(QDialog):
         aligned_divisor = 24 if request.aligned_display_unit == "days" else 1
         aligned_before = request.aligned_before_hours // aligned_divisor
         aligned_after = request.aligned_after_hours // aligned_divisor
+        resolution_note = {
+            "native": "Client timepoints use exact original readings.",
+            "10minutes": "Client timepoints use the containing 10-minute API aggregate.",
+            "hourly": "Client timepoints use the containing hourly API aggregate.",
+            "daily": (
+                "Client timepoints use daily API aggregates; six-hour activity fields "
+                "become clearly labelled daily proxies."
+            ),
+        }[request.aggregation]
         layout.addWidget(
             label(
                 f"{formats} · Resolution: {request.aggregation}\n"
+                f"{resolution_note}\n"
                 f"Aligned data only: {aligned_before} "
                 f"{request.aligned_display_unit} before T0 to "
                 f"{aligned_after} "
@@ -641,13 +651,34 @@ class ApiPanel(QWidget):
         settings_layout.addWidget(label("Collection settings", "cardTitle"), 0, 0, 1, 4)
         self.resolution = QComboBox()
         self.resolution.setAccessibleName("API measurement resolution")
-        for name, value in (
-            ("Native · original resolution", "native"),
-            ("10-minute aggregation", "10minutes"),
-            ("Hourly aggregation", "hourly"),
-            ("Daily aggregation", "daily"),
+        for name, value, tip in (
+            (
+                "Native · original resolution",
+                "native",
+                "Preserves original readings; client T/RT points require exact timestamps.",
+            ),
+            (
+                "10-minute aggregation",
+                "10minutes",
+                "Client T/RT points use the API 10-minute bucket covering each timepoint.",
+            ),
+            (
+                "Hourly aggregation",
+                "hourly",
+                "Client T/RT points use the API hourly bucket covering each timepoint.",
+            ),
+            (
+                "Daily aggregation",
+                "daily",
+                "Client T/RT points use daily buckets; six-hour activity becomes a daily proxy.",
+            ),
         ):
             self.resolution.addItem(name, value)
+            self.resolution.setItemData(
+                self.resolution.count() - 1,
+                tip,
+                Qt.ItemDataRole.ToolTipRole,
+            )
         settings_layout.addWidget(label("Measurement resolution", "fieldLabel"), 1, 0, 1, 2)
         settings_layout.addWidget(self.resolution, 2, 0, 1, 2)
         self.health_index = QCheckBox("Include farm health index")

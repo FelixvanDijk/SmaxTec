@@ -33,6 +33,7 @@ def _collection(
     auto_event=False,
     aligned_window=None,
     aligned_unit="hours",
+    resolution="10minutes",
 ):
     event = datetime(2026, 9, 15, 8, 10, tzinfo=UTC)
     cows = (
@@ -134,6 +135,22 @@ def _collection(
                 add("normal_temp", "celsius", 0, 39.5, timestamp=stamp)
                 add("activity", "index", 0, 6, timestamp=stamp)
                 add("rumination", "minutes", 0, rumination, timestamp=stamp)
+    if resolution in {"hourly", "daily"}:
+        buckets = {}
+        for row in rows:
+            stamp = datetime.fromisoformat(row["timestamp_utc"].replace("Z", "+00:00"))
+            if resolution == "hourly":
+                stamp = stamp.replace(minute=0, second=0, microsecond=0)
+            else:
+                stamp = stamp.replace(hour=0, minute=0, second=0, microsecond=0)
+            key = row["target_id"], row["metric"], row["unit"], stamp
+            template, values = buckets.setdefault(key, (row.copy(), []))
+            template["timestamp_utc"] = stamp.isoformat().replace("+00:00", "Z")
+            values.append(float(row["value"]))
+        rows = []
+        for template, values in buckets.values():
+            template["value"] = str(sum(values) / len(values))
+            rows.append(template)
     csv_path = tmp_path / "analysis_ready.csv"
     with csv_path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=ANALYSIS_HEADERS)
@@ -141,7 +158,7 @@ def _collection(
         writer.writerows(rows)
     manifest = {
         "format_version": 2,
-        "aggregation": "10minutes",
+        "aggregation": resolution,
         "analysis_csv": csv_path.name,
         "analysis_csv_sha256": hashlib.sha256(csv_path.read_bytes()).hexdigest(),
         "targets": targets,
@@ -282,6 +299,76 @@ def test_automatic_companion_adds_aligned_data_beside_the_unchanged_cow_table(tm
         assert _numeric_cell(aligned, "C109") == pytest.approx(400)
         assert len([name for name in archive.namelist() if name.startswith("xl/charts/chart")]) == 3
     assert hashlib.sha256((tmp_path / "analysis_ready.csv").read_bytes()).hexdigest() == source_hash
+
+
+def test_native_automatic_timepoints_keep_exact_existing_behavior(tmp_path):
+    _collection(
+        tmp_path,
+        two_cows=False,
+        auto_pairs=True,
+        auto_event=True,
+        resolution="native",
+    )
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+
+    with ZipFile(output) as archive:
+        parameters = archive.read("xl/worksheets/sheet1.xml")
+        assert _numeric_cell(parameters, "G3") == pytest.approx(40.0)
+        assert _numeric_cell(parameters, "H3") == pytest.approx(40.06)
+        assert _numeric_cell(parameters, "X3") == pytest.approx(400)
+
+
+def test_native_never_substitutes_a_nearby_bucket_but_10minutes_can(tmp_path):
+    native = tmp_path / "native"
+    aggregated = tmp_path / "aggregated"
+    native.mkdir()
+    aggregated.mkdir()
+    for folder, resolution in ((native, "native"), (aggregated, "10minutes")):
+        _collection(
+            folder,
+            two_cows=False,
+            auto_pairs=True,
+            auto_event=True,
+            resolution=resolution,
+        )
+        manifest_path = folder / "collection.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        original = datetime.fromisoformat(manifest["targets"][0]["study_event_utc"])
+        manifest["targets"][0]["study_event_utc"] = (original + timedelta(minutes=3)).isoformat()
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    native_output = AutomaticStudyWorkbookService().create(native, Event(), lambda _: None)
+    aggregate_output = AutomaticStudyWorkbookService().create(aggregated, Event(), lambda _: None)
+
+    with ZipFile(native_output) as archive:
+        assert _numeric_cell(archive.read("xl/worksheets/sheet1.xml"), "G3") is None
+    with ZipFile(aggregate_output) as archive:
+        assert _numeric_cell(archive.read("xl/worksheets/sheet1.xml"), "G3") == pytest.approx(40)
+
+
+@pytest.mark.parametrize("resolution", ("10minutes", "hourly", "daily"))
+def test_automatic_analysis_populates_supported_aggregated_resolutions(tmp_path, resolution):
+    _collection(
+        tmp_path,
+        two_cows=False,
+        auto_pairs=True,
+        auto_event=True,
+        resolution=resolution,
+    )
+    output = AutomaticStudyWorkbookService().create(tmp_path, Event(), lambda _: None)
+
+    with ZipFile(output) as archive:
+        parameters = archive.read("xl/worksheets/sheet1.xml")
+        aligned = archive.read("xl/worksheets/sheet2.xml")
+        assert _numeric_cell(parameters, "G3") is not None  # T0 / containing bucket.
+        assert _numeric_cell(parameters, "H3") is not None  # T6 / containing bucket.
+        assert _numeric_cell(parameters, "N3") is not None  # AT0.
+        assert _numeric_cell(parameters, "X3") is not None  # RT0.
+        assert _numeric_cell(aligned, "F9") is not None  # Cow value at aligned T0.
+        if resolution == "daily":
+            comments = archive.read("xl/comments1.xml")
+            assert b"six-hour activity windows" in comments
+            assert b"not exact Native readings" in comments
 
 
 def test_automatic_aligned_sheet_places_cows_side_by_side_with_confidence_limits(tmp_path):

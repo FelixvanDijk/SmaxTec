@@ -10,7 +10,7 @@ import csv
 import hashlib
 import json
 import math
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping
 from contextlib import suppress
@@ -793,6 +793,52 @@ class StudyWorkbookService:
         index = bisect_left(points, at, key=lambda point: point.time)
         return points[index].value if index < len(points) and points[index].time == at else None
 
+    @classmethod
+    def _automatic_point(
+        cls,
+        series: dict,
+        case: StudyCase,
+        pair: tuple[str, str] | None,
+        at: datetime,
+        resolution: str,
+    ) -> float | None:
+        """Return an automatic-report point without altering Native exact semantics."""
+        interval = {
+            "10minutes": timedelta(minutes=10),
+            "hourly": timedelta(hours=1),
+            "daily": timedelta(days=1),
+        }.get(resolution)
+        if interval is None:
+            return cls._exact(series, case, pair, at)
+        points = series.get((case.key, pair), ())
+        index = bisect_right(points, at, key=lambda point: point.time) - 1
+        if index < 0:
+            return None
+        point = points[index]
+        return point.value if timedelta() <= at - point.time < interval else None
+
+    @classmethod
+    def _automatic_activity(
+        cls,
+        series: dict,
+        case: StudyCase,
+        pair: tuple[str, str] | None,
+        start: datetime,
+        end: datetime,
+        resolution: str,
+    ) -> float | None:
+        """Retain six-hour means except where daily input cannot reconstruct them."""
+        if resolution == "daily":
+            return cls._automatic_point(
+                series,
+                case,
+                pair,
+                end - timedelta(microseconds=1),
+                resolution,
+            )
+        values = cls._values(series, case, pair, start, end)
+        return mean(values) if values else None
+
     @staticmethod
     def _lactation_at(case: StudyCase, at: datetime) -> ApiLactation | None:
         """Return the latest documented lactation cycle containing ``at``."""
@@ -870,23 +916,42 @@ class StudyWorkbookService:
         axis_heading = "Days from T0" if display_days else "Hours from T0"
         axis_divisor = 24 if display_days else 1
         block_height = len(offsets) + 25
+        aggregated = source.resolution != "native"
+        temperature_description = (
+            f"Temperature without drinking cycles. Uses the API {source.resolution} "
+            "aggregate bucket covering each offset."
+            if aggregated
+            else "Exact temperature without drinking cycles at each six-hour offset."
+        )
+        rumination_description = (
+            f"Uses the API {source.resolution} aggregate bucket covering each offset. "
+            "Source rumination seconds are displayed as minutes."
+            if aggregated
+            else "Exact rumination at each six-hour offset; seconds are displayed as minutes."
+        )
+        activity_description = (
+            "Uses the API daily aggregate covering each offset; a six-hour mean cannot "
+            "be reconstructed from daily input."
+            if source.resolution == "daily"
+            else "Mean activity in the six hours ending at each offset."
+        )
         metrics = (
             (
                 "Temperature aligned",
                 settings.temperature,
-                "Exact temperature without drinking cycles at each six-hour offset.",
+                temperature_description,
                 "temperature",
             ),
             (
                 "Activity aligned",
                 settings.activity,
-                "Mean activity in the six hours ending at each offset.",
+                activity_description,
                 "activity",
             ),
             (
                 "Rumination aligned",
                 settings.rumination,
-                "Exact rumination at each six-hour offset; seconds are displayed as minutes.",
+                rumination_description,
                 "rumination",
             ),
         )
@@ -928,10 +993,22 @@ class StudyWorkbookService:
                     event = event_by_case[case.key]
                     stamp = event + timedelta(hours=offset)
                     if role == "activity":
-                        values = self._values(series, case, pair, stamp - timedelta(hours=6), stamp)
-                        value = mean(values) if values else None
+                        value = self._automatic_activity(
+                            series,
+                            case,
+                            pair,
+                            stamp - timedelta(hours=6),
+                            stamp,
+                            source.resolution,
+                        )
                     else:
-                        value = self._exact(series, case, pair, stamp)
+                        value = self._automatic_point(
+                            series,
+                            case,
+                            pair,
+                            stamp,
+                            source.resolution,
+                        )
                     if value is not None:
                         sheet.write_number(row, column, value, number)
                         observed.append(value)
@@ -1038,6 +1115,36 @@ class StudyWorkbookService:
                 "date. Without a supplied Study T0, exact time points use the cow's "
                 "farm-local From date at 00:00 as a period anchor, NOT treatment time.",
             )
+            if source.resolution != "native":
+                cases_sheet.write_comment(
+                    1,
+                    6,
+                    f"To is the client's label for T0 temperature, not the collection end "
+                    f"date. This {source.resolution} collection uses the API aggregate "
+                    "bucket at or immediately before each labelled T/RT time, bounded "
+                    "to that aggregation interval; these are not exact Native readings. "
+                    "Without Study T0, From 00:00 is a non-clinical period anchor, "
+                    "NOT treatment time.",
+                )
+                cases_sheet.write_comment(
+                    1,
+                    13,
+                    (
+                        "Daily API aggregation cannot reconstruct the client's preceding "
+                        "six-hour activity windows. AT fields therefore show the daily "
+                        "aggregate covering each window endpoint."
+                        if source.resolution == "daily"
+                        else f"AT fields average the available API {source.resolution} "
+                        "aggregate buckets in each preceding six-hour window."
+                    ),
+                )
+                cases_sheet.write_comment(
+                    1,
+                    23,
+                    f"RT fields use the API {source.resolution} aggregate bucket at or "
+                    "immediately before each labelled time, bounded to one aggregation "
+                    "interval; source seconds are displayed as minutes.",
+                )
             cases_sheet.write_comment(
                 1,
                 5,
@@ -1081,7 +1188,12 @@ class StudyWorkbookService:
                 f"Proxy: distinct temperature measurements above Tn + "
                 f"{settings.threshold_c:g} Celsius in the first "
                 f"{settings.followup_days} days. The saved Public API collection "
-                "does not contain a reliably typed temperature-alert event stream.",
+                "does not contain a reliably typed temperature-alert event stream."
+                + (
+                    f" Counts therefore depend on the selected {source.resolution} resolution."
+                    if source.resolution != "native"
+                    else ""
+                ),
             )
             cases_sheet.write_comment(
                 1,
@@ -1223,28 +1335,40 @@ class StudyWorkbookService:
                 self._collection_end(case),
                 rn_value,
             )
+            point_resolution = source.resolution if settings.automatic else "native"
             temps = [
-                self._exact(series, case, settings.temperature, event + n * hour)
+                self._automatic_point(
+                    series,
+                    case,
+                    settings.temperature,
+                    event + n * hour,
+                    point_resolution,
+                )
                 for n in (0, 6, 12, 18, 24)
             ]
+            activity_windows = (
+                (event - 6 * hour, event),
+                *((event + (n - 6) * hour, event + n * hour) for n in (6, 12, 18, 24)),
+            )
             activities = [
-                mean(values) if values else None
-                for values in (
-                    self._values(series, case, settings.activity, event - 6 * hour, event),
-                    *(
-                        self._values(
-                            series,
-                            case,
-                            settings.activity,
-                            event + (n - 6) * hour,
-                            event + n * hour,
-                        )
-                        for n in (6, 12, 18, 24)
-                    ),
+                self._automatic_activity(
+                    series,
+                    case,
+                    settings.activity,
+                    start,
+                    end,
+                    point_resolution,
                 )
+                for start, end in activity_windows
             ]
             rumination = [
-                self._exact(series, case, settings.rumination, event + n * hour)
+                self._automatic_point(
+                    series,
+                    case,
+                    settings.rumination,
+                    event + n * hour,
+                    point_resolution,
+                )
                 for n in (0, 24, 48, 72, 96, 120)
             ]
             rumination_daily_averages = []

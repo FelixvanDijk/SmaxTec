@@ -5,7 +5,7 @@ The product goal is simple: install, open, connect accounts, choose cows and the
 periods, and receive a consolidated workbook and graphs. No developer tools or
 separate dependency installations for the end user.
 
-Version 0.14.1 keeps the official smaXtec Public API as the primary workflow. Its spacious
+Version 0.14.2 keeps the official smaXtec Public API as the primary workflow. Its spacious
 queue-first editor supports click-to-toggle, filtered bulk and pasted exact-number cow
 selection, individual periods, and measurement assignment to one, several or every
 queued target. Users can review the full queue and save direct raw JSON, a lossless
@@ -80,6 +80,11 @@ minimum to recovery at/above Rn; `Rdown` is elapsed days from T0 to Rl. `RA1`–
 are the mean rumination values in successive 24-hour windows after T0. Talert is the
 maximum in the exact five days before T0. R20 counts readings strictly above
 `Tn + 0.8 °C`; generic API events are not treated as alerts without a documented mapping.
+Native resolution keeps the established exact T/RT timestamp behavior. For 10-minute,
+hourly or daily collections, the automatic report uses the bounded API aggregate bucket
+at or immediately before each labelled point rather than leaving every non-aligned point
+blank. Daily input cannot recreate six-hour activity, so daily AT/aligned-activity values
+are clearly identified as containing-day aggregate proxies. No source data is changed.
 An additive `Aligned data` sheet places each cow beside the others around its own T0
 for temperature, six-hour mean activity and rumination. The configured window defaults
 to -24/+120 hours; a window entered in Days is displayed in days (for example -5 to +5)
@@ -201,9 +206,9 @@ does **not** include automatic client analysis. The 0.9.0 Windows checks passed
 tests, bundle build and packaged executable smoke, but artifact upload was rejected
 by GitHub Actions storage quota. Twelve older temporary ZIP artifacts have been
 removed, retaining only the two latest working 0.8/0.7 previews; quota recovery
-and a downloadable 0.14.1 preview still need CI confirmation. For now, use
+and a downloadable 0.14.2 preview still need CI confirmation. For now, use
 `Start SmaxTec.cmd` on this prepared development computer. Once a successful
-0.14.1 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
+0.14.2 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
 extract both the artifact wrapper and the included application ZIP, and open
 `SmaxTec Workbench.exe`.
 Keep its `_internal` folder alongside it. The runtime and browser are included.
@@ -211,7 +216,7 @@ CI artifacts expire after 14 days; these are development previews, not releases.
 
 Website credentials are entered in the GUI and are not saved. The unsigned
 executable was denied execution on the current development computer; 0.8.0 passed
-independent Windows CI smoke tests. Consult current status for the 0.14.1 build
+independent Windows CI smoke tests. Consult current status for the 0.14.2 build
 evidence rather than assuming a successful earlier artifact includes this feature.
 Target-machine approval/signing, third-party license review and the polished
 installer remain release work. If the legacy Microsoft 365 route is retained, its
