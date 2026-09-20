@@ -18,6 +18,9 @@
 - Synchronize the synthetic API panel fixture with the same connected-and-idle boundary
   that enables farm selection in the real GUI. This removes a queued-signal CI race without
   changing application code or extending any production timeout.
+- Use the Windows runner's existing Inno Setup 6 compiler. The runner already carried
+  6.7.1, so attempting to install older 6.3.3 failed as a refused downgrade before any
+  installer work began; the build script already validates/discovers the installed tool.
 
 ## 0.14.2 — 2026-09-19 (aggregation-aware client analysis)
 

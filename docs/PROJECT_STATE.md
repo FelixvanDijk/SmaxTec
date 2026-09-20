@@ -25,7 +25,18 @@ The first installer-workflow run stopped during tests because the synthetic API 
 fixture selected a farm after the connection result signal but before `QThread.finished`
 made the panel idle. The real farm control is disabled during that interval. The fixture
 now waits for the user-visible connected-and-idle boundary and gives shared CI runners up
-to 15 seconds; no application code or production timeout changed. Clean rerun pending.
+to 15 seconds; no application code or production timeout changed. The next run passed all
+457 tests and the packaged bundle smoke, then stopped because the workflow tried to install
+Inno Setup 6.3.3 over the runner's already installed 6.7.1. Chocolatey refused that
+downgrade. The redundant install step is removed; `build_installer.ps1` already discovers
+and validates the runner's existing Inno Setup 6 compiler. Clean installer rerun pending.
+
+Artifact audit on 2026-09-20 confirmed that the only retained downloads were obsolete
+0.7.0 and 0.8.0 portable previews (288.4 MiB each), which exceeded the repository quota.
+The exact older 0.7.0 artifact `10269370832` was removed after resolving its version, date
+and size; its source commit remains reproducible. The 0.8.0 fallback remains. GitHub warns
+storage recalculation may take 6–12 hours, so a technically successful immediate installer
+run may still need to be rerun later for artifact upload.
 
 **Source preview 0.14.2 keeps Native analysis exact while
 populating automatic client analysis from selected API aggregates.** Native T/RT and

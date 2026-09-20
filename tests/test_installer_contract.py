@@ -42,3 +42,4 @@ def test_installer_build_requires_smoke_unless_explicitly_skipped():
     assert "unins000.exe" in smoke
     assert "-SkipSmoke" not in workflow
     assert "-SkipInstallerSmoke" not in workflow
+    assert "choco install innosetup" not in workflow.lower()
