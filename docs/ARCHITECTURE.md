@@ -655,6 +655,31 @@ as bucket starts. Keep this assumption visible in documentation and verify it ag
 representative saved result for every aggregate resolution. Raw JSON, audit/tidy CSVs,
 request bounds, aggregation selection and manifest lineage remain unchanged.
 
+## Decision 026: Install the verified directory bundle; do not fork runtime packaging
+
+Status: installer pipeline implemented; signed clean-machine release pending.
+
+The Windows installer consumes the exact versioned directory bundle already assembled by
+PyInstaller and exercised by the existing offline smoke test. It never imports application
+source, rebuilds dependencies or changes runtime configuration. Inno Setup owns only the
+Windows delivery concerns: a stable product identity, per-user default installation,
+optional all-users elevation, shortcuts, in-place upgrades and uninstall registration.
+User-selected collections live outside the program folder and are never uninstall targets.
+
+Every CI installer build must pass the normal source suite and bundled executable smoke,
+then compile the installer, silently install it into a fresh system-temporary folder, run
+the same installed executable smoke and silently uninstall it. Diagnostic skip switches
+exist only because the development computer blocks unsigned binaries; CI and releasable
+build instructions must never use them. A versioned SHA-256 file accompanies the installer.
+
+Keep the Inno `AppId` stable across future versions. Changing it creates a different Windows
+product and breaks the upgrade path. Code signing uses an external, organisation-controlled
+certificate/signing service passed to the build; never commit certificate material or
+secrets. The outer installer hook is implemented, while the owning organisation must also
+define signing for the bundled application executable before packing. The unsigned candidate
+is not production-ready until both signatures, required notices, final publisher/branding
+ownership and a clean standard-user target test are accepted.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

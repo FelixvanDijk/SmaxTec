@@ -1,6 +1,27 @@
 # Project state — start here each session
 
-Last updated: 2026-09-19. **Source preview 0.14.2 keeps Native analysis exact while
+Last updated: 2026-09-20. **Installer delivery is now additive around the unchanged
+0.14.2 application.** Commit `de27b36` is preserved remotely as annotated rollback tag
+`v0.14.2-tested-baseline` before installer work. Inno Setup consumes only the already
+assembled directory bundle and provides a stable product identity, per-user default,
+optional all-users elevation, Start-menu/optional desktop shortcuts, in-place update and
+Installed Apps uninstall. It never compiles or edits application source and never targets
+user-selected output folders. CI is configured to run the established tests/bundle smoke,
+then compile, silently install, smoke the installed executable and silently uninstall
+before uploading the installer plus SHA-256 as a temporary artifact. Diagnostic skip
+switches are absent from CI.
+
+Local evidence: all 457 offline tests, installer contract tests, dependency checks and
+PowerShell parsing pass; the pinned,
+validly vendor-signed Inno Setup 6.3.3 compiler produced the 205,241,413-byte unsigned
+`SmaxTec-Workbench-Setup-0.14.2-windows-x64.exe` with SHA-256
+`603ce1507b6914bdf9bed632c8fa3e683ecf0a297aca305059dfb9a40bb6e95a`. As expected,
+this managed development computer denied launching the unsigned installer itself, so no
+local install/start/uninstall claim is made. GitHub Windows CI, organisation code signing,
+publisher/branding ownership, required notice review and a clean standard-user client test
+remain gates before client release.
+
+**Source preview 0.14.2 keeps Native analysis exact while
 populating automatic client analysis from selected API aggregates.** Native T/RT and
 aligned point lookup is unchanged and still requires an exact timestamp. For 10-minute,
 hourly and daily automatic workbooks, a labelled T/RT/aligned point uses the aggregate

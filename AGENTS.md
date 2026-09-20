@@ -88,6 +88,14 @@ clinical meanings, or website interactions that have not been established.
 
 ## Current scope
 
+Installer work is additive around protected tag `v0.14.2-tested-baseline`. Preserve the
+stable Inno Setup `AppId`; changing it breaks in-place upgrades. The installer may consume
+only the already built/smoke-tested directory bundle and must never become an alternate
+application build path. CI must not use `-SkipSmoke` or `-SkipInstallerSmoke`. Keep signing
+keys/certificates external and organisation-controlled. Unsigned/local compilation is not
+a production release; signing, required notices and clean standard-user acceptance remain
+mandatory. Never delete user-selected collection folders during update or uninstall.
+
 Source 0.14.2 automatically adds `client-analysis.xlsx` to
 completed direct-API cow collections while retaining the advanced, multi-sheet
 guided `client-study.xlsx` builder. The automatic sheet has one cow/case per row and

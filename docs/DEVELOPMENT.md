@@ -54,6 +54,19 @@ library and does not install the beta vendor SDK; rationale is in `API_DATA.md`.
 .\.venv\Scripts\python.exe -m piptools compile --extra dev --generate-hashes --strip-extras --allow-unsafe --output-file requirements-dev.lock pyproject.toml
 ```
 
+## Windows packaging
+
+`scripts/build_windows.ps1` creates the versioned portable bundle and performs its
+offline executable smoke. With Inno Setup 6 installed, `scripts/build_installer.ps1`
+then consumes that archive, creates the versioned installer, silently installs it to a
+temporary folder, repeats the executable smoke and uninstalls it. Set
+`SMAXTEC_ISCC_PATH` to `ISCC.exe` if it is not in a standard location.
+
+The `-SkipSmoke` and `-SkipInstallerSmoke` switches exist only for diagnosis on a
+developer computer whose policy blocks unsigned executables. A result created with
+either switch is not releasable. CI deliberately uses neither. Signing is an external
+release-owner operation; never place certificate material or signing secrets here.
+
 ## Opt-in live verification
 
 Only use the following when the current task authorizes real account sign-in.

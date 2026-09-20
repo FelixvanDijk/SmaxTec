@@ -1,74 +1,56 @@
-SmaxTec Workbench — desktop preview 0.10.1
+SmaxTec Workbench — getting started
 
-1. Extract the complete ZIP into a folder on your computer.
-2. Open SmaxTec Workbench.exe. Keep the _internal folder beside it.
-3. In Direct data API, enter your smaXtec email/password and choose Connect.
-4. Choose a farm. Click rows to toggle cows without holding Ctrl, select every filtered
-   row, or paste exact cow numbers separated by commas, spaces or new lines.
-5. Enter From and To as DD/MM/YYYY and add the selected targets to the queue.
-6. Repeat for other farms, targets or periods. Every queue row keeps its own dates.
-7. Open Download queue and select one, several or every queued row. Use all available
-   measurements, or find the codes common to the selected targets, check the ones you
-   need and apply them only to those selected rows.
-8. Edit individual dates. If this is a cow treatment/key-event study, optionally enter
-   that cow's Study T0 as DD/MM/YYYY HH:MM in the farm's timezone. Then choose
-   resolution, optional weekly farm health index, output folder/name and optional Excel.
-9. Choose Review & download. Inspect every target/date/measurement row, then confirm.
-10. Results shows each saved, partial, failed or cancelled target. Open the graph-ready
-    CSV, presentation workbook, automatic client analysis or complete audit folder
-    directly from that screen.
-11. Choose Disconnect or close the app to release the in-memory API session.
+INSTALLER BUILD
 
-AUTOMATIC CLIENT ANALYSIS AND GUIDED STUDY PREVIEW
+1. Open SmaxTec Workbench from the Start menu or desktop shortcut.
+2. Windows Settings > Apps > Installed apps contains the uninstall option.
+3. Installing a newer version over the existing version keeps the same application
+   identity and updates its bundled program files.
 
-Completed cow collections with usable measurements also create client-analysis.xlsx
-automatically. It has one worksheet: a filterable, blue-banded 28-column cow table
-matching the client's ASPI-style order. Each cow/case occupies exactly one row.
-Its To header is the client's spelling of T0 temperature, NOT the end date.
-Header notes explain period-anchor and proxy meanings without extra sheets.
-The automatic mapping uses exact source codes found in a saved collection:
-temp_normal_index/degree_celsius (normal-temperature interpretation pending client
-confirmation), temp_without_drink_cycles/degree_celsius for T, act/act and
-rum_index/seconds. Rumination is shown in minutes in this derived workbook, while
-the raw CSV remains seconds. If Study T0 is blank, exact measurements are aligned
-around that cow's From date at farm-local 00:00, labelled a PERIOD ANCHOR, not a
-treatment time. Enter actual T0 for treatment studies; baseline/follow-up fields
-may be blank if outside the collected range.
+PORTABLE PREVIEW BUILD
 
-In Results choose Create study workbook, or Choose saved collection for an earlier
-complete API collection. Match the source codes/units for normal temperature,
-temperature without drinking cycles, activity and rumination. An unavailable role
-may stay unmapped; its fields will be blank. Enter the actual event/treatment time
-for every cow as DD/MM/YYYY HH:MM in that farm's timezone. Optionally copy a truly
-shared time with Apply to every cow, then review the whole table. Choose study
-windows and create. A separate client-study.xlsx appears beside the original
-collection. Its first sheet has one cow/case per row; aligned cow sheets, cohort
-graphs, Definitions and QC follow. T6 means an actual point exactly six elapsed
-hours after time zero; missing exact data stays blank. Talert/R20 are labelled
-proxies and Lact/DIM/Rback remain blank. This analytical preview needs client
-acceptance before clinical interpretation.
+Extract the complete ZIP, keep the _internal folder beside SmaxTec Workbench.exe,
+and open the executable. Do not move the executable out of that folder.
 
-Each run makes a unique folder with raw API JSON, the unchanged technical
-measurements.csv, an easier graph-ready analysis_ready.csv, optional XLSX and a hashed
-collection.json manifest. Start with analysis_ready.csv for filtering and future charts.
-The Excel file opens with a collection overview, observation-count chart, measurement
-index and data guide; its source-data sheets retain every technical column. Use
-measurements.csv/raw JSON when auditing the source. Earlier collections are never overwritten.
-Credentials and bearer token stay in memory and are not written to that folder.
+DIRECT DATA API — RECOMMENDED WORKFLOW
 
-No Python, editor, browser driver or package installation is required.
+1. Enter your authorized smaXtec email and password, then choose Connect.
+2. Choose a farm and select cows by clicking rows, selecting filtered rows, or pasting
+   exact animal numbers. Animal numbers are matched exactly.
+3. Enter each target's From, To and optional Study T0. Shared T0/date actions are
+   explicit conveniences; every queue row remains independently editable.
+4. Add targets to the queue. In Download queue, select one, several or every row and
+   assign the measurements required for those targets.
+5. Choose Native, 10-minute, hourly or daily resolution, configure the aligned-data
+   window, output location/name and optional Excel output.
+6. Review every target, period, T0 and measurement before confirming the download.
+7. Open the saved collection or outputs from Results.
 
-LEGACY WEBSITE & EMAIL
+Every completed collection preserves raw API JSON, collection.json lineage, the
+technical measurements.csv and graph-ready analysis_ready.csv. Optional output.xlsx
+is descriptive. Cow collections with the required metrics also create
+client-analysis.xlsx with Cow analysis and Aligned data sheets. Native timepoints keep
+exact-timestamp behavior. Aggregated reports use their bounded API buckets; daily data
+cannot recreate six-hour activity windows, so daily activity fields are labelled
+proxies. Client acceptance is still required before clinical interpretation.
 
-The Legacy website + email tab retains the earlier browser export and mailbox routes
-while direct API client acceptance is completed. Use it only when direct API data cannot
-supply the required result. Microsoft 365 mailbox sign-in may require an organization-
-approved app registration; classic Outlook and saved .eml/.msg import remain fallbacks.
-Emails are not marked read, moved or deleted. Existing labels remain unchanged.
+If API lifecycle data does not provide Lact/DIM, Results can add current website
+diagram values to a new, non-overwriting analysis workbook. They are scrape-time
+snapshots, not historical T0 values.
 
-This is an unsigned development preview. Direct downloads, date boundaries, units and
-output still require representative client acceptance. The production release will have
-an installer and clean standard-user-machine verification. Do not move the executable
-out of its extracted folder.
+ACCOUNT AND DATA NOTES
 
-This application is an independent integration project, not an official smaXtec app.
+- smaXtec credentials and bearer tokens are held in memory for the connected session
+  and are not written to the collection folder.
+- Choose Disconnect or close the application when finished.
+- Save output to an approved user or organisation folder, not the installation folder.
+- The Legacy website + email workspace remains a compatibility route. Microsoft 365
+  access can require organisation approval; the application does not bypass policy.
+- This is an independent integration project, not an official smaXtec application.
+
+SUPPORT INFORMATION TO RECORD
+
+When reporting a problem, provide the Workbench version, Windows version, the operation
+being attempted and the user-facing error text. Do not send passwords, bearer links,
+tokens, raw farm data or authenticated screenshots unless an approved support process
+explicitly requests and protects them.

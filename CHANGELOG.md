@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — Windows installer delivery
+
+- Protect the unchanged, fully tested 0.14.2 application at Git tag
+  `v0.14.2-tested-baseline` before introducing installer-only files.
+- Add a stable-identity, per-user-by-default Inno Setup installer with Start-menu and
+  optional desktop shortcuts, in-place upgrades, Installed Apps uninstall and no deletion
+  of user-selected output folders.
+- Build the installer only from the already assembled application bundle. The installer
+  does not compile or alter application source.
+- Add a release check that silently installs into an isolated temporary folder, runs the
+  established bundled-application smoke test and silently uninstalls. CI never uses the
+  local diagnostic skip switches.
+- Produce a SHA-256 checksum beside the versioned installer and add separate end-user
+  installation/update/uninstall guidance. Code signing and clean client-machine acceptance
+  remain external release gates.
+
 ## 0.14.2 — 2026-09-19 (aggregation-aware client analysis)
 
 - Preserve the existing Native exact-point calculations unchanged and add a separate

@@ -1,5 +1,32 @@
 # Packaging and release
 
+## Windows installer candidate
+
+The Windows CI workflow is configured to build the existing directory bundle, run its offline smoke,
+compiles `SmaxTec-Workbench-Setup-<version>-windows-x64.exe`, silently installs it into an
+isolated temporary directory, runs the same smoke through the installed executable, and
+silently uninstalls it. The downloadable Actions artifact contains the installer and its
+SHA-256 file. It is still a temporary **unsigned preview**, not a production release.
+
+For an equivalent developer build after the application archive exists:
+
+```powershell
+./scripts/build_installer.ps1
+```
+
+The script needs Inno Setup 6 (`ISCC.exe`); set `SMAXTEC_ISCC_PATH` when it is not in a
+standard installation directory. It reads the application version from `pyproject.toml`,
+accepts only that versioned bundle layout, compiles a stable-product-ID installer, then
+tests install/startup/uninstall. `-SkipInstallerSmoke` is for diagnosis on a machine whose
+policy blocks unsigned binaries and must never be used for a release claim. Similarly,
+`build_windows.ps1 -SkipSmoke` may assemble a local diagnostic archive but CI and release
+instructions never use it.
+
+The optional `-SignToolCommand` parameter configures Inno Setup's external signing hook.
+Certificate selection, timestamp URL and secret/key custody belong to the release-owning
+organisation. Do not store a PFX, password, private key or copied signing token in the
+repository or CI logs. See [end-user installation](INSTALLING.md).
+
 ## Development preview
 
 ```powershell
@@ -20,8 +47,9 @@ the product-wide license inventory/release review.
 
 Unzip the complete folder and open `SmaxTec Workbench.exe`; `_internal` must stay
 beside it. `START_HERE.txt` explains the preview in user terms. The binary/archive
-are generated artifacts; never commit them to the source repo. CI uploads the
-archive as a temporary build artifact, not a published production release.
+are generated artifacts; never commit them to the source repo. The archive remains
+an intermediate developer artifact; CI uploads the tested installer candidate instead
+of asking end users to extract the portable bundle.
 
 For a rebuild immediately after the same source passed its checks, `-SkipChecks`
 avoids duplicating tests. `-SkipArchive` builds/smoke-tests without making a ZIP.
@@ -45,10 +73,11 @@ programmatic-access or link-protection policies.
 - Confirm supported Windows versions/architectures and minimum hardware with the
   user; test on a clean standard-user machine without Python, VS Code, Node,
   Playwright, or a development browser cache.
-- Provide a polished installer, shortcuts, application icon/branding, version
-  metadata, upgrades and uninstall. Preserve user jobs/settings through upgrades.
-- Choose code-signing and distribution ownership; sign and timestamp binaries
-  and installer and verify downloaded artifacts and checksums.
+- Finalize the implemented installer with an owner-approved application icon/branding
+  and publisher metadata. Reverify its shortcuts, in-place upgrades and uninstall on
+  supported client machines while preserving user output/settings.
+- Choose code-signing and distribution ownership; sign and timestamp both the bundled
+  application executable and installer, then verify downloaded artifacts/checksums.
 - Include an inventory of bundled dependencies and required third-party notices.
   Review the Qt distribution/licensing choice before external distribution; do
   not assign an open-source license to this contracted project's code without

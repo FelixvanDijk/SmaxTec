@@ -199,28 +199,27 @@ Excel is not opened and labels are **unchanged**, not automatically set to Publi
 B3 is an animal name; collection does not verify the website farm, Animal number
 or requested date period. Check these before later analysis.
 
-## Download the packaged desktop preview
+## Install the packaged desktop preview
 
-The retained [0.8.0 Windows preview](https://github.com/FelixvanDijk/SmaxTec/actions/runs/34731198778)
-does **not** include automatic client analysis. The 0.9.0 Windows checks passed
-tests, bundle build and packaged executable smoke, but artifact upload was rejected
-by GitHub Actions storage quota. Twelve older temporary ZIP artifacts have been
-removed, retaining only the two latest working 0.8/0.7 previews; quota recovery
-and a downloadable 0.14.2 preview still need CI confirmation. For now, use
-`Start SmaxTec.cmd` on this prepared development computer. Once a successful
-0.14.2 artifact appears, download its `SmaxTec-Workbench-windows-preview` ZIP,
-extract both the artifact wrapper and the included application ZIP, and open
-`SmaxTec Workbench.exe`.
-Keep its `_internal` folder alongside it. The runtime and browser are included.
-CI artifacts expire after 14 days; these are development previews, not releases.
+The Windows workflow is configured to produce one versioned setup program plus its SHA-256 file in
+the `SmaxTec-Workbench-windows-installer-preview` Actions artifact. Download and extract
+the artifact wrapper, then run `SmaxTec-Workbench-Setup-0.14.2-windows-x64.exe`. The
+installer defaults to the current user, creates a Start-menu shortcut, offers an optional
+desktop shortcut and registers update/uninstall under Windows Installed apps. Python,
+the runtime and the isolated Chromium browser are included.
 
-Website credentials are entered in the GUI and are not saved. The unsigned
-executable was denied execution on the current development computer; 0.8.0 passed
-independent Windows CI smoke tests. Consult current status for the 0.14.2 build
-evidence rather than assuming a successful earlier artifact includes this feature.
-Target-machine approval/signing, third-party license review and the polished
-installer remain release work. If the legacy Microsoft 365 route is retained, its
-application registration and tenant-consent gate still need completion.
+Do **not** use GitHub's **Code > Download ZIP** for an end user; that is source code.
+Actions artifacts expire after 14 days and remain development previews. This installer is
+currently unsigned, and the development computer's policy blocks unsigned executables.
+The CI workflow must independently pass bundle startup plus silent install, installed-app
+startup and uninstall before its artifact is offered. Organisation code signing, final
+branding/notices and clean client-machine acceptance are still required for production.
+See [end-user installation](docs/INSTALLING.md) and the evidence in
+[packaging and release requirements](docs/RELEASING.md).
+
+Website credentials are entered in the GUI and are not saved. If the legacy Microsoft
+365 route is retained, its application registration and tenant-consent gate still needs
+completion.
 
 ## Project memory
 
@@ -234,6 +233,7 @@ application registration and tenant-consent gate still need completion.
 - [Monday client demonstration](docs/DEMO_RUNBOOK.md)
 - [Microsoft 365 one-time IT setup](docs/MICROSOFT_365_SETUP.md)
 - [Developer setup](docs/DEVELOPMENT.md)
+- [End-user installation](docs/INSTALLING.md)
 - [Packaging and release requirements](docs/RELEASING.md)
 - [Change history](CHANGELOG.md)
 

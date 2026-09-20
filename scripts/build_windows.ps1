@@ -1,6 +1,7 @@
 param(
     [switch]$SkipChecks,
-    [switch]$SkipArchive
+    [switch]$SkipArchive,
+    [switch]$SkipSmoke
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,8 +45,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Executable build failed.' }
     $taskBundle = Join-Path $taskStageDist 'SmaxTec Workbench'
     Copy-Item -LiteralPath (Join-Path $taskRoot 'packaging\START_HERE.txt') -Destination $taskBundle
-    & (Join-Path $PSScriptRoot 'smoke_windows.ps1') `
-        -ExecutablePath (Join-Path $taskBundle 'SmaxTec Workbench.exe')
+    if (-not $SkipSmoke) {
+        & (Join-Path $PSScriptRoot 'smoke_windows.ps1') `
+            -ExecutablePath (Join-Path $taskBundle 'SmaxTec Workbench.exe')
+    }
     if (-not $SkipArchive) {
         $taskPublishedDist = Join-Path $taskRoot 'dist'
         New-Item -ItemType Directory -Path $taskPublishedDist -Force | Out-Null
@@ -53,7 +56,11 @@ try {
         Compress-Archive -LiteralPath $taskBundle -DestinationPath $taskArchive -Force
         Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256
     }
-    Write-Output 'Windows preview built and offline smoke test passed.'
+    if ($SkipSmoke) {
+        Write-Warning 'Windows preview built without executable smoke; do not publish this local result.'
+    } else {
+        Write-Output 'Windows preview built and offline smoke test passed.'
+    }
 } finally {
     $env:PLAYWRIGHT_BROWSERS_PATH = $taskPreviousBrowserPath
     Pop-Location
