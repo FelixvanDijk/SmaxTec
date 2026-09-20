@@ -21,6 +21,10 @@
 - Use the Windows runner's existing Inno Setup 6 compiler. The runner already carried
   6.7.1, so attempting to install older 6.3.3 failed as a refused downgrade before any
   installer work began; the build script already validates/discovers the installed tool.
+- Make the installed-app smoke invoke Setup and Uninstall through an argument-safe native
+  process and wait explicitly for completion. It forces current-user mode, logs Setup in
+  the isolated staging directory and emits bounded diagnostics if installation reports
+  success without producing the expected executable.
 
 ## 0.14.2 — 2026-09-19 (aggregation-aware client analysis)
 

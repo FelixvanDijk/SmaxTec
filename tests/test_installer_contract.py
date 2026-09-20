@@ -40,6 +40,10 @@ def test_installer_build_requires_smoke_unless_explicitly_skipped():
     assert "smoke_installer.ps1" in build
     assert "smoke_windows.ps1" in smoke
     assert "unins000.exe" in smoke
+    assert "ProcessStartInfo" in smoke
+    assert "WaitForExit" in smoke
+    assert "'/CURRENTUSER'" in smoke
+    assert '"/LOG=$taskInstallLog"' in smoke
     assert "-SkipSmoke" not in workflow
     assert "-SkipInstallerSmoke" not in workflow
     assert "choco install innosetup" not in workflow.lower()

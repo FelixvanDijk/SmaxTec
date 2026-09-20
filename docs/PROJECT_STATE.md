@@ -29,7 +29,13 @@ to 15 seconds; no application code or production timeout changed. The next run p
 457 tests and the packaged bundle smoke, then stopped because the workflow tried to install
 Inno Setup 6.3.3 over the runner's already installed 6.7.1. Chocolatey refused that
 downgrade. The redundant install step is removed; `build_installer.ps1` already discovers
-and validates the runner's existing Inno Setup 6 compiler. Clean installer rerun pending.
+and validates the runner's existing Inno Setup 6 compiler. The following run passed all
+457 tests and the packaged-app smoke, and compiled an installer, but its native invocation
+reported success without producing the executable at the expected isolated install path.
+The installer smoke now uses an argument-safe, explicitly waited native process, forces
+current-user mode, records an isolated Setup log and reports a bounded file/log diagnostic
+on failure. A clean install/smoke/uninstall rerun remains pending; application source is
+unchanged.
 
 Artifact audit on 2026-09-20 confirmed that the only retained downloads were obsolete
 0.7.0 and 0.8.0 portable previews (288.4 MiB each), which exceeded the repository quota.
