@@ -15,6 +15,9 @@
 - Produce a SHA-256 checksum beside the versioned installer and add separate end-user
   installation/update/uninstall guidance. Code signing and clean client-machine acceptance
   remain external release gates.
+- Synchronize the synthetic API panel fixture with the same connected-and-idle boundary
+  that enables farm selection in the real GUI. This removes a queued-signal CI race without
+  changing application code or extending any production timeout.
 
 ## 0.14.2 — 2026-09-19 (aggregation-aware client analysis)
 

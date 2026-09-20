@@ -21,6 +21,12 @@ local install/start/uninstall claim is made. GitHub Windows CI, organisation cod
 publisher/branding ownership, required notice review and a clean standard-user client test
 remain gates before client release.
 
+The first installer-workflow run stopped during tests because the synthetic API panel
+fixture selected a farm after the connection result signal but before `QThread.finished`
+made the panel idle. The real farm control is disabled during that interval. The fixture
+now waits for the user-visible connected-and-idle boundary and gives shared CI runners up
+to 15 seconds; no application code or production timeout changed. Clean rerun pending.
+
 **Source preview 0.14.2 keeps Native analysis exact while
 populating automatic client analysis from selected API aggregates.** Native T/RT and
 aligned point lookup is unchanged and still requires an exact timestamp. For 10-minute,

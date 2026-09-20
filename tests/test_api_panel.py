@@ -18,6 +18,8 @@ from smaxtec.application.lifecycle import LifecycleReading, LifecycleTarget
 from smaxtec.application.lifecycle_enrichment import LifecycleEnrichmentResult
 from smaxtec.ui.api_panel import ApiPanel
 
+ASYNC_TIMEOUT_MS = 15_000
+
 
 class Client:
     def __init__(self):
@@ -73,9 +75,18 @@ def connected_panel(qtbot, tmp_path, *, lifecycle_session_factory=None):
     panel.username.setText("analyst@example.test")
     panel.password.setText("synthetic-password")
     panel._connect()
-    qtbot.waitUntil(lambda: panel._connected)
+    # Match the user-visible boundary: the farm control is not usable until the
+    # connection worker's finished signal has made the panel idle. Waiting only
+    # for _connected races the result and QThread.finished queued signals.
+    qtbot.waitUntil(
+        lambda: panel._connected and not panel.is_busy,
+        timeout=ASYNC_TIMEOUT_MS,
+    )
     panel.farm.setCurrentIndex(1)
-    qtbot.waitUntil(lambda: panel._catalog is not None)
+    qtbot.waitUntil(
+        lambda: panel._catalog is not None and not panel.is_busy,
+        timeout=ASYNC_TIMEOUT_MS,
+    )
     panel.destination.setText(str(tmp_path))
     return panel, client, service
 
