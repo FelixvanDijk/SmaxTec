@@ -18,6 +18,18 @@ and accepted analysis remain next.
 See [current status](docs/PROJECT_STATE.md) for verified evidence and remaining gates;
 implementation is not a claim that client acceptance or a production release is complete.
 
+## Install the client-test preview
+
+Download the Setup `.exe` from the [versioned client preview](https://github.com/FelixvanDijk/SmaxTec/releases/tag/v0.14.2-client-preview.1),
+open it, choose **Install for me only**, and launch **SmaxTec Workbench** from the Start menu.
+The runtime, libraries, automation browser and Quick Start are included. This is an unsigned
+Windows x64 client-test build; organisation signing and clean-client acceptance remain
+production-release gates.
+
+This repository is private. For a client without repository access, share the verified
+installer through approved OneDrive/SharePoint storage. See [client handover](docs/CLIENT_HANDOVER.md)
+for exactly what to send, or [installation instructions](docs/INSTALLING.md) for end users.
+
 ## Test on the current development computer
 
 Double-click **Start SmaxTec.cmd** in the project folder. It opens the GUI using

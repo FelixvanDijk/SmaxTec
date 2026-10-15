@@ -13,6 +13,10 @@
   with checksum revalidation, unique tags and separate release-write permissions. Keep the
   private repository private and document approved organisation-storage handover.
 - Preserve all application source, API behavior, report calculations and protected baseline.
+- Publish `v0.14.2-client-preview.1` after 459-test Windows CI, installed/replacement
+  smoke, uninstall and output-preservation checks. Download and verify all five release
+  assets into `dist/client-handover/v0.14.2-client-preview.1/`. The installer remains
+  explicitly unsigned; clean client acceptance and organisation signing are outstanding.
 
 ## Unreleased — Windows installer delivery
 

@@ -1,7 +1,39 @@
 # Project state — start here each session
 
-Last updated: 2026-10-15. **Client handover is being completed around the unchanged
-0.14.2 application.** The September CI attempt at `7fe6c27` passed all 457 tests,
+Last updated: 2026-10-15. **Client-test installer published; handover files are ready.**
+Application source remains 0.14.2 and is byte-for-byte unchanged from protected tag
+`v0.14.2-tested-baseline`.
+
+- Release: [v0.14.2-client-preview.1](https://github.com/FelixvanDijk/SmaxTec/releases/tag/v0.14.2-client-preview.1)
+  from source/build commit `3ee46babe08f64280f43767c4d8a04257179410c`.
+- [Windows CI run 38770624949, attempt 2](https://github.com/FelixvanDijk/SmaxTec/actions/runs/38770624949)
+  is green: 459 offline tests, lint/format/dependency checks, bundled Qt/Chromium/helper
+  smoke, silent install, installed-app smoke, same-version replacement, second installed
+  smoke, uninstall, external-output preservation, artifact upload and release publication.
+- Installer: `SmaxTec-Workbench-Setup-0.14.2-windows-x64.exe`, 209,388,457 bytes;
+  SHA-256 `fc06bf6239c7285724612360786a3fc1e6d86e90614b746f3a877cac73db2389`.
+- All five published assets were downloaded to the ignored local folder
+  `dist/client-handover/v0.14.2-client-preview.1/`; each local hash matches GitHub's
+  published asset digest, and the installer also matches its checksum companion.
+- Exact runtime inventory records 22 Python distributions and Python 3.13.16; guide,
+  license files and notices are installed with the application. An installer and guide
+  are enough for the owner to share through approved organisation storage.
+- Local verification passed all 459 tests. CI attempt 1 timed out only during the final
+  teardown of a legacy-browser test after its export/date/reconnection assertions passed.
+  Four local repeat runs (eight integration checks) and the complete CI retry passed;
+  no tests were skipped or relaxed and no runtime source was changed to obtain a pass.
+
+This is an **unsigned client-test prerelease** (`NotSigned` confirmed on the downloaded
+EXE), not a production release. Organisation signing, final native-component license/source
+review, branding ownership and a clean standard-user client acceptance test remain external
+production gates. The exact next step is to share the verified Setup executable and Quick
+Start via approved organisation storage, then run the short check in `CLIENT_HANDOVER.md`
+with the client's own account. GitHub is private; a release link alone does not give the
+client repository access. The user's existing `MICROSOFT_365_SETUP.md` edit was preserved.
+
+**Delivery implementation and earlier evidence follow.**
+
+The September CI attempt at `7fe6c27` passed all 457 tests,
 portable smoke, installer compilation, silent installation, installed-app smoke and
 uninstall, then failed only at GitHub's delayed Actions artifact quota. Both obsolete
 portable artifacts were removed; the current API reports zero retained artifacts.
@@ -14,7 +46,7 @@ verification passes; normal jobs keep read-only repository permissions and the d
 publisher gets release-write permission. The installer SHA-256 is rechecked before upload.
 Release assets avoid expiring Actions links. Because GitHub is private, the owner should
 share the exact verified Setup executable through approved organisation storage; see
-`docs/CLIENT_HANDOVER.md`. Fresh CI/release verification is in progress. Application source,
+`docs/CLIENT_HANDOVER.md`. Fresh CI/release verification is complete as recorded above. Application source,
 API requests, Native/aggregated calculations and existing reports are unchanged. The local
 edit in `docs/MICROSOFT_365_SETUP.md` belongs to the user and is deliberately excluded.
 

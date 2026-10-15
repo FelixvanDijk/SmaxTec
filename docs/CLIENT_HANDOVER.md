@@ -1,5 +1,19 @@
 # Send the client this installer
 
+Ready on 2026-10-15: [client-test release v0.14.2-client-preview.1](https://github.com/FelixvanDijk/SmaxTec/releases/tag/v0.14.2-client-preview.1).
+The verified files are also on this development computer under
+`dist/client-handover/v0.14.2-client-preview.1/`. Every local file matches its published
+GitHub SHA-256 digest. The installer is 209,388,457 bytes (about 209 MB).
+
+Send these two files from that folder:
+
+- `SmaxTec-Workbench-Setup-0.14.2-windows-x64.exe`
+- `SmaxTec-Workbench-Quick-Start.html` (optional; also installed automatically)
+
+Installer SHA-256 for the support record:
+`fc06bf6239c7285724612360786a3fc1e6d86e90614b746f3a877cac73db2389`.
+[Windows verification and release publication passed](https://github.com/FelixvanDijk/SmaxTec/actions/runs/38770624949).
+
 The client-test package is built from the unchanged 0.14.2 application. Send the exact
 verified **SmaxTec-Workbench-Setup-0.14.2-windows-x64.exe**, optionally accompanied by
 **SmaxTec-Workbench-Quick-Start.html**. The same guide is installed with the application.
