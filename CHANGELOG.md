@@ -1,5 +1,19 @@
 # Changelog
 
+## Client-test delivery — 2026-10-15 (application remains 0.14.2)
+
+- Include a readable Quick Start in the installed application and alongside the installer,
+  with Start-menu guide and third-party notice shortcuts.
+- Collect exact runtime dependency versions, vendor license/notice files, Python's license,
+  Qt GPL/LGPL texts and notice hashes into the verified bundle. Final native-component
+  licensing/source review remains a production-release gate.
+- Exercise same-version installer replacement, repeat installed-app smoke and verify
+  external output survives upgrade/uninstall; bound each installer process wait.
+- Add an explicit manual client-test prerelease path after successful Windows verification,
+  with checksum revalidation, unique tags and separate release-write permissions. Keep the
+  private repository private and document approved organisation-storage handover.
+- Preserve all application source, API behavior, report calculations and protected baseline.
+
 ## Unreleased — Windows installer delivery
 
 - Protect the unchanged, fully tested 0.14.2 application at Git tag

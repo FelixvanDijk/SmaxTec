@@ -20,6 +20,7 @@ $taskInstallDir = Join-Path $taskStage 'application'
 $taskInstallLog = Join-Path $taskStage 'setup.log'
 $taskUninstaller = Join-Path $taskInstallDir 'unins000.exe'
 $taskInstalled = $false
+$taskOutputSentinel = Join-Path $taskStage 'user-collection.txt'
 
 function Invoke-TaskProcess {
     param(
@@ -41,8 +42,15 @@ function Invoke-TaskProcess {
     if ($null -eq $taskProcess) {
         throw "Could not start $([System.IO.Path]::GetFileName($FilePath))."
     }
-    $taskProcess.WaitForExit()
-    return $taskProcess.ExitCode
+    try {
+        if (-not $taskProcess.WaitForExit(180000)) {
+            $taskProcess.Kill($true)
+            throw "$([System.IO.Path]::GetFileName($FilePath)) exceeded the three-minute limit."
+        }
+        return $taskProcess.ExitCode
+    } finally {
+        $taskProcess.Dispose()
+    }
 }
 
 New-Item -ItemType Directory -Path $taskStage -Force | Out-Null
@@ -79,9 +87,23 @@ try {
         )
     }
     & (Join-Path $PSScriptRoot 'smoke_windows.ps1') -ExecutablePath $taskExecutable
+    foreach ($taskRequired in @('QUICK_START.html', 'THIRD_PARTY_NOTICES.txt', 'dependency-inventory.json', 'licenses')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $taskInstallDir $taskRequired))) {
+            throw "Installed application is missing $taskRequired."
+        }
+    }
     if (-not (Test-Path -LiteralPath $taskUninstaller -PathType Leaf)) {
         throw 'The installed application did not register its uninstaller.'
     }
+    # Exercise the stable-AppId replacement path and preserve data outside {app}.
+    Set-Content -LiteralPath $taskOutputSentinel -Value 'synthetic user output: preserve me'
+    $taskSentinelHash = (Get-FileHash -LiteralPath $taskOutputSentinel).Hash
+    $taskUpgradeExitCode = Invoke-TaskProcess -FilePath $taskInstaller -ArgumentList @(
+        '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/NOICONS',
+        '/CURRENTUSER', "/DIR=$taskInstallDir"
+    )
+    if ($taskUpgradeExitCode -ne 0) { throw "Same-version upgrade failed ($taskUpgradeExitCode)." }
+    & (Join-Path $PSScriptRoot 'smoke_windows.ps1') -ExecutablePath $taskExecutable
     $taskUninstallExitCode = Invoke-TaskProcess -FilePath $taskUninstaller -ArgumentList @(
         '/VERYSILENT',
         '/SUPPRESSMSGBOXES',
@@ -94,7 +116,10 @@ try {
     if (Test-Path -LiteralPath $taskExecutable) {
         throw 'Uninstall left the application executable behind.'
     }
-    Write-Output 'PASS: installer, installed application smoke test and uninstall completed.'
+    if ((Get-FileHash -LiteralPath $taskOutputSentinel).Hash -ne $taskSentinelHash) {
+        throw 'Upgrade or uninstall modified user output outside the application directory.'
+    }
+    Write-Output 'PASS: install, installed-app smoke, same-version upgrade, uninstall and output preservation.'
 } finally {
     if ($taskInstalled -and (Test-Path -LiteralPath $taskUninstaller -PathType Leaf)) {
         Invoke-TaskProcess -FilePath $taskUninstaller -ArgumentList @(

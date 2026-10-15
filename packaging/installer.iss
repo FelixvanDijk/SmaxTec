@@ -65,7 +65,8 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
-Name: "{group}\Getting started"; Filename: "{app}\START_HERE.txt"
+Name: "{group}\Getting started"; Filename: "{app}\QUICK_START.html"
+Name: "{group}\Third-party notices"; Filename: "{app}\THIRD_PARTY_NOTICES.txt"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]

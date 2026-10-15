@@ -1,6 +1,26 @@
 # Project state — start here each session
 
-Last updated: 2026-09-20. **Installer delivery is now additive around the unchanged
+Last updated: 2026-10-15. **Client handover is being completed around the unchanged
+0.14.2 application.** The September CI attempt at `7fe6c27` passed all 457 tests,
+portable smoke, installer compilation, silent installation, installed-app smoke and
+uninstall, then failed only at GitHub's delayed Actions artifact quota. Both obsolete
+portable artifacts were removed; the current API reports zero retained artifacts.
+
+The delivery update adds an installed/standalone Quick Start, collected vendor notices
+and an exact runtime dependency inventory. Installer verification also exercises
+same-version replacement and preservation of synthetic output outside the program folder.
+Manual workflow dispatch can publish a uniquely tagged client-test prerelease after all
+verification passes; normal jobs keep read-only repository permissions and the dedicated
+publisher gets release-write permission. The installer SHA-256 is rechecked before upload.
+Release assets avoid expiring Actions links. Because GitHub is private, the owner should
+share the exact verified Setup executable through approved organisation storage; see
+`docs/CLIENT_HANDOVER.md`. Fresh CI/release verification is in progress. Application source,
+API requests, Native/aggregated calculations and existing reports are unchanged. The local
+edit in `docs/MICROSOFT_365_SETUP.md` belongs to the user and is deliberately excluded.
+
+**September installer implementation history follows.**
+
+Installer delivery is additive around the unchanged
 0.14.2 application.** Commit `de27b36` is preserved remotely as annotated rollback tag
 `v0.14.2-tested-baseline` before installer work. Inno Setup consumes only the already
 assembled directory bundle and provides a stable product identity, per-user default,
@@ -34,15 +54,14 @@ and validates the runner's existing Inno Setup 6 compiler. The following run pas
 reported success without producing the executable at the expected isolated install path.
 The installer smoke now uses an argument-safe, explicitly waited native process, forces
 current-user mode, records an isolated Setup log and reports a bounded file/log diagnostic
-on failure. A clean install/smoke/uninstall rerun remains pending; application source is
-unchanged.
+on failure. The next run passed install/smoke/uninstall; only artifact upload failed.
 
 Artifact audit on 2026-09-20 confirmed that the only retained downloads were obsolete
 0.7.0 and 0.8.0 portable previews (288.4 MiB each), which exceeded the repository quota.
 The exact older 0.7.0 artifact `10269370832` was removed after resolving its version, date
-and size; its source commit remains reproducible. The 0.8.0 fallback remains. GitHub warns
-storage recalculation may take 6–12 hours, so a technically successful immediate installer
-run may still need to be rerun later for artifact upload.
+and size; its source commit remains reproducible. The exact 0.8.0 artifact `10309481262`
+was subsequently removed too; no retained downloads remain. GitHub's quota refresh blocked
+the September upload. A new build is required for the October client handover.
 
 **Source preview 0.14.2 keeps Native analysis exact while
 populating automatic client analysis from selected API aggregates.** Native T/RT and
@@ -719,12 +738,12 @@ Do not invent calculations or clinical meanings in M4.
 
 ## Next-session handover
 
-1. Check the 0.14.2 Git/CI state and packaged launch limitation above. Use
+1. Check the client handover and release evidence at the top of this file. Use
    `docs/DEMO_RUNBOOK.md` for the established API path and retain the earlier
    presentation rollback tag. The prepared source launcher includes the expanded
    automatic client table, additive aligned cohort sheet and guided study UI; the
-   retained 0.8.0 artifact does not.
-   Quota cleanup is complete, but upload success and recalculation are unverified.
+   removed 0.8.0 artifact did not. Distribute the versioned client-test installer according
+   to `docs/CLIENT_HANDOVER.md`; private GitHub links require repository access.
 2. Read `API_DATA.md` and `CLIENT_STUDY_WORKBOOK.md`. The user's saved real
    collection was checked read-only, then a separate
    `client-analysis-2.xlsx` was generated outside Git; all seven cow rows had

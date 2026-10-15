@@ -20,6 +20,15 @@ The application runtime, supported libraries and isolated Chromium browser are i
 Keep downloaded farm data in an approved user or organisation folder, not the installation
 folder.
 
+After installation, **Getting started** in the Workbench Start-menu folder opens the
+included quick-start guide. **Third-party notices** opens the bundled notice and inventory
+information. An internet connection and your authorised smaXtec account are required for
+data collection. Outlook is not required for the Direct data API workspace.
+
+The client-test installer can be shared as a single `.exe` through your organisation's
+approved OneDrive/SharePoint location. A private GitHub release requires repository access;
+ask the person supplying the installer for an organisation download link if needed.
+
 ## Update
 
 Close Workbench and run the newer reviewed installer. Its stable application identity

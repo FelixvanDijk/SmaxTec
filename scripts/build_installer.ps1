@@ -59,7 +59,10 @@ New-Item -ItemType Directory -Path $taskStage -Force | Out-Null
 New-Item -ItemType Directory -Path $taskOutput -Force | Out-Null
 try {
     Expand-Archive -LiteralPath $taskArchive -DestinationPath $taskStage -Force
-    foreach ($required in @('SmaxTec Workbench.exe', '_internal', 'START_HERE.txt')) {
+    foreach ($required in @(
+        'SmaxTec Workbench.exe', '_internal', 'START_HERE.txt', 'QUICK_START.html',
+        'THIRD_PARTY_NOTICES.txt', 'dependency-inventory.json', 'licenses'
+    )) {
         if (-not (Test-Path -LiteralPath (Join-Path $taskBundle $required))) {
             throw "The application archive is incomplete: missing $required."
         }
@@ -90,6 +93,12 @@ try {
     $taskHashPath = "$taskInstaller.sha256"
     Set-Content -LiteralPath $taskHashPath -Encoding ascii `
         -Value "$($taskHash.Hash.ToLowerInvariant())  $([System.IO.Path]::GetFileName($taskInstaller))"
+    Copy-Item -LiteralPath (Join-Path $taskBundle 'QUICK_START.html') `
+        -Destination (Join-Path $taskOutput 'SmaxTec-Workbench-Quick-Start.html') -Force
+    Copy-Item -LiteralPath (Join-Path $taskBundle 'THIRD_PARTY_NOTICES.txt') `
+        -Destination $taskOutput -Force
+    Copy-Item -LiteralPath (Join-Path $taskBundle 'dependency-inventory.json') `
+        -Destination $taskOutput -Force
     Write-Output "Windows installer built: $taskInstaller"
     Write-Output "SHA-256: $($taskHash.Hash)"
 } finally {

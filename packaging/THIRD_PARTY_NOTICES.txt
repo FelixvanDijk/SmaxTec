@@ -1,0 +1,41 @@
+SmaxTec Workbench — third-party software
+
+This independent application includes Python, Qt for Python (PySide6 and Shiboken),
+Qt libraries, Playwright and its Node.js driver, Chrome for Testing/Chromium,
+FFmpeg and the Python packages listed in the build inventory below.
+Their respective authors retain their copyrights and license rights. This notice
+does not assign an open-source license to the Workbench application itself.
+
+The licenses folder beside this file contains vendor-supplied Python-package and
+driver notices, Python's license, and copies of the GNU LGPL v3 and GPL v3 texts
+from Qt's upstream source. dependency-inventory.json records exact package versions,
+declared license identifiers, project links and notice hashes for this build.
+
+Qt / PySide / Shiboken
+The community Qt libraries are distributed as separate, dynamically loaded files
+under _internal. Recipients retain the rights provided by the applicable licenses,
+including replacing those libraries with compatible modified versions and reverse
+engineering for debugging modifications to those libraries. Keep replacement files
+and their notices together; replacement builds must remain binary compatible.
+Upstream source, license information and third-party attributions:
+https://code.qt.io/cgit/qt/qtbase.git/
+https://code.qt.io/cgit/pyside/pyside-setup.git/
+https://download.qt.io/archive/qt/
+https://doc.qt.io/qtforpython-6/licenses.html
+https://doc.qt.io/qt-6/licenses-used-in-qt.html
+Use the exact Qt/PySide version recorded in dependency-inventory.json when obtaining
+corresponding source. No Qt or PySide source modifications are made by this project.
+
+Playwright / Node.js / Chrome / FFmpeg
+Additional embedded-driver licenses and attributions are in licenses/playwright-driver.
+The bundled browser's own third-party credits are available at chrome://credits
+when that browser is running. The browser distribution retains its vendor files.
+https://github.com/microsoft/playwright
+https://github.com/nodejs/node/blob/main/LICENSE
+https://chromium.googlesource.com/chromium/src/+/main/LICENSE
+https://chromium.googlesource.com/chromium/src/+/main/docs/third_party_code.md
+https://github.com/microsoft/playwright/blob/main/browser_patches/ffmpeg/README.md
+
+This generated inventory assists release review; it is not a legal clearance of
+every native component. The release owner remains responsible for final license
+and corresponding-source distribution review before a production rollout.

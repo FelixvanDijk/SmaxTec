@@ -2,6 +2,8 @@ SmaxTec Workbench — getting started
 
 INSTALLER BUILD
 
+Open QUICK_START.html beside this file for the user guide.
+
 1. Open SmaxTec Workbench from the Start menu or desktop shortcut.
 2. Windows Settings > Apps > Installed apps contains the uninstall option.
 3. Installing a newer version over the existing version keeps the same application

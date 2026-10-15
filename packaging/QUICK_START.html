@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmaxTec Workbench · Quick start</title>
+<style>
+body{font:16px/1.65 system-ui,Segoe UI,sans-serif;color:#183034;background:#eef5f3;margin:0}
+main{max-width:800px;margin:40px auto;background:white;padding:42px 52px;border-radius:20px}
+h1{font-size:36px;line-height:1.2;letter-spacing:-1px;margin:8px 0 16px}
+h2{font-size:21px;margin:30px 0 8px}p{margin:10px 0}li{padding:5px 0}
+.eyebrow{color:#18796d;font-weight:700;letter-spacing:2px;font-size:12px}
+.note{border-left:4px solid #219184;background:#f0f8f5;padding:14px 18px;border-radius:4px}
+footer{border-top:1px solid #dbe6e2;margin-top:32px;padding-top:18px;color:#54706a;font-size:13px}
+@media(max-width:650px){main{margin:0;padding:26px 22px;border-radius:0}}
+@media print{body{background:white;font-size:11pt}main{margin:0;padding:0;max-width:none}h1{font-size:26pt}}
+</style>
+<main>
+<div class="eyebrow">CLIENT TEST PREVIEW · WINDOWS 64-BIT</div>
+<h1>Your herd data.<br>One workspace.</h1>
+<p>Install once, sign into your smaXtec account, and collect your data and Excel reports.
+Python, browser tools and the required libraries are included.</p>
+<h2>1 · Install and open</h2>
+<ol>
+<li>Download the <strong>SmaxTec Workbench Setup installer (.exe)</strong> from the location shared with you.</li>
+<li>Open it, keep <strong>Install for me only</strong>, and follow the installer.</li>
+<li>Open <strong>SmaxTec Workbench</strong> from the Start menu or your desktop shortcut.</li>
+</ol>
+<p class="note">This client-test build is unsigned. If your organisation blocks it, ask your IT contact
+to approve deployment. You do not need administrator rights for the default installation.</p>
+<h2>2 · Choose your cows and measurements</h2>
+<ol>
+<li>In <strong>Direct data API</strong>, enter your authorised smaXtec email and password and connect.</li>
+<li>Select a farm, then select cows by clicking rows, selecting filtered cows, or pasting exact animal numbers.</li>
+<li>Set the From/To dates, add cows to the download queue and assign measurements to selected rows or all rows.</li>
+<li>Enter each cow's <strong>Study T0</strong>, or apply one T0 to the whole queue. T0 is the event or treatment time.</li>
+</ol>
+<h2>3 · Download and open your reports</h2>
+<ol>
+<li>Choose an output folder, collection name and resolution. <strong>Native</strong> preserves individual readings.</li>
+<li>For the client-analysis baseline and follow-up fields, include at least <strong>14 days before T0</strong>
+and <strong>20 days after T0</strong> if you need the complete R20 window. Set your aligned-data window separately.</li>
+<li>Review the queue and download. Open your collection and workbooks from <strong>Results</strong>.</li>
+</ol>
+<p><strong>client-analysis.xlsx</strong> contains one cow/case per row plus aligned data and charts.
+Raw JSON, CSV files and provenance remain beside the reports. Missing source data stays blank.
+Daily resolution uses daily aggregates and cannot reconstruct six-hour activity windows.</p>
+<p>When Lact/DIM are missing, <strong>Add Lact / DIM from website</strong> can add current website values
+to a new report. Those values describe the day they were read, not historical T0.</p>
+<h2>Updates, privacy and help</h2>
+<p>Close Workbench and run a newer installer to update. Uninstall through Windows Settings → Apps.
+Collections saved in your chosen output folders are preserved. Credentials are held for the session
+and released when you disconnect or close the application.</p>
+<p>For help, send the person who supplied this installer your Workbench version, Windows version,
+the step you were attempting and the displayed error. Keep passwords and farm data out of ordinary messages.</p>
+<footer>Independent integration with smaXtec. Client-test preview; report definitions and results require
+client validation before clinical interpretation. An internet connection and an authorised smaXtec account are required.
+Legacy email access is optional and may require separate organisation approval.</footer>
+</main>
+</html>

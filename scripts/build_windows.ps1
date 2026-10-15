@@ -45,6 +45,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Executable build failed.' }
     $taskBundle = Join-Path $taskStageDist 'SmaxTec Workbench'
     Copy-Item -LiteralPath (Join-Path $taskRoot 'packaging\START_HERE.txt') -Destination $taskBundle
+    Copy-Item -LiteralPath (Join-Path $taskRoot 'packaging\QUICK_START.html') -Destination $taskBundle
+    & $taskPython (Join-Path $PSScriptRoot 'build_notices.py') --output $taskBundle
+    if ($LASTEXITCODE -ne 0) { throw 'Runtime notice generation failed.' }
     if (-not $SkipSmoke) {
         & (Join-Path $PSScriptRoot 'smoke_windows.ps1') `
             -ExecutablePath (Join-Path $taskBundle 'SmaxTec Workbench.exe')

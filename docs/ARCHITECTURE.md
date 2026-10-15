@@ -680,6 +680,22 @@ define signing for the bundled application executable before packing. The unsign
 is not production-ready until both signatures, required notices, final publisher/branding
 ownership and a clean standard-user target test are accepted.
 
+## Decision 027: Durable client-test distribution (2026-10-15)
+
+The build adds a Quick Start HTML guide, runtime dependency inventory and collected vendor
+notices to the same verified directory bundle; application source is unchanged. The installer
+creates Start-menu guide/notices shortcuts. Its CI check now also reinstalls the same version
+and verifies a synthetic collection outside the program folder survives update and uninstall.
+Native process waits are bounded to three minutes per Setup/Uninstall invocation.
+
+Manual workflow dispatch can publish a uniquely tagged prerelease only after the verify job
+passes. A separate publish job holds `contents: write`; normal build jobs keep read access.
+The publish job downloads that run's verified artifact, checks the installer SHA-256, uploads
+all assets to a draft and publishes it as a client-test prerelease. No existing tag/assets are
+overwritten. Release assets provide durable owner downloads; approved organisation storage
+provides recipient access without exposing this private source repository. Signing and clean
+client-machine acceptance remain production gates.
+
 ## Data and workflow design to preserve
 
 - A direct collection records stable farm/target IDs + display identity, individual

@@ -2,11 +2,28 @@
 
 ## Windows installer candidate
 
-The Windows CI workflow is configured to build the existing directory bundle, run its offline smoke,
+For client testing, run the existing Windows workflow manually with `publish_preview`
+enabled and a fresh `v0.14.2-client-preview.<n>` tag. After successful verification it
+publishes an explicitly marked prerelease with the Setup executable, SHA-256, Quick Start,
+third-party notice overview and exact dependency inventory. These release assets do not
+have the Actions artifact's 14-day retention. The repository remains private: distribute
+the verified executable through approved organisation storage for clients without repo
+access. See [client handover](CLIENT_HANDOVER.md).
+
+The Windows CI workflow builds the existing directory bundle, runs its offline smoke,
 compiles `SmaxTec-Workbench-Setup-<version>-windows-x64.exe`, silently installs it into an
 isolated temporary directory, runs the same smoke through the installed executable, and
-silently uninstalls it. The downloadable Actions artifact contains the installer and its
-SHA-256 file. It is still a temporary **unsigned preview**, not a production release.
+reinstalls the same version to exercise replacement before silently uninstalling it.
+A synthetic output file outside the program folder must survive both operations intact.
+The downloadable Actions artifact contains the same files used for a manual prerelease.
+This remains an **unsigned client-test preview**, not a production release.
+
+`scripts/build_notices.py` resolves runtime dependencies from `pyproject.toml` and installed
+package metadata, excluding developer extras. It copies vendor metadata/driver notices,
+Python's license and the Qt GPL/LGPL texts, and records versions and notice hashes without
+developer paths. `packaging/licenses/Qt-*.txt` are verbatim upstream Qt v6.11.2 license texts
+from `https://github.com/qt/qtbase/tree/v6.11.2/LICENSES`. Additional native-component/source
+obligations still require the release owner's review; the inventory is not legal clearance.
 
 For an equivalent developer build after the application archive exists:
 

@@ -5,6 +5,15 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_preview:
+        description: Publish the tested installer as a durable GitHub prerelease
+        type: boolean
+        default: false
+      preview_tag:
+        description: Unique client-test release tag (never reused)
+        type: string
+        default: v0.14.2-client-preview.1
 
 permissions:
   contents: read
@@ -47,5 +56,54 @@ jobs:
           path: |
             dist/SmaxTec-Workbench-Setup-*-windows-x64.exe
             dist/SmaxTec-Workbench-Setup-*-windows-x64.exe.sha256
+            dist/SmaxTec-Workbench-Quick-Start.html
+            dist/THIRD_PARTY_NOTICES.txt
+            dist/dependency-inventory.json
           if-no-files-found: error
           retention-days: 14
+
+  publish_preview:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_preview
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.preview_tag }}
+      SOURCE_COMMIT: ${{ github.sha }}
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Publish verified installer and quick start
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RELEASE_TAG -notmatch '^v(\d+\.\d+\.\d+)-client-preview\.[1-9]\d*$') {
+            throw 'Use a unique tag such as v0.14.2-client-preview.1.'
+          }
+          $taskVersion = $Matches[1]
+          gh run download $env:RUN_ID --name SmaxTec-Workbench-windows-installer-preview --dir handover
+          if ($LASTEXITCODE -ne 0) { throw 'Could not download the verified installer artifact.' }
+          $taskInstaller = "handover/SmaxTec-Workbench-Setup-$taskVersion-windows-x64.exe"
+          $taskExpected = ((Get-Content -LiteralPath "$taskInstaller.sha256").Trim() -split '\s+')[0]
+          $taskActual = (Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash
+          if ($taskActual -ne $taskExpected) { throw 'Installer checksum verification failed.' }
+          $taskNotes = @"
+          Windows x64 client-test preview, application version $taskVersion.
+
+          Download the Setup .exe and open it. Keep Install for me only, then launch SmaxTec Workbench from the Start menu. Python, dependencies and the automation browser are included. See the Quick Start HTML asset for the API workflow and report guidance.
+
+          Verified by the full offline test suite, packaged application smoke, silent installation, installed-app smoke, same-version upgrade and uninstall. Source commit: $env:SOURCE_COMMIT. Build evidence: https://github.com/$env:GH_REPO/actions/runs/$env:RUN_ID
+
+          This is an unsigned client-test build. Organisation signing and standard-user client acceptance remain production-release gates. Corporate deployment restrictions must be handled through the organisation's approved process.
+
+          This repository is private: recipients need repository read access to download these assets. The release owner can instead share the exact Setup executable and quick-start guide through an approved organisation download location. Report validation remains subject to client acceptance.
+          "@
+          $taskNotes | Set-Content -LiteralPath release-notes.md -Encoding utf8
+          $taskAssets = @(Get-ChildItem -LiteralPath handover -File | ForEach-Object FullName)
+          gh release create $env:RELEASE_TAG @taskAssets --target $env:SOURCE_COMMIT --draft --prerelease --title "SmaxTec Workbench $taskVersion - client test" --notes-file release-notes.md
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create release; an existing tag is never overwritten.' }
+          gh release edit $env:RELEASE_TAG --draft=false
+          if ($LASTEXITCODE -ne 0) { throw 'Assets uploaded to draft release, but publishing failed.' }
